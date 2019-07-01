@@ -8,7 +8,7 @@
 
 The next generation of the CIDC API, reworked to use Google Cloud-managed services. This API is built with the Eve REST API framework backed by Google Cloud SQL, running on Google App Engine.
 
-# Development <!-- omit in TOC -->****
+# Development <!-- omit in TOC -->
 
 - [Install Python dependencies](#Install-Python-dependencies)
 - [Database Management](#Database-Management)
