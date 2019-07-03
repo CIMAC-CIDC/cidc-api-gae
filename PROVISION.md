@@ -58,7 +58,13 @@ gcloud sql databases create cidc --instance='cidc-postgres' --project=$PROJECT
 for both the staging and production projects.
 
 ## Auth0
-[TODO: system configuration is still a bit up in the air]
+In both the `cidc-test` and `cidc` Auth0 tenants for the staging and production APIs respectively, do the following:
+
+1) If there exists an application of type `Regular Web Application` that's already in use by the CIDC frontend associated with `$PROJECT`, select that application (currently, this exists and is called `cidc-portal` in both tenants). Otherwise, create a new application of type `Regular Web Application` -- this application will be shared between the API and the UI.
+2) Add `https://$PROJECT.appspot.com` along with whatever public-facing URL you've configured (e.g., `https://staging-api.cimac-network.org`) to the "Allowed Web Origins" list).
+3) Copy the Client ID, and add this to the appropriate `app.*.yaml` file for `$PROJECT`.
+
+The staging Auth0 client can also be convenient for debugging authentication functionality locally, so set `AUTH0_CLIENT_ID` to the staging Client ID in your `.env` file.
 
 ## Secrets Management
 
