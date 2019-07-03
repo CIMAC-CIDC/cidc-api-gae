@@ -6,7 +6,7 @@ from eve.auth import TokenAuth
 from jose import jwt
 
 from models import Users
-from settings import AUTH0_AUDIENCE, AUTH0_DOMAIN, ALGORITHMS, AUTH0_CLIENT_ID
+from settings import AUTH0_DOMAIN, ALGORITHMS, AUTH0_CLIENT_ID
 
 
 logger = logging.getLogger("cidc-api.auth")
@@ -138,7 +138,8 @@ class BearerAuth(TokenAuth):
                 token,
                 public_key,
                 algorithms=ALGORITHMS,
-                audience=AUTH0_AUDIENCE,
+                # TODO: is this what we want?
+                audience=AUTH0_CLIENT_ID,
                 issuer=f"https://{AUTH0_DOMAIN}/",
                 options={"verify_at_hash": False},
             )

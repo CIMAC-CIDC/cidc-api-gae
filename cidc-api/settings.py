@@ -21,7 +21,6 @@ else:
 
 # Auth0 configuration
 AUTH0_DOMAIN = environ.get("AUTH0_DOMAIN")
-AUTH0_AUDIENCE = environ.get("AUTH0_AUDIENCE")
 AUTH0_CLIENT_ID = environ.get("AUTH0_CLIENT_ID")
 ALGORITHMS = ["RS256"]
 
