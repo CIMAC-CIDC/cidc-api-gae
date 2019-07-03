@@ -140,4 +140,3 @@ def test_decode_id_token(monkeypatch, bearer_auth):
 
     monkeypatch.setattr("jose.jwt.decode", correct_email)
     assert bearer_auth.decode_id_token(TOKEN, PUBLIC_KEY) == PAYLOAD
-
