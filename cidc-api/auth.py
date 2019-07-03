@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+import json
+>>>>>>> Clean up BearerAuth class and add auth tests
 import logging
 from typing import List
 
@@ -6,7 +10,11 @@ from eve.auth import TokenAuth
 from jose import jwt
 
 from models import Users
+<<<<<<< HEAD
 from settings import AUTH0_DOMAIN, ALGORITHMS, AUTH0_CLIENT_ID
+=======
+from settings import AUTH0_AUDIENCE, AUTH0_DOMAIN, ALGORITHMS, AUTH0_CLIENT_ID
+>>>>>>> Clean up BearerAuth class and add auth tests
 
 
 logger = logging.getLogger("cidc-api.auth")
@@ -26,8 +34,13 @@ class AuthError(ValueError):
         self.message = message
         self.status_code = status_code
 
+<<<<<<< HEAD
     def json(self):
         return {"error_code": self.error_code, "message": self.message}
+=======
+    def __str__(self):
+        return json.dumps({"error_code": self.error_code, "message": self.message})
+>>>>>>> Clean up BearerAuth class and add auth tests
 
 
 class BearerAuth(TokenAuth):
@@ -138,8 +151,12 @@ class BearerAuth(TokenAuth):
                 token,
                 public_key,
                 algorithms=ALGORITHMS,
+<<<<<<< HEAD
                 # TODO: is this what we want?
                 audience=AUTH0_CLIENT_ID,
+=======
+                audience=AUTH0_AUDIENCE,
+>>>>>>> Clean up BearerAuth class and add auth tests
                 issuer=f"https://{AUTH0_DOMAIN}/",
                 options={"verify_at_hash": False},
             )
