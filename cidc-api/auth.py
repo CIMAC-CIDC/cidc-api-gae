@@ -1,4 +1,3 @@
-import json
 import logging
 from typing import List
 
@@ -27,8 +26,8 @@ class AuthError(ValueError):
         self.message = message
         self.status_code = status_code
 
-    def __str__(self):
-        return json.dumps({"error_code": self.error_code, "message": self.message})
+    def json(self):
+        return {"error_code": self.error_code, "message": self.message}
 
 
 class BearerAuth(TokenAuth):
