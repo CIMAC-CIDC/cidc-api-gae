@@ -28,7 +28,7 @@ class Users(CommonColumns):
     organization = Column(Enum(*ORGS, name="orgs"))
 
     @classmethod
-    def find_or_create(cls, email: str):
+    def create(cls, email: str):
         """
             Create a new record for a user if one doesn't exist
             for the given email.
