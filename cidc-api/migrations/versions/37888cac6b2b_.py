@@ -23,7 +23,7 @@ def upgrade():
     sa.Column('_updated', sa.DateTime(), nullable=True),
     sa.Column('_etag', sa.String(length=40), nullable=True),
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
-    sa.Column('trial_id', sa.Integer(), nullable=False),
+    sa.Column('trial_id', sa.String(), nullable=False),
     sa.Column('metadata_json', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )

@@ -44,7 +44,7 @@ class TrialMetadata(CommonColumns):
     __tablename__ = "trial_metadata"
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     # The CIMAC-determined trial id
-    trial_id = Column(Integer, unique=True, nullable=False, index=True)
+    trial_id = Column(String, unique=True, nullable=False, index=True)
     metadata_json = Column(JSONB, nullable=False)
 
     # Create a GIN index on the metadata JSON blobs
