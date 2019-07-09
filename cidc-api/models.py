@@ -1,5 +1,6 @@
 from flask import current_app as app
-from sqlalchemy import Column, DateTime, Integer, String, Enum, func
+from sqlalchemy import Column, DateTime, Integer, String, Enum, Index, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import declarative_base
 
 BaseModel = declarative_base()
@@ -37,3 +38,13 @@ class Users(CommonColumns):
             app.logger.info(f"Creating new user with email {email}")
             session.add(Users(email=email))
             session.commit()
+
+
+class TrialMetadata(CommonColumns):
+    __tablename__ = "trial_metadata"
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    study_id = Column(Integer, unique=True, nullable=False, index=True)
+    metadata_json = Column(JSONB, nullable=False)
+
+    # Create a GIN index on the metadata JSON blobs
+    _metadata_idx = Index("metadata_idx", metadata_json, postgresql_using="gin")

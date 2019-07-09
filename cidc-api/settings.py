@@ -3,7 +3,7 @@ from os import environ
 from eve_sqlalchemy.config import DomainConfig, ResourceConfig
 from dotenv import load_dotenv
 
-from models import Users
+from models import Users, TrialMetadata
 
 load_dotenv()
 
@@ -74,5 +74,8 @@ SQLALCHEMY_TRACK_MODIFICATIONS = False
 RESOURCE_METHODS = ["GET", "POST"]
 ITEM_METHODS = ["GET", "PUT", "PATCH"]
 
-
-DOMAIN = DomainConfig({"users": ResourceConfig(Users)}).render()
+_domain_config = {
+    "users": ResourceConfig(Users),
+    "trial-metadata": ResourceConfig(TrialMetadata),
+}
+DOMAIN = DomainConfig(_domain_config).render()
