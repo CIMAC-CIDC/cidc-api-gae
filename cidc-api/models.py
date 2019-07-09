@@ -76,4 +76,3 @@ class TrialMetadata(CommonColumns):
             new_trial = TrialMetadata(trial_id=trial_id, metadata_json=metadata)
             session.add(new_trial)
             session.commit()
-
