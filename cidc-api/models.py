@@ -27,16 +27,16 @@ class Users(CommonColumns):
     last_n = Column(String)
     organization = Column(Enum(*ORGS, name="orgs"))
 
-    @classmethod
-    def create(cls, email: str):
+    @staticmethod
+    def create(email: str):
         """
             Create a new record for a user if one doesn't exist
             for the given email.
         """
         session = app.data.driver.session
-        if not session.query(cls).filter_by(email=email).first():
+        if not session.query(Users).filter_by(email=email).first():
             app.logger.info(f"Creating new user with email {email}")
-            session.add(cls(email=email))
+            session.add(Users(email=email))
             session.commit()
 
 
@@ -50,8 +50,8 @@ class TrialMetadata(CommonColumns):
     # Create a GIN index on the metadata JSON blobs
     _metadata_idx = Index("metadata_idx", metadata_json, postgresql_using="gin")
 
-    @classmethod
-    def patch_trial_metadata(cls, trial_id: str, metadata: dict):
+    @staticmethod
+    def patch_trial_metadata(trial_id: str, metadata: dict):
         """
             Applies updates to an existing trial metadata record,
             or create a new one if it does not exist.
@@ -65,7 +65,7 @@ class TrialMetadata(CommonColumns):
         session = app.data.driver.session
 
         # Look for an existing trial
-        trial = session.query(cls).filter_by(trial_id=trial_id).first()
+        trial = session.query(TrialMetadata).filter_by(trial_id=trial_id).first()
 
         if trial:
             # Merge-update metadata into existing trial's metadata_json
@@ -74,4 +74,6 @@ class TrialMetadata(CommonColumns):
             # Create a new trial metadata record, since none exists
             app.logger.info(f"Creating new trial_metadata for trial {trial_id}")
             new_trial = TrialMetadata(trial_id=trial_id, metadata_json=metadata)
+            session.add(new_trial)
+            session.commit()
 

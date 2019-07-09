@@ -34,7 +34,10 @@ DEBUG = ENV == "dev" and environ.get("DEBUG")
 
 # Database configuration
 POSTGRES_URI = environ.get("POSTGRES_URI")
-if not POSTGRES_URI:
+if TESTING:
+    # Connect to the test database
+    POSTGRES_URI = environ.get("TEST_POSTGRES_URI")
+elif not POSTGRES_URI:
     from sqlalchemy.engine.url import URL
 
     # If POSTGRES_URI env variable is not set,
@@ -67,6 +70,7 @@ if not POSTGRES_URI:
 
     POSTGRES_URI = str(URL(**config))
 
+assert POSTGRES_URI
 SQLALCHEMY_DATABASE_URI = POSTGRES_URI
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
