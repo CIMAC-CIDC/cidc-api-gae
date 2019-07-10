@@ -19,4 +19,3 @@ def test_basic_error_checks(e, status_code):
     e = e(error_code, message)
     assert e.status_code == status_code
     assert e.json() == {"error_code": error_code, "message": message}
-
