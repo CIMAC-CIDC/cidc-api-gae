@@ -7,7 +7,7 @@ cache:
 services:
   - postgresql
 addons:
-  postgresql: "9.6"
+  postgres: "9.6"
 env:
   global:
     - PYTHONPATH=$PYTHONPATH:$(pwd)/cidc-api
