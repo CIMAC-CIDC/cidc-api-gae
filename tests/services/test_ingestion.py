@@ -1,9 +1,6 @@
 import io
-import sys
-import tempfile
 
 import pytest
-from flask import Response, url_for
 from werkzeug.exceptions import (
     HTTPException,
     InternalServerError,
