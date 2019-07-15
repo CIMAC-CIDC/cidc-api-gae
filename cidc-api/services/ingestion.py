@@ -153,4 +153,3 @@ def get_signed_url(object_name: str, method: str = "PUT", expiry_mins: int = 5) 
     url = blob.generate_signed_url(version="v4", expiration=expiration, method=method)
 
     return url
-
