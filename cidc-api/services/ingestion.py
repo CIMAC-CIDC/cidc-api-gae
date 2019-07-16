@@ -94,6 +94,10 @@ def upload():
 @requires_auth("ingestion.signed-upload-urls")
 def signed_upload_urls():
     """
+    NOTE: As in the old API, we will instead use access-control lists for managing
+    bucket access instead of signed URLs, because this will allow us to leverage
+    gsutil on the client side.
+
     Given a request whose body contains a directory name and a list of object names,
     return a JSON object mapping object names to signed GCS upload URLs for those objects.
 
