@@ -31,13 +31,17 @@ class Users(CommonColumns):
     def create(email: str):
         """
             Create a new record for a user if one doesn't exist
-            for the given email.
+            for the given email. Return the user record associated
+            with that email.
         """
         session = app.data.driver.session
-        if not session.query(Users).filter_by(email=email).first():
+        user = session.query(Users).filter_by(email=email).first()
+        if not user:
             app.logger.info(f"Creating new user with email {email}")
-            session.add(Users(email=email))
+            user = Users(email=email)
+            session.add(user)
             session.commit()
+        return user
 
 
 class TrialMetadata(CommonColumns):
