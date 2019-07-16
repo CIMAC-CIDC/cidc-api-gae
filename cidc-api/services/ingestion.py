@@ -25,10 +25,9 @@ def is_xlsx(filename: str) -> bool:
 def extract_schema_and_xlsx() -> Tuple[str, BinaryIO]:
     """
     Validate that a request has the required structure, then extract 
-    the schema id and template file from the request. The request URL
-    must have a query parameter "schema" referencing a valid schema id
-    and request body with content-type multipart/form containing a data entry
-    "template" with an attached .xlsx file.
+    the schema id and template file from the request. The request must
+    have a multipart/form body with one field "schema" referencing a valid schema id
+    and another field "template" with an attached .xlsx file.
 
     Raises:
         BadRequest: if the above requirements aren't satisfied
@@ -53,7 +52,7 @@ def extract_schema_and_xlsx() -> Tuple[str, BinaryIO]:
         raise BadRequest("Expected a .xlsx file")
 
     # Check that a schema id was provided and that a corresponding schema exists
-    schema_id = request.args.get("schema")
+    schema_id = request.form.get("schema")
     if not schema_id:
         raise BadRequest("Expected a value for URL query param 'schema'")
     if schema_id not in constants.SCHEMA_LIST:
@@ -83,20 +82,36 @@ def validate():
     return jsonify({"errors": [] if type(error_list) == bool else error_list})
 
 
-@ingestion_api.route("/upload", methods=["POST", "PUT"])
+@ingestion_api.route("/upload", methods=["POST"])
 @requires_auth("ingestion.upload")
 def upload():
-    """Ingest the metadata associated with a completed upload."""
+    """
+    Initiate a metadata/data ingestion job.
 
+    Request: multipart/form
+        schema: the schema identifier for this template
+        template: the .xlsx file to process
+    Response: application/json
+        gcs_objects: a mapping from client's local filepaths to GCS object names
+        to which they've been granted access.
+        job_id: the unique identifier for this upload job in the database
+    """
+    # If this is a POST request, then the client is trying to
+    # initiate a new upload job. For a POST request, we expect
+    # mulipart/form content
     if request.method == "POST":
-        # This is a new upload job
-        # TODO: Check if these objects have jobs with status started. If so,
-        #       do not change ACLs, and raise a BadRequest error.
+        # Run basic validations on the provided Excel file
+        validations = validate()
+        if len(validations["errors"]) > 0:
+            return validations
 
-        # TODO: Create an upload job in the database with status started.
+        schema_id, xlsx_file = extract_schema_and_xlsx()
 
-        # TODO: Update ACLs for objects to upload.
-
+        # TODO: prismify the xlsx file
+        # TODO: extract filenames from the prism'd file
+        # TODO: create GCS objects with names based on filenames
+        # and grant access to the current_user.
+        # TODO: Create an upload job for this data in the database with status started.
         # TODO: Respond with the Job ID
 
         raise NotImplemented()
