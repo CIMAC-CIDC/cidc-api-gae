@@ -1,6 +1,19 @@
+from typing import BinaryIO
+
 from flask import current_app as app
-from sqlalchemy import Column, DateTime, Integer, String, Enum, Index, func
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import (
+    Column,
+    DateTime,
+    Integer,
+    String,
+    VARCHAR,
+    Enum,
+    Index,
+    func,
+    and_,
+    cast,
+)
+from sqlalchemy.dialects.postgresql import JSONB, ARRAY, BYTEA
 from sqlalchemy.ext.declarative import declarative_base
 
 BaseModel = declarative_base()
@@ -21,6 +34,7 @@ ORGS = ["CIDC", "DFCI", "ICAHN", "STANFORD", "ANDERSON"]
 
 class Users(CommonColumns):
     __tablename__ = "users"
+
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     email = Column(String, unique=True, nullable=False, index=True)
     first_n = Column(String)
@@ -80,3 +94,62 @@ class TrialMetadata(CommonColumns):
             new_trial = TrialMetadata(trial_id=trial_id, metadata_json=metadata)
             session.add(new_trial)
             session.commit()
+
+
+STATUSES = ["started", "completed", "errored"]
+
+
+class UploadJobs(CommonColumns):
+    __tablename__ = "upload_jobs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    # The current status of the upload job
+    status = Column(Enum(*STATUSES, name="job_statuses"), nullable=False)
+    # The object names for the files to be uploaded
+    gcs_objects = Column(ARRAY(String, dimensions=1), nullable=False)
+    # The parsed JSON metadata blob associated with this upload
+    metadata_json_patch = Column(JSONB, nullable=False)
+    # The contents of the xlsx metadata file, if available
+    xlsx_bytes = Column(BYTEA)
+
+    # Create a GIN index on the GCS object names
+    _gcs_objects_idx = Index("gcs_objects_idx", gcs_objects, postgresql_using="gin")
+
+    @staticmethod
+    def _has_same_gcs_objects(gcs_objects: list):
+        # By some SQLAlchemy weirdness, this typecast is required
+        # for the Array comparators to work.
+        varchar_objs = cast(gcs_objects, ARRAY(VARCHAR()))
+        return and_(
+            UploadJobs.gcs_objects.contains(varchar_objs),
+            UploadJobs.gcs_objects.contained_by(varchar_objs),
+        )
+
+    @staticmethod
+    def create(gcs_objects: list, metadata: dict, xlsx_bytes: BinaryIO):
+        """Create a new upload job for the given trial metadata patch."""
+        session = app.data.driver.session
+
+        # Look for an existing upload job for these objects
+        job = (
+            session.query(UploadJobs)
+            .filter(UploadJobs._has_same_gcs_objects(gcs_objects))
+            .first()
+        )
+
+        if job:
+            # TODO: what to do if these files are already on the way to being uploaded?
+            pass
+        else:
+            # Create a new one if none exists
+            job = UploadJobs(
+                gcs_objects=gcs_objects,
+                metadata_json_patch=metadata,
+                xlsx_bytes=xlsx_bytes,
+                status="started",
+            )
+            session.add(job)
+            session.commit()
+
+        return job
+

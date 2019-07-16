@@ -3,7 +3,9 @@ from functools import wraps
 import pytest
 
 from app import app
-from models import Users, TrialMetadata
+from models import Users, TrialMetadata, UploadJobs
+
+from .util import assert_same_elements
 
 
 @pytest.fixture
@@ -72,3 +74,23 @@ def test_update_trial_metadata(db):
 
     with pytest.raises(NotImplementedError, match="updates not yet supported"):
         TrialMetadata.patch_trial_metadata(TRIAL_ID, updated_metadata)
+
+
+@db_test
+def test_create_upload_job(db):
+    """Try to create an upload job"""
+    gcs_objects = ["my/first/wes/blob1", "my/first/wes/blob2"]
+    metadata_json_patch = {"foo": "bar"}
+    xlsx_bytes = b"1234"
+
+    create_job = lambda: UploadJobs.create(gcs_objects, metadata_json_patch, xlsx_bytes)
+
+    # Create a fresh upload job
+    new_job = create_job()
+    job = db.query(UploadJobs).filter_by(id=new_job.id).first()
+    assert_same_elements(new_job.gcs_objects, job.gcs_objects)
+    assert job.status == "started"
+
+    # Try to re-create that same job, ensuring the existing job is returned
+    same_job = create_job()
+    assert same_job.id == new_job.id

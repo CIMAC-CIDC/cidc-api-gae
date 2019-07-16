@@ -83,11 +83,33 @@ def validate():
     return jsonify({"errors": [] if type(error_list) == bool else error_list})
 
 
-@ingestion_api.route("/upload", methods=["POST"])
+@ingestion_api.route("/upload", methods=["POST", "PUT"])
 @requires_auth("ingestion.upload")
 def upload():
     """Ingest the metadata associated with a completed upload."""
-    raise NotImplemented()
+
+    if request.method == "POST":
+        # This is a new upload job
+        # TODO: Check if these objects have jobs with status started. If so,
+        #       do not change ACLs, and raise a BadRequest error.
+
+        # TODO: Create an upload job in the database with status started.
+
+        # TODO: Update ACLs for objects to upload.
+
+        # TODO: Respond with the Job ID
+
+        raise NotImplemented()
+
+    if request.method == "PUT":
+        # This is an existing upload job
+        # TODO: If no job with the provided Job ID exists, raise a BadRequest error.
+
+        # TODO: Update job status in the database. If success,
+        #       ingest the metadata associated with this upload job?
+
+        # TODO: Revoke access to the bucket for this user
+        raise NotImplemented()
 
 
 @ingestion_api.route("/signed-upload-urls", methods=["POST"])
