@@ -9,6 +9,7 @@ from werkzeug.exceptions import (
     NotImplemented,
 )
 
+from settings import GOOGLE_UPLOAD_BUCKET
 from services.ingestion import extract_schema_and_xlsx
 
 from . import open_data_file
@@ -24,6 +25,11 @@ def valid_xlsx():
 @pytest.fixture
 def invalid_xlsx():
     yield open_data_file("pbmc_invalid.xlsx")
+
+
+@pytest.fixture
+def wes_xlsx():
+    yield open_data_file("wes_data.xlsx")
 
 
 def form_data(filename=None, fp=None, schema=None):
@@ -44,6 +50,7 @@ def form_data(filename=None, fp=None, schema=None):
 
 
 VALIDATE = "/ingestion/validate"
+UPLOAD = "/ingestion/upload"
 
 
 def test_validate_valid_template(app_no_auth, valid_xlsx):
@@ -74,7 +81,7 @@ def test_validate_invalid_template(app_no_auth, invalid_xlsx):
         # Template file is non-.xlsx
         [VALIDATE, form_data("text.txt"), BadRequest, ".xlsx file"],
         # URL is missing "schema" query param
-        [VALIDATE, form_data("text.xlsx"), BadRequest, "query param 'schema'"],
+        [VALIDATE, form_data("text.xlsx"), BadRequest, "form entry for 'schema'"],
         # "schema" query param references non-existent schema
         [
             VALIDATE,
@@ -94,12 +101,30 @@ def test_extract_schema_and_xlsx_failures(app, url, data, error, message):
             extract_schema_and_xlsx()
 
 
-@pytest.mark.skip
-def test_upload_not_implemented(app_no_auth):
+def test_upload_not_implemented(app_no_auth, wes_xlsx, test_user, monkeypatch):
     """Ensure the upload endpoint returns a not implemented error"""
     client = app_no_auth.test_client()
-    res = client.post("/ingestion/upload")
-    assert res.status_code == NotImplemented.code
+
+    iam_update = MagicMock()
+    monkeypatch.setattr("gcs_iam.grant_write_access", iam_update)
+
+    res = client.post(UPLOAD, data=form_data("wes.xlsx", wes_xlsx, "wes"))
+    assert res.json
+    assert "url_mapping" in res.json
+
+    url_mapping = res.json["url_mapping"]
+
+    # We expect local_path to map to a gcs object name with gcs_prefix
+    # based on the contents of wes_xlsx.
+    local_path = "read_group_map.txt"
+    gcs_prefix = "10021/Patient_1/sample_1/aliquot_2/wes_read_group.txt/"
+    gcs_object_name = url_mapping[local_path]
+    assert local_path in url_mapping
+    assert gcs_object_name.startswith(gcs_prefix)
+
+    # Check that we tried to grant IAM write access to gcs_object_name
+    gcs_uri = f"{gcs_object_name}/{local_path}"
+    iam_update.assert_called_with(GOOGLE_UPLOAD_BUCKET, gcs_uri, test_user.email)
 
 
 def test_signed_upload_urls(app_no_auth, monkeypatch):

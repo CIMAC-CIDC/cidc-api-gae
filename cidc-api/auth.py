@@ -2,7 +2,7 @@ import logging
 from typing import List
 
 import requests
-from eve.auth import TokenAuth
+from eve.auth import TokenAuth, requires_auth
 from jose import jwt
 from flask import _request_ctx_stack
 from werkzeug.exceptions import Unauthorized

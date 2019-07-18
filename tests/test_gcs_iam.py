@@ -14,7 +14,7 @@ def test_grant_write(monkeypatch):
             return {"roles/storage.objectCreator": set()}
 
         def set_iam_policy(self, policy):
-            assert EMAIL in policy["roles/storage.objectCreator"]
+            assert f"user:{EMAIL}" in policy["roles/storage.objectCreator"]
 
     monkeypatch.setattr("gcs_iam._get_or_create_blob", GrantBlob)
     grant_write_access("foo", "bar", EMAIL)

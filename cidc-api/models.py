@@ -1,3 +1,4 @@
+import hashlib
 from typing import BinaryIO
 
 from flask import current_app as app
@@ -17,6 +18,13 @@ from sqlalchemy.dialects.postgresql import JSONB, ARRAY, BYTEA
 from sqlalchemy.ext.declarative import declarative_base
 
 BaseModel = declarative_base()
+
+
+def make_etag(*args):
+    """Make an _etag by stringify, concatenating, and hashing the provided args"""
+    argstr = "|".join([str(arg) for arg in args])
+    argbytes = bytes(argstr, "utf-8")
+    return hashlib.md5(argbytes).hexdigest()
 
 
 class CommonColumns(BaseModel):
@@ -147,6 +155,7 @@ class UploadJobs(CommonColumns):
                 metadata_json_patch=metadata,
                 xlsx_bytes=xlsx_bytes,
                 status="started",
+                _etag=make_etag(gcs_objects, metadata),
             )
             session.add(job)
             session.commit()
