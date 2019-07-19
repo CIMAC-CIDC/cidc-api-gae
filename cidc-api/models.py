@@ -161,4 +161,3 @@ class UploadJobs(CommonColumns):
             session.commit()
 
         return job
-
