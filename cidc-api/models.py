@@ -161,3 +161,10 @@ class UploadJobs(CommonColumns):
             session.commit()
 
         return job
+
+    @staticmethod
+    def find_by_id(id: int):
+        """Find the record with this id"""
+        session = app.data.driver.session
+
+        return session.query(UploadJobs).get(id)

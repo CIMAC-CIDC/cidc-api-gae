@@ -39,7 +39,7 @@ ALGORITHMS = ["RS256"]
 
 ## Configure GCS
 GOOGLE_UPLOAD_BUCKET = environ.get("GOOGLE_UPLOAD_BUCKET")
-GOOGLE_UPLOAD_ROLE = "roles/storage.objectCreator"
+GOOGLE_UPLOAD_ROLE = "roles/storage.legacyObjectOwner"
 # TODO: additional buckets for pipeline data etc.?
 ## End GCS config
 
@@ -102,8 +102,8 @@ ITEM_METHODS = ["GET", "PUT", "PATCH"]
 
 _domain_config = {
     "users": ResourceConfig(Users),
-    "trial-metadata": ResourceConfig(TrialMetadata),
-    "upload-jobs": ResourceConfig(UploadJobs),
+    "trial_metadata": ResourceConfig(TrialMetadata),
+    "upload_jobs": ResourceConfig(UploadJobs),
 }
 DOMAIN = DomainConfig(_domain_config).render()
 ## End Eve REST API config

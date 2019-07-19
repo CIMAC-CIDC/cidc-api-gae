@@ -105,8 +105,8 @@ def test_upload_not_implemented(app_no_auth, wes_xlsx, test_user, monkeypatch):
     """Ensure the upload endpoint returns a not implemented error"""
     client = app_no_auth.test_client()
 
-    iam_update = MagicMock()
-    monkeypatch.setattr("gcs_iam.grant_write_access", iam_update)
+    grant_write = MagicMock()
+    monkeypatch.setattr("gcs_iam.grant_write_access", grant_write)
 
     res = client.post(UPLOAD, data=form_data("wes.xlsx", wes_xlsx, "wes"))
     assert res.json
@@ -124,7 +124,22 @@ def test_upload_not_implemented(app_no_auth, wes_xlsx, test_user, monkeypatch):
 
     # Check that we tried to grant IAM write access to gcs_object_name
     gcs_uri = f"{gcs_object_name}/{local_path}"
-    iam_update.assert_called_with(GOOGLE_UPLOAD_BUCKET, gcs_uri, test_user.email)
+    iam_args = ()
+    grant_write.assert_called_with(GOOGLE_UPLOAD_BUCKET, gcs_uri, test_user.email)
+
+    # Check that we tried to revoke IAM write access after updating the
+    revoke_write = MagicMock()
+    monkeypatch.setattr("gcs_iam.revoke_write_access", revoke_write)
+
+    job_id = res.json["job_id"]
+    update_url = f"/upload_jobs/{job_id}"
+    res = client.patch(
+        update_url,
+        json={"status": "completed"},
+        headers={"If-Match": res.json["job_etag"]},
+    )
+    assert res.status_code == 200
+    revoke_write.assert_called()
 
 
 def test_signed_upload_urls(app_no_auth, monkeypatch):

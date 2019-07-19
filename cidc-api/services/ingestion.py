@@ -9,15 +9,21 @@ from typing import BinaryIO, Tuple, List
 from werkzeug.exceptions import BadRequest, InternalServerError, NotImplemented
 
 from google.cloud import storage
+from eve import Eve
 from eve.auth import requires_auth
-from flask import Blueprint, request, jsonify, _request_ctx_stack
+from flask import Blueprint, request, Request, Response, jsonify, _request_ctx_stack
 from cidc_schemas import constants, validate_xlsx, prism
 
 import gcs_iam
-from models import UploadJobs
+from models import UploadJobs, STATUSES
 from settings import GOOGLE_UPLOAD_BUCKET, HINT_TO_SCHEMA, SCHEMA_TO_HINT
 
 ingestion_api = Blueprint("ingestion", __name__, url_prefix="/ingestion")
+
+
+def register_ingestion_hooks(app: Eve):
+    """Set up ingestion-related hooks on an Eve app instance"""
+    app.on_post_PATCH_upload_jobs = on_post_PATCH_upload_jobs
 
 
 def is_xlsx(filename: str) -> bool:
@@ -160,6 +166,18 @@ def upload():
         "gcs_bucket": GOOGLE_UPLOAD_BUCKET,
     }
     return jsonify(response)
+
+
+def on_post_PATCH_upload_jobs(request: Request, payload: Response):
+    """Revoke the user's write access to the objects they've uploaded to."""
+    if not payload.json and not "id" in payload.json:
+        raise BadRequest("Unexpected payload while updating upload_jobs")
+
+    job: UploadJobs = UploadJobs.find_by_id(payload.json["id"])
+
+    user_email = _request_ctx_stack.top.current_user.email
+    for gcs_obj in job.gcs_objects:
+        gcs_iam.revoke_write_access(GOOGLE_UPLOAD_BUCKET, gcs_obj, user_email)
 
 
 @ingestion_api.route("/signed-upload-urls", methods=["POST"])
