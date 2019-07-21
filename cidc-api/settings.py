@@ -39,7 +39,7 @@ ALGORITHMS = ["RS256"]
 
 ## Configure GCS
 GOOGLE_UPLOAD_BUCKET = environ.get("GOOGLE_UPLOAD_BUCKET")
-GOOGLE_UPLOAD_ROLE = "roles/storage.legacyObjectOwner"
+GOOGLE_UPLOAD_ROLE = "roles/storage.objectCreator"
 # TODO: additional buckets for pipeline data etc.?
 ## End GCS config
 

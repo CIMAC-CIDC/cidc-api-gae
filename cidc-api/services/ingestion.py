@@ -145,19 +145,20 @@ def upload():
         # Build the path to the "directory" in GCS where the
         # local file should be uploaded. Attach a timestamp (upload_moment)
         # to prevent collisions with previous uploads of this file.
-        gcs_uri_dir_with_ts = f"{gcs_uri_dir}/{upload_moment}"
-        url_mapping[local_path] = gcs_uri_dir_with_ts
+        gcs_uri_prefix = f"{gcs_uri_dir}/{upload_moment}"
 
-        # Grant the current user write access to the GCS object
-        # associated with this file.
-        gcs_uri = f"{gcs_uri_dir_with_ts}/{local_path}"
-        gcs_iam.grant_write_access(GOOGLE_UPLOAD_BUCKET, gcs_uri, user_email)
-
-    gcs_uris = url_mapping.values()
+        # Store the full path to GCS object for this file
+        # in the url mapping to be sent back to the user.
+        gcs_uri = f"{gcs_uri_prefix}/{local_path}"
+        url_mapping[local_path] = gcs_uri_prefix
 
     # Save the upload job to the database
     xlsx_bytes = xlsx_file.read()
+    gcs_uris = url_mapping.values()
     job = UploadJobs.create(gcs_uris, metadata_json, xlsx_bytes)
+
+    # Grant the user upload access to the upload bucket
+    gcs_iam.grant_upload_access(GOOGLE_UPLOAD_BUCKET, user_email)
 
     response = {
         "job_id": job.id,
@@ -173,11 +174,14 @@ def on_post_PATCH_upload_jobs(request: Request, payload: Response):
     if not payload.json and not "id" in payload.json:
         raise BadRequest("Unexpected payload while updating upload_jobs")
 
-    job: UploadJobs = UploadJobs.find_by_id(payload.json["id"])
+    # TODO: handle the case where the user has more than one upload running,
+    # in which case we shouldn't revoke the user's write access until they
+    # have no remaining jobs with status "started". This will require
+    # adding a "created_by" field or similar to the upload_jobs object.
 
+    # Revoke the user's write access
     user_email = _request_ctx_stack.top.current_user.email
-    for gcs_obj in job.gcs_objects:
-        gcs_iam.revoke_write_access(GOOGLE_UPLOAD_BUCKET, gcs_obj, user_email)
+    gcs_iam.revoke_upload_access(GOOGLE_UPLOAD_BUCKET, user_email)
 
 
 @ingestion_api.route("/signed-upload-urls", methods=["POST"])
