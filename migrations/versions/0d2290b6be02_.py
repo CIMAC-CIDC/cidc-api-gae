@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 2b11e3ecbe93
+Revision ID: 0d2290b6be02
 Revises: 37888cac6b2b
-Create Date: 2019-07-16 15:50:45.555758
+Create Date: 2019-07-21 18:27:52.179930
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '2b11e3ecbe93'
+revision = '0d2290b6be02'
 down_revision = '37888cac6b2b'
 branch_labels = None
 depends_on = None
@@ -24,12 +24,13 @@ def upgrade():
     sa.Column('_etag', sa.String(length=40), nullable=True),
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('status', sa.Enum('started', 'completed', 'errored', name='job_statuses'), nullable=False),
-    sa.Column('gcs_objects', postgresql.ARRAY(sa.String(), dimensions=1), nullable=False),
+    sa.Column('gcs_file_uris', postgresql.ARRAY(sa.String(), dimensions=1), nullable=False),
     sa.Column('metadata_json_patch', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
-    sa.Column('xlsx_bytes', postgresql.BYTEA(), nullable=True),
+    sa.Column('uploader_email', sa.String(), nullable=False),
+    sa.ForeignKeyConstraint(['uploader_email'], ['users.email'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index('gcs_objects_idx', 'upload_jobs', ['gcs_objects'], unique=False, postgresql_using='gin')
+    op.create_index('gcs_objects_idx', 'upload_jobs', ['gcs_file_uris'], unique=False, postgresql_using='gin')
     # ### end Alembic commands ###
 
 

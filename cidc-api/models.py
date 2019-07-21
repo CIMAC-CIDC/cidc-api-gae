@@ -5,6 +5,7 @@ from flask import current_app as app
 from sqlalchemy import (
     Column,
     DateTime,
+    ForeignKey,
     Integer,
     String,
     VARCHAR,
@@ -114,51 +115,31 @@ class UploadJobs(CommonColumns):
     # The current status of the upload job
     status = Column(Enum(*STATUSES, name="job_statuses"), nullable=False)
     # The object names for the files to be uploaded
-    gcs_objects = Column(ARRAY(String, dimensions=1), nullable=False)
+    gcs_file_uris = Column(ARRAY(String, dimensions=1), nullable=False)
+    # TODO: track the GCS URI of the .xlsx file used for this upload
+    # gcs_xlsx_uri = Column(String, nullable=False)
     # The parsed JSON metadata blob associated with this upload
     metadata_json_patch = Column(JSONB, nullable=False)
-    # The contents of the xlsx metadata file, if available
-    xlsx_bytes = Column(BYTEA)
+    # Link to the user who created this upload job
+    uploader_email = Column(String, ForeignKey("users.email", onupdate="CASCADE"))
 
     # Create a GIN index on the GCS object names
-    _gcs_objects_idx = Index("gcs_objects_idx", gcs_objects, postgresql_using="gin")
+    _gcs_objects_idx = Index("gcs_objects_idx", gcs_file_uris, postgresql_using="gin")
 
     @staticmethod
-    def _has_same_gcs_objects(gcs_objects: list):
-        # By some SQLAlchemy weirdness, this typecast is required
-        # for the Array comparators to work.
-        varchar_objs = cast(gcs_objects, ARRAY(VARCHAR()))
-        return and_(
-            UploadJobs.gcs_objects.contains(varchar_objs),
-            UploadJobs.gcs_objects.contained_by(varchar_objs),
-        )
-
-    @staticmethod
-    def create(gcs_objects: list, metadata: dict, xlsx_bytes: BinaryIO):
+    def create(uploader_email: str, gcs_file_uris: list, metadata: dict):
         """Create a new upload job for the given trial metadata patch."""
         session = app.data.driver.session
 
-        # Look for an existing upload job for these objects
-        job = (
-            session.query(UploadJobs)
-            .filter(UploadJobs._has_same_gcs_objects(gcs_objects))
-            .first()
+        job = UploadJobs(
+            gcs_file_uris=gcs_file_uris,
+            metadata_json_patch=metadata,
+            uploader_email=uploader_email,
+            status="started",
+            _etag=make_etag(gcs_file_uris, metadata),
         )
-
-        if job:
-            # TODO: what to do if these files are already on the way to being uploaded?
-            pass
-        else:
-            # Create a new one if none exists
-            job = UploadJobs(
-                gcs_objects=gcs_objects,
-                metadata_json_patch=metadata,
-                xlsx_bytes=xlsx_bytes,
-                status="started",
-                _etag=make_etag(gcs_objects, metadata),
-            )
-            session.add(job)
-            session.commit()
+        session.add(job)
+        session.commit()
 
         return job
 

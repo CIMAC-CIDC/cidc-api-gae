@@ -136,7 +136,6 @@ def upload():
     # along with information about the files the template references.
     metadata_json, file_infos = prism.prismify(xlsx_file, full_schema_path, schema_hint)
 
-    user_email = _request_ctx_stack.top.current_user.email
     upload_moment = str(datetime.datetime.now()).replace(" ", "_")
     url_mapping = {}
     for file_info in file_infos:
@@ -155,7 +154,8 @@ def upload():
     # Save the upload job to the database
     xlsx_bytes = xlsx_file.read()
     gcs_uris = url_mapping.values()
-    job = UploadJobs.create(gcs_uris, metadata_json, xlsx_bytes)
+    user_email = _request_ctx_stack.top.current_user.email
+    job = UploadJobs.create(user_email, gcs_uris, metadata_json)
 
     # Grant the user upload access to the upload bucket
     gcs_iam.grant_upload_access(GOOGLE_UPLOAD_BUCKET, user_email)

@@ -12,6 +12,7 @@ from .util import assert_same_elements
 def db():
     """Provide a clean test database session"""
     session = app.data.driver.session
+    session.query(UploadJobs).delete()
     session.query(Users).delete()
     session.query(TrialMetadata).delete()
     session.commit()
@@ -79,18 +80,13 @@ def test_update_trial_metadata(db):
 @db_test
 def test_create_upload_job(db):
     """Try to create an upload job"""
-    gcs_objects = ["my/first/wes/blob1", "my/first/wes/blob2"]
-    metadata_json_patch = {"foo": "bar"}
-    xlsx_bytes = b"1234"
+    new_user = Users.create(EMAIL)
 
-    create_job = lambda: UploadJobs.create(gcs_objects, metadata_json_patch, xlsx_bytes)
+    gcs_file_uris = ["my/first/wes/blob1", "my/first/wes/blob2"]
+    metadata_json_patch = {"foo": "bar"}
 
     # Create a fresh upload job
-    new_job = create_job()
+    new_job = UploadJobs.create(EMAIL, gcs_file_uris, metadata_json_patch)
     job = db.query(UploadJobs).filter_by(id=new_job.id).first()
-    assert_same_elements(new_job.gcs_objects, job.gcs_objects)
+    assert_same_elements(new_job.gcs_file_uris, job.gcs_file_uris)
     assert job.status == "started"
-
-    # Try to re-create that same job, ensuring the existing job is returned
-    same_job = create_job()
-    assert same_job.id == new_job.id
