@@ -29,7 +29,7 @@ PROFILE = {"email": EMAIL}
 def test_create_user(db):
     """Try to create a user that doesn't exist"""
     Users.create(PROFILE)
-    user = db.query(Users).filter_by(email=EMAIL).first()
+    user = Users.find_by_email(EMAIL)
     assert user
     assert user.email == EMAIL
 
