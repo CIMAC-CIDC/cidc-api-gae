@@ -4,8 +4,6 @@ from eve import Eve
 from eve.auth import requires_auth
 from werkzeug.exceptions import Unauthorized, BadRequest
 
-from models import SUPPORTED_ASSAYS
-
 
 def register_users_hooks(app: Eve):
     app.on_pre_POST_users += enforce_self_creation

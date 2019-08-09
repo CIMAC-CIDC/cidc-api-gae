@@ -69,7 +69,7 @@ ROLES = [
     "devops",
     "nci-biobank-user",
 ]
-SUPPORTED_ASSAYS = ["wes"]
+ASSAYS = ["cytof", "mif", "micsss", "olink", "rna expression", "wes"]
 
 
 class Users(CommonColumns):
@@ -80,10 +80,7 @@ class Users(CommonColumns):
     first_n = Column(String)
     last_n = Column(String)
     organization = Column(Enum(*ORGS, name="orgs"))
-    registration_approved = Column(
-        Boolean, nullable=False, default=False, server_default="false"
-    )
-    registration_approval_date = Column(DateTime)
+    approval_date = Column(DateTime)
     role = Column(Enum(*ROLES, name="role"))
     disabled = Column(Boolean, default=False, server_default="false")
 
@@ -140,7 +137,7 @@ class Permissions(CommonColumns):
         nullable=False,
         index=True,
     )
-    assay_type = Column(Enum(*SUPPORTED_ASSAYS, name="assays"), nullable=False)
+    assay_type = Column(Enum(*ASSAYS, name="assays"), nullable=False)
     mode = Column(Enum("read", "write", name="mode"))
 
 

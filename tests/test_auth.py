@@ -1,4 +1,5 @@
 import pytest
+from datetime import datetime
 from jose import jwt
 from unittest.mock import MagicMock
 from flask import _request_ctx_stack
@@ -193,7 +194,7 @@ def test_role_auth(bearer_auth, app, db):
             bearer_auth.role_auth(profile, ["cimac-user"], "users", "POST")
 
     # Approve the user
-    db.query(Users).filter_by(email=EMAIL).update(dict(registration_approved=True))
+    db.query(Users).filter_by(email=EMAIL).update(dict(approval_date=datetime.now()))
     db.commit()
 
     with app.test_request_context():

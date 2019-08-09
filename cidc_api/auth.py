@@ -62,7 +62,7 @@ class BearerAuth(TokenAuth):
             raise Unauthorized(f'{profile["email"]} is not registered.')
 
         # User is registered but not yet approved.
-        if not user.registration_approved:
+        if not user.approval_date:
             # Unapproved users are not authorized to do anything.
             raise Unauthorized(
                 f'{profile["email"]}\'s registration is pending approval'

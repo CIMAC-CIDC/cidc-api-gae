@@ -35,6 +35,7 @@ SQLALCHEMY_TRACK_MODIFICATIONS = False
 ## End database config
 
 ## Configure application constants
+SUPPORTED_ASSAYS = ["wes"]
 HINT_TO_SCHEMA = {
     "wes": "templates/metadata/wes_template.json",
     "pbmc": "templates/manifests/pbmc_template.json",
