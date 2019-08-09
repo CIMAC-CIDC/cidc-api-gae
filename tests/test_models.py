@@ -3,21 +3,9 @@ from functools import wraps
 import pytest
 
 from app import app
-from models import Users, TrialMetadata, UploadJobs, with_default_session
+from models import Users, TrialMetadata, UploadJobs, Permissions, with_default_session
 
 from .util import assert_same_elements
-
-
-@pytest.fixture
-def db():
-    """Provide a clean test database session"""
-    session = app.data.driver.session
-    session.query(UploadJobs).delete()
-    session.query(Users).delete()
-    session.query(TrialMetadata).delete()
-    session.commit()
-
-    return session
 
 
 def db_test(test):

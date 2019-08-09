@@ -1,6 +1,6 @@
 import hashlib
 from functools import wraps
-from typing import BinaryIO
+from typing import BinaryIO, Optional
 
 from flask import current_app as app
 from sqlalchemy import (
@@ -89,7 +89,19 @@ class Users(CommonColumns):
 
     @staticmethod
     @with_default_session
-    def create(email: str, session: Session = None):
+    def find_by_email(email: str, session: Session = None) -> Optional:
+        """
+            Search for a record in the Users table with the given email.
+            If found, return the record. If not found, return None.
+        """
+        assert session
+
+        user = session.query(Users).filter_by(email=email).first()
+        return user
+
+    @staticmethod
+    @with_default_session
+    def create(profile: dict, session: Session = None):
         """
             Create a new record for a user if one doesn't exist
             for the given email. Return the user record associated
@@ -97,7 +109,11 @@ class Users(CommonColumns):
         """
         assert session
 
-        user = session.query(Users).filter_by(email=email).first()
+        email = profile.get("email")
+        first_n = profile.get("given_name")
+        last_n = profile.get("family_name")
+
+        user = Users.find_by_email(email)
         if not user:
             app.logger.info(f"Creating new user with email {email}")
             user = Users(email=email)
