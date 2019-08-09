@@ -22,12 +22,13 @@ def db_test(test):
 
 
 EMAIL = "test@email.com"
+PROFILE = {"email": EMAIL}
 
 
 @db_test
 def test_create_user(db):
     """Try to create a user that doesn't exist"""
-    Users.create(EMAIL)
+    Users.create(PROFILE)
     user = db.query(Users).filter_by(email=EMAIL).first()
     assert user
     assert user.email == EMAIL
@@ -36,8 +37,8 @@ def test_create_user(db):
 @db_test
 def test_duplicate_user(db):
     """Ensure that a user won't be created twice"""
-    Users.create(EMAIL)
-    Users.create(EMAIL)
+    Users.create(PROFILE)
+    Users.create(PROFILE)
     assert db.query(Users).count() == 1
 
 
@@ -68,7 +69,7 @@ def test_update_trial_metadata(db):
 @db_test
 def test_create_upload_job(db):
     """Try to create an upload job"""
-    new_user = Users.create(EMAIL)
+    new_user = Users.create(PROFILE)
 
     gcs_file_uris = ["my/first/wes/blob1", "my/first/wes/blob2"]
     metadata_json_patch = {"foo": "bar"}
