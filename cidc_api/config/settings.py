@@ -35,11 +35,9 @@ SQLALCHEMY_TRACK_MODIFICATIONS = False
 ## End database config
 
 ## Configure application constants
-SUPPORTED_ASSAYS = ["wes"]
-SUPPORTED_MANIFESTS = []
 HINT_TO_SCHEMA = {
     "wes": "templates/metadata/wes_template.json",
-    "pbmc": "templates/pbmc_template.json",
+    "pbmc": "templates/manifests/pbmc_template.json",
 }
 SCHEMA_TO_HINT = dict((schema, hint) for hint, schema in HINT_TO_SCHEMA.items())
 ## End configure constants
