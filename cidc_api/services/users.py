@@ -19,7 +19,7 @@ from models import Users
 
 def register_users_hooks(app: Eve):
     app.on_pre_POST_new_users += enforce_self_creation
-    app.on_pre_GET_users += filter_nonadmin_lookup
+    app.on_pre_GET_users += filter_user_lookup
     app.on_pre_PATCH_users += add_approval_date
 
 
@@ -42,7 +42,7 @@ def enforce_self_creation(request: Request):
         )
 
 
-def filter_nonadmin_lookup(request: Request, lookup: dict):
+def filter_user_lookup(request: Request, lookup: dict):
     """
     Ensure that non-admin users can only look up their own account info.
     """

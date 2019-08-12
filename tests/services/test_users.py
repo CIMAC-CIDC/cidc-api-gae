@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from cidc_api.models import Users
 
 NEW_USERS = "new_users"
@@ -31,8 +33,8 @@ def test_enforce_self_creation(app, db, monkeypatch):
     assert response.status_code == 201  # Created
 
 
-def test_prevent_unregistered_lookup(app, db, monkeypatch):
-    """Check that unregistered users can only lookup themselves"""
+def test_filter_user_lookups(app, db, monkeypatch):
+    """Check user GET-request role-based filtering"""
     monkeypatch.setattr(app.auth, "token_auth", fake_token_auth)
 
     client = app.test_client()
@@ -71,3 +73,41 @@ def test_prevent_unregistered_lookup(app, db, monkeypatch):
     response = client.get(USERS, headers=AUTH_HEADER)
     assert response.status_code == 200
     assert len(response.json["_items"]) == 2
+
+
+def test_add_approval_date(app, db, monkeypatch):
+    """Test that a user's approval_date is updated when their role is changed for the first time."""
+    monkeypatch.setattr(app.auth, "token_auth", fake_token_auth)
+
+    # Create one registered admin and one new user
+    with app.app_context():
+        db.add(Users(role="cidc-admin", approval_date=datetime.now(), **profile))
+        db.commit()
+        Users.create(other_profile)
+
+    client = app.test_client()
+
+    def get_new_user():
+        response = client.get(
+            USERS + '?where={"email": "%s"}' % other_profile["email"],
+            headers=AUTH_HEADER,
+        )
+        return response.json["_items"][0]
+
+    def update_role_and_get_approval_date(role: str):
+        new_user = get_new_user()
+        response = client.patch(
+            f"{USERS}/{new_user['id']}",
+            headers={**AUTH_HEADER, "If-Match": new_user["_etag"]},
+            json={"role": role},
+        )
+        assert response.status_code == 200
+        updated_new_user = get_new_user()
+        approval_date = updated_new_user.get("approval_date")
+        assert approval_date is not None
+        return approval_date
+
+    # Approval date should be set on first role update
+    first_approval = update_role_and_get_approval_date("developer")
+    second_approval = update_role_and_get_approval_date("cidc-admin")
+    assert first_approval == second_approval
