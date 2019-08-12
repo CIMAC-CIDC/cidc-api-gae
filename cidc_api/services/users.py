@@ -2,15 +2,24 @@
 import json
 from datetime import datetime
 
-from flask import Blueprint, jsonify, abort, Request, _request_ctx_stack
+from flask import (
+    Blueprint,
+    jsonify,
+    abort,
+    Request,
+    _request_ctx_stack,
+    current_app as app,
+)
 from eve import Eve
 from eve.auth import requires_auth
 from werkzeug.exceptions import Unauthorized, BadRequest
 
+from models import Users
+
 
 def register_users_hooks(app: Eve):
     app.on_pre_POST_new_users += enforce_self_creation
-    app.on_pre_GET_users += prevent_nonadmin_lookup
+    app.on_pre_GET_users += filter_nonadmin_lookup
     app.on_pre_PATCH_users += add_approval_date
 
 
@@ -33,7 +42,7 @@ def enforce_self_creation(request: Request):
         )
 
 
-def prevent_nonadmin_lookup(request: Request, lookup: dict):
+def filter_nonadmin_lookup(request: Request, lookup: dict):
     """
     Ensure that non-admin users can only look up their own account info.
     """
@@ -46,9 +55,12 @@ def prevent_nonadmin_lookup(request: Request, lookup: dict):
 
 def add_approval_date(request: Request, lookup: dict):
     """
-    TODO: docstring
+    When a user's role is set for the first time, also set their approval date.
     """
     user_patch = request.json
 
-    if "role" in user_patch and user_patch["role"]:
-        request.json["approval_date"] = datetime.now()
+    if "role" in user_patch:
+        user_id = request.view_args["id"]
+        user_record = Users.find_by_id(user_id)
+        if user_record.role is None:
+            request.json["approval_date"] = datetime.now()
