@@ -1,4 +1,7 @@
 """Endpoints for user account operations"""
+import json
+from datetime import datetime
+
 from flask import Blueprint, jsonify, abort, Request, _request_ctx_stack
 from eve import Eve
 from eve.auth import requires_auth
@@ -7,6 +10,8 @@ from werkzeug.exceptions import Unauthorized, BadRequest
 
 def register_users_hooks(app: Eve):
     app.on_pre_POST_new_users += enforce_self_creation
+    app.on_pre_GET_users += prevent_nonadmin_lookup
+    app.on_pre_PATCH_users += add_approval_date
 
 
 def enforce_self_creation(request: Request):
@@ -26,3 +31,24 @@ def enforce_self_creation(request: Request):
         raise Unauthorized(
             f"{current_user.email} not authorized to create user with email '{payload['email']}'."
         )
+
+
+def prevent_nonadmin_lookup(request: Request, lookup: dict):
+    """
+    Ensure that non-admin users can only look up their own account info.
+    """
+    current_user = _request_ctx_stack.top.current_user
+
+    # If user isn't an admin, they can only lookup their own info.
+    if current_user.role != "cidc-admin":
+        lookup["email"] = current_user.email
+
+
+def add_approval_date(request: Request, lookup: dict):
+    """
+    TODO: docstring
+    """
+    user_patch = request.json
+
+    if "role" in user_patch and user_patch["role"]:
+        request.json["approval_date"] = datetime.now()
