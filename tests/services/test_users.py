@@ -1,3 +1,5 @@
+from cidc_api.models import Users
+
 NEW_USERS = "new_users"
 USERS = "users"
 
@@ -36,8 +38,9 @@ def test_prevent_unregistered_lookup(app, db, monkeypatch):
     client = app.test_client()
 
     # Create two new users
-    client.post(NEW_USERS, json=profile, headers=AUTH_HEADER)
-    client.post(NEW_USERS, json=other_profile, headers=AUTH_HEADER)
+    with app.app_context():
+        Users.create(profile)
+        Users.create(other_profile)
 
     # Check that a user can only look themselves up
     response = client.get(USERS, headers=AUTH_HEADER)
@@ -59,4 +62,12 @@ def test_prevent_unregistered_lookup(app, db, monkeypatch):
     assert response.status_code == 200
     assert len(response.json["_items"]) == 0
 
-    # TODO: test that admins can still list all users
+    # Make a user an admin
+    with app.app_context():
+        db.query(Users).filter_by(email=EMAIL).update({"role": "cidc-admin"})
+        db.commit()
+
+    # Admins should be able to list all users
+    response = client.get(USERS, headers=AUTH_HEADER)
+    assert response.status_code == 200
+    assert len(response.json["_items"]) == 2
