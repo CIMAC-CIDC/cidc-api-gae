@@ -72,11 +72,9 @@ def get_signed_url(object_name: str, method: str = "PUT", expiry_mins: int = 5) 
     return url
 
 
-pubsub_publisher = pubsub.PublisherClient()
-
-
 def _encode_and_publish(content: str, topic: str) -> Future:
     """Convert `content` to bytes and publish it to `topic`."""
+    pubsub_publisher = pubsub.PublisherClient()
     topic = pubsub_publisher.topic_path(GOOGLE_CLOUD_PROJECT, topic)
     data = bytes(content, "utf-8")
 
