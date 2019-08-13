@@ -1,7 +1,10 @@
 """Utilities for interacting with the Google Cloud Platform APIs."""
 import json
 import datetime
-from typing import List, Union, Future, NoneType
+from concurrent.futures import Future
+from typing import List, Union
+
+NoneType = type(None)
 
 from google.cloud import storage
 from google.cloud import pubsub
