@@ -1,5 +1,11 @@
-from gcloud_client import grant_upload_access, revoke_upload_access, _iam_id
-from config.settings import GOOGLE_UPLOAD_ROLE
+from cidc_api.gcloud_client import (
+    grant_upload_access,
+    revoke_upload_access,
+    _iam_id,
+    publish_upload_success,
+    send_email,
+)
+from cidc_api.config.settings import GOOGLE_UPLOAD_ROLE
 
 EMAIL = "test@email.com"
 
