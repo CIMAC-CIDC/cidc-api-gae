@@ -22,7 +22,7 @@ app = Eve(auth=BearerAuth, data=SQL, validator=ValidatorSQL, settings=SETTINGS)
 
 # Enable CORS
 # TODO: be more selective about which domains can make requests
-CORS(app)
+CORS(app, resources={r"*": {"origins": "*"}})
 
 # Register custom services
 register_services(app)
