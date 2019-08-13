@@ -9,7 +9,7 @@ user = Users(email="foo@bar.com", first_n="john", last_n="doe")
 
 
 def test_new_user_registration():
-    email = new_user_registration(user)
+    email = new_user_registration(user.email)
     assert user.email in email["html_content"]
     assert email["to_emails"] == [CIDC_MAILING_LIST]
     assert "New User" in email["subject"]

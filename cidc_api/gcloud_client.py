@@ -2,9 +2,7 @@
 import json
 import datetime
 from concurrent.futures import Future
-from typing import List, Union
-
-NoneType = type(None)
+from typing import List
 
 from google.cloud import storage
 from google.cloud import pubsub
@@ -15,6 +13,7 @@ from config.settings import (
     GOOGLE_UPLOAD_TOPIC,
     GOOGLE_CLOUD_PROJECT,
     GOOGLE_EMAILS_TOPIC,
+    TESTING,
 )
 
 
@@ -76,7 +75,7 @@ def get_signed_url(object_name: str, method: str = "PUT", expiry_mins: int = 5) 
 pubsub_publisher = pubsub.PublisherClient()
 
 
-def _encode_and_publish(content: str, topic: str) -> Union[NoneType, Future]:
+def _encode_and_publish(content: str, topic: str) -> Future:
     """Convert `content` to bytes and publish it to `topic`."""
     topic = pubsub_publisher.topic_path(GOOGLE_CLOUD_PROJECT, topic)
     data = bytes(content, "utf-8")
@@ -99,6 +98,11 @@ def publish_upload_success(job_id: int):
 
 def send_email(to_emails: List[str], subject: str, html_content: str):
     """Publish an email-to-send to the emails topic."""
+    # Don't actually send an email if this is a test
+    if TESTING:
+        print(f"Would send email with subject '{subject}' to {to_emails}")
+        return
+
     email_json = json.dumps(
         {"to_emails": to_emails, "subject": subject, "html_content": html_content}
     )

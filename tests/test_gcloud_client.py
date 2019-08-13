@@ -23,7 +23,7 @@ def test_grant_upload_access(monkeypatch):
         def set_iam_policy(self, policy):
             assert _iam_id(EMAIL) in policy[GOOGLE_UPLOAD_ROLE]
 
-    monkeypatch.setattr("gcloud_client._get_bucket", GrantBlob)
+    monkeypatch.setattr("cidc_api.gcloud_client._get_bucket", GrantBlob)
     grant_upload_access("foo", EMAIL)
 
 
@@ -35,5 +35,5 @@ def test_revoke_upload_access(monkeypatch):
         def set_iam_policy(self, policy):
             assert _iam_id(EMAIL) not in policy[GOOGLE_UPLOAD_ROLE]
 
-    monkeypatch.setattr("gcloud_client._get_bucket", RevokeBlob)
+    monkeypatch.setattr("cidc_api.gcloud_client._get_bucket", RevokeBlob)
     revoke_upload_access("foo", EMAIL)
