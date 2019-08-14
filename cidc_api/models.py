@@ -183,7 +183,10 @@ class TrialMetadata(CommonColumns):
             )
             # Save updates to trial record
             session.query(TrialMetadata).filter_by(trial_id=trial.trial_id).update(
-                {"metadata_json": updated_metadata}
+                {
+                    "metadata_json": updated_metadata,
+                    "_etag": make_etag(trial.trial_id, updated_metadata),
+                }
             )
             session.commit()
         else:
