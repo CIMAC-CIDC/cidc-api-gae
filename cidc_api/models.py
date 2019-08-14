@@ -174,7 +174,7 @@ class TrialMetadata(CommonColumns):
             TODO: implement metadata merging, either here or in cidc_schemas
         """
         # Look for an existing trial
-        trial = TrialMetadata.find_by_trial_id(trial_id)
+        trial = TrialMetadata.find_by_trial_id(trial_id, session)
 
         if trial:
             # Merge-update metadata into existing trial's metadata_json
