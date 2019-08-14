@@ -244,7 +244,11 @@ class DownloadableFiles(CommonColumns):
     file_size = Column(String, nullable=False)
     file_type = Column(String, nullable=False)  # for now, just the file extension
     upload_time = Column(DateTime, nullable=False)
-    trial_id = Column(String, ForeignKey("trial_metadata.trial_id"), nullable=False)
+    trial_id = Column(
+        String,
+        ForeignKey("trial_metadata.trial_id", onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+    )
     gs_uri = Column(String, nullable=False)
 
     @staticmethod
@@ -255,6 +259,7 @@ class DownloadableFiles(CommonColumns):
         """
         file_name = blob.name
         kwargs = dict(
+            trial_id=trial_id,
             file_name=file_name,
             file_size=blob.size,
             file_type=os.path.splitext(file_name)[1],

@@ -1,4 +1,6 @@
 from functools import wraps
+from datetime import datetime
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -8,6 +10,7 @@ from cidc_api.models import (
     TrialMetadata,
     UploadJobs,
     Permissions,
+    DownloadableFiles,
     with_default_session,
 )
 
@@ -98,6 +101,30 @@ def test_create_upload_job(db):
     job = UploadJobs.find_by_id(new_job.id)
     assert_same_elements(new_job.gcs_file_uris, job.gcs_file_uris)
     assert job.status == "started"
+
+
+@db_test
+def test_create_downloadable_file_from_blob(db, monkeypatch):
+    """Try to create a downloadable file from a GCS blob"""
+    # Mock a GCS blob
+    ext = ".fastq"
+    blob = MagicMock()
+    blob.name = f"test name{ext}"
+    blob.size = 1234
+    blob.time_created = datetime.now()
+    blob.bucket = MagicMock()
+    blob.bucket.name = "test bucket"
+
+    # Create the trial (to avoid violating foreign-key constraint)
+    TrialMetadata.patch_trial_metadata(TRIAL_ID, METADATA)
+    # Create the file
+    DownloadableFiles.create_from_blob(TRIAL_ID, blob)
+
+    # Check that we created the file
+    new_file = db.query(DownloadableFiles).filter_by(file_name=blob.name).first()
+    assert new_file
+    assert new_file.file_name == blob.name
+    assert new_file.file_type == ext
 
 
 def test_with_default_session(app_no_auth):
