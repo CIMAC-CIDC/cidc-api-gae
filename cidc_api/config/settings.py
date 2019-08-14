@@ -5,7 +5,7 @@ from eve_sqlalchemy.config import DomainConfig, ResourceConfig
 from dotenv import load_dotenv
 
 from . import db
-from models import Users, TrialMetadata, UploadJobs, Permissions
+from models import Users, TrialMetadata, UploadJobs, Permissions, DownloadableFiles
 
 load_dotenv()
 
@@ -56,6 +56,7 @@ _domain_config = {
     "permissions": ResourceConfig(Permissions),
     "trial_metadata": ResourceConfig(TrialMetadata),
     "upload_jobs": ResourceConfig(UploadJobs),
+    "downloadable_files": ResourceConfig(DownloadableFiles),
 }
 
 _domain = DomainConfig(_domain_config).render()
