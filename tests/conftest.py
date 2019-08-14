@@ -43,6 +43,10 @@ def app_no_auth(app, test_user, monkeypatch):
 
     monkeypatch.setattr(app.auth, "authorized", fake_auth)
 
+    # Create test user
+    client = app.test_client()
+    client.post("new_users", json={"email": TEST_EMAIL})
+
     return app
 
 
