@@ -1,8 +1,10 @@
+import os
 import hashlib
 from functools import wraps
 from typing import BinaryIO, Optional
 
 from flask import current_app as app
+from google.cloud.storage import Blob
 from sqlalchemy import (
     Column,
     Boolean,
@@ -233,3 +235,35 @@ class UploadJobs(CommonColumns):
         session.commit()
 
         return job
+
+
+class DownloadableFiles(CommonColumns):
+    __tablename__ = "downloadable_files"
+
+    file_name = Column(String, nullable=False)
+    file_size = Column(String, nullable=False)
+    file_type = Column(String, nullable=False)  # for now, just the file extension
+    upload_time = Column(DateTime, nullable=False)
+    trial_id = Column(String, ForeignKey("trial_metadata.trial_id"), nullable=False)
+    gs_uri = Column(String, nullable=False)
+
+    @staticmethod
+    @with_default_session
+    def create_from_blob(trial_id: str, blob: Blob, session: Session):
+        """
+        Create a new DownloadableFiles record from a GCS blob.
+        """
+        file_name = blob.name
+        kwargs = dict(
+            file_name=file_name,
+            file_size=blob.size,
+            file_type=os.path.splitext(file_name)[1],
+            upload_time=blob.time_created,
+            gs_uri=f"gs://{blob.bucket.name}/{file_name}",
+        )
+
+        etag = make_etag(*(kwargs.values()))
+
+        new_file = DownloadableFiles(_etag=etag, **kwargs)
+        session.add(new_file)
+        session.commit()
