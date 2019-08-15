@@ -83,7 +83,11 @@ class CommonColumns(BaseModel):
 
     @classmethod
     def get_resource_domain(cls) -> dict:
-        """Generate the Eve cerberus schema for this resource"""
+        """
+        Generate the Eve cerberus schema for this resource. To implement
+        custom granular permissions on this resource, a model should override
+        the implementation of this function.
+        """
         config = ResourceConfig(cls)
         resource = cls.__tablename__
         domain = DomainConfig({resource: config}).render()
