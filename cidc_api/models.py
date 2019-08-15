@@ -35,7 +35,7 @@ def get_DOMAIN():
     (i.e., any model extending `CommonColumns`).
     """
     domain = {}
-    for model in CommonColumns.__subclasses__():
+    for model in [Users, Permissions, TrialMetadata, UploadJobs, DownloadableFiles]:
         domain.update(model.get_resource_domain())
     return domain
 
