@@ -26,8 +26,6 @@ from eve_sqlalchemy.config import DomainConfig, ResourceConfig
 
 from cidc_schemas import prism
 
-BaseModel = declarative_base()
-
 ## Constants
 ORGS = ["CIDC", "DFCI", "ICAHN", "STANFORD", "ANDERSON"]
 ROLES = [
@@ -113,6 +111,9 @@ def with_default_session(f):
         return f(*args, **kwargs)
 
     return wrapped
+
+
+BaseModel = declarative_base()
 
 
 class CommonColumns(BaseModel):
