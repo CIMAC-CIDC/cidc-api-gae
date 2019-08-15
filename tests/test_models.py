@@ -104,8 +104,8 @@ def test_create_upload_job(db):
 
 
 @db_test
-def test_create_downloadable_file_from_blob(db, monkeypatch):
-    """Try to create a downloadable file from a GCS blob"""
+def test_create_downloadable_file_from_metadata(db, monkeypatch):
+    """Try to create a downloadable file from artifact_core metadata"""
     # fake file metadata
     file_metadata = {
         "artifact_category": "Assay Artifact from CIMAC",
