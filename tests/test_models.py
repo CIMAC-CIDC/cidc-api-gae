@@ -106,25 +106,34 @@ def test_create_upload_job(db):
 @db_test
 def test_create_downloadable_file_from_blob(db, monkeypatch):
     """Try to create a downloadable file from a GCS blob"""
-    # Mock a GCS blob
-    ext = ".fastq"
-    blob = MagicMock()
-    blob.name = f"test name{ext}"
-    blob.size = 1234
-    blob.time_created = datetime.now()
-    blob.bucket = MagicMock()
-    blob.bucket.name = "test bucket"
+    # fake file metadata
+    file_metadata = {
+        "artifact_category": "Assay Artifact from CIMAC",
+        "assay_category": "Whole Exome Sequencing (WES)",
+        "object_url": "10021/Patient 1/sample 1/aliquot 1/wes_forward.fastq",
+        "file_name": "wes_forward.fastq",
+        "file_size_bytes": 1,
+        "md5_hash": "hash1234",
+        "uploaded_timestamp": datetime.now(),
+        "file_type": "FASTQ",
+        "foo": "bar",  # unsupported column - should be filtered
+    }
 
     # Create the trial (to avoid violating foreign-key constraint)
     TrialMetadata.patch_trial_metadata(TRIAL_ID, METADATA)
     # Create the file
-    DownloadableFiles.create_from_blob(TRIAL_ID, blob)
+    DownloadableFiles.create_from_metadata(TRIAL_ID, file_metadata)
 
     # Check that we created the file
-    new_file = db.query(DownloadableFiles).filter_by(file_name=blob.name).first()
+    new_file = (
+        db.query(DownloadableFiles)
+        .filter_by(file_name=file_metadata["file_name"])
+        .first()
+    )
     assert new_file
-    assert new_file.file_name == blob.name
-    assert new_file.file_type == ext
+    del file_metadata["foo"]
+    for k in file_metadata.keys():
+        assert getattr(new_file, k) == file_metadata[k]
 
 
 def test_with_default_session(app_no_auth):

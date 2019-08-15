@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: f33a15cb6cda
+Revision ID: 3ce942d942b7
 Revises: 7df49a8d4792
-Create Date: 2019-08-14 14:01:47.856773
+Create Date: 2019-08-15 11:43:18.750886
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = 'f33a15cb6cda'
+revision = '3ce942d942b7'
 down_revision = '7df49a8d4792'
 branch_labels = None
 depends_on = None
@@ -24,11 +24,15 @@ def upgrade():
     sa.Column('_etag', sa.String(length=40), nullable=True),
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('file_name', sa.String(), nullable=False),
-    sa.Column('file_size', sa.String(), nullable=False),
-    sa.Column('file_type', sa.String(), nullable=False),
-    sa.Column('upload_time', sa.DateTime(), nullable=False),
+    sa.Column('file_size_bytes', sa.Integer(), nullable=False),
+    sa.Column('file_type', sa.Enum('FASTA', 'FASTQ', 'TIFF', 'VCF', 'TSV', 'Excel', 'NPX', 'BAM', 'MAF', 'PNG', 'JPG', 'XML', 'Other', name='file_type'), nullable=False),
+    sa.Column('uploaded_timestamp', sa.DateTime(), nullable=False),
+    sa.Column('artifact_category', sa.Enum('Assay Artifact from CIMAC', 'Pipeline Artifact', 'Manifest File', 'Other', name='artifact_category'), nullable=False),
+    sa.Column('assay_category', sa.Enum('Whole Exome Sequencing (WES)', 'RNASeq', 'Conventional Immunohistochemistry', 'Multiplex Immunohistochemistry', 'Multiplex Immunofluorescence', 'CyTOF', 'OLink', 'NanoString', 'ELISpot', 'Multiplexed Ion-Beam Imaging (MIBI)', 'Other', 'None', name='assay_category'), nullable=False),
+    sa.Column('md5_hash', sa.String(), nullable=False),
     sa.Column('trial_id', sa.String(), nullable=False),
-    sa.Column('gs_uri', sa.String(), nullable=False),
+    sa.Column('object_url', sa.String(), nullable=False),
+    sa.Column('visible', sa.Boolean(), nullable=True),
     sa.ForeignKeyConstraint(['trial_id'], ['trial_metadata.trial_id'], ),
     sa.PrimaryKeyConstraint('id')
     )

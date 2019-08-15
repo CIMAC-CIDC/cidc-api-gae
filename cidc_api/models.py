@@ -279,34 +279,82 @@ class UploadJobs(CommonColumns):
         return job
 
 
+# See: https://github.com/CIMAC-CIDC/cidc-schemas/blob/master/cidc_schemas/schemas/artifacts/artifact_core.json
+ARTIFACT_CATEGORIES = [
+    "Assay Artifact from CIMAC",
+    "Pipeline Artifact",
+    "Manifest File",
+    "Other",
+]
+ASSAY_CATEGORIES = [
+    "Whole Exome Sequencing (WES)",
+    "RNASeq",
+    "Conventional Immunohistochemistry",
+    "Multiplex Immunohistochemistry",
+    "Multiplex Immunofluorescence",
+    "CyTOF",
+    "OLink",
+    "NanoString",
+    "ELISpot",
+    "Multiplexed Ion-Beam Imaging (MIBI)",
+    "Other",
+    "None",
+]
+FILE_TYPES = [
+    "FASTA",
+    "FASTQ",
+    "TIFF",
+    "VCF",
+    "TSV",
+    "Excel",
+    "NPX",
+    "BAM",
+    "MAF",
+    "PNG",
+    "JPG",
+    "XML",
+    "Other",
+]
+
+
 class DownloadableFiles(CommonColumns):
+    """
+    Store required fields from: 
+    https://github.com/CIMAC-CIDC/cidc-schemas/blob/master/cidc_schemas/schemas/artifacts/artifact_core.json
+    """
+
     __tablename__ = "downloadable_files"
 
     file_name = Column(String, nullable=False)
-    file_size = Column(String, nullable=False)
-    file_type = Column(String, nullable=False)  # for now, just the file extension
-    upload_time = Column(DateTime, nullable=False)
+    file_size_bytes = Column(Integer, nullable=False)
+    file_type = Column(Enum(*FILE_TYPES, name="file_type"), nullable=False)
+    uploaded_timestamp = Column(DateTime, nullable=False)
+    artifact_category = Column(
+        Enum(*ARTIFACT_CATEGORIES, name="artifact_category"), nullable=False
+    )
+    assay_category = Column(
+        Enum(*ASSAY_CATEGORIES, name="assay_category"), nullable=False
+    )
+    md5_hash = Column(String, nullable=False)
     trial_id = Column(String, ForeignKey("trial_metadata.trial_id"), nullable=False)
-    gs_uri = Column(String, nullable=False)
+    object_url = Column(String, nullable=False)
+    visible = Column(Boolean, default=True)
 
     @staticmethod
     @with_default_session
-    def create_from_blob(trial_id: str, blob: Blob, session: Session):
+    def create_from_metadata(trial_id: str, file_metadata: dict, session: Session):
         """
         Create a new DownloadableFiles record from a GCS blob.
         """
-        file_name = blob.name
-        kwargs = dict(
-            trial_id=trial_id,
-            file_name=file_name,
-            file_size=blob.size,
-            file_type=os.path.splitext(file_name)[1],
-            upload_time=blob.time_created,
-            gs_uri=f"gs://{blob.bucket.name}/{file_name}",
-        )
+        etag = make_etag(*(file_metadata.values()))
 
-        etag = make_etag(*(kwargs.values()))
+        # Filter out keys that aren't columns
+        supported_columns = DownloadableFiles.__table__.columns.keys()
+        filtered_metadata = {"trial_id": trial_id}
+        for key, value in file_metadata.items():
+            if key in supported_columns:
+                filtered_metadata[key] = value
 
-        new_file = DownloadableFiles(_etag=etag, **kwargs)
+        new_file = DownloadableFiles(_etag=etag, **filtered_metadata)
         session.add(new_file)
         session.commit()
