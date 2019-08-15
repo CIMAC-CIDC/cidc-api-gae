@@ -150,7 +150,11 @@ class Users(CommonColumns):
 
     @classmethod
     def get_resource_domain(cls):
-        """Generate domains for the 'users' and 'new_users' resources"""
+        """
+        Generate domains for the 'users' and 'new_users' resources.
+        'new_users' can only be created, and cannot have values for the 'role'
+        or 'approval_date' fields.
+        """
         config = ResourceConfig(cls)
         domain = DomainConfig({"users": config, "new_users": config}).render()
 
