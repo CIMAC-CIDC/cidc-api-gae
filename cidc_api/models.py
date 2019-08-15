@@ -22,10 +22,22 @@ from sqlalchemy import (
 from sqlalchemy.orm.session import Session
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY, BYTEA
 from sqlalchemy.ext.declarative import declarative_base
+from eve_sqlalchemy.config import DomainConfig, ResourceConfig
 
 from cidc_schemas import prism
 
 BaseModel = declarative_base()
+
+
+def get_DOMAIN():
+    """
+    Render all cerberus domains for data model resources 
+    (i.e., any model extending `CommonColumns`).
+    """
+    domain = {}
+    for model in CommonColumns.__subclasses__():
+        domain.update(model.get_resource_domain())
+    return domain
 
 
 def make_etag(*args):
@@ -68,6 +80,14 @@ class CommonColumns(BaseModel):
     def find_by_id(cls, id: int, session: Session):
         """Find the record with this id"""
         return session.query(cls).get(id)
+
+    @classmethod
+    def get_resource_domain(cls) -> dict:
+        """Generate the Eve cerberus schema for this resource"""
+        config = ResourceConfig(cls)
+        resource = cls.__tablename__
+        domain = DomainConfig({resource: config}).render()
+        return domain
 
 
 ORGS = ["CIDC", "DFCI", "ICAHN", "STANFORD", "ANDERSON"]
@@ -123,6 +143,20 @@ class Users(CommonColumns):
             session.add(user)
             session.commit()
         return user
+
+    @classmethod
+    def get_resource_domain(cls):
+        """Generate domains for the 'users' and 'new_users' resources"""
+        config = ResourceConfig(cls)
+        domain = DomainConfig({"users": config, "new_users": config}).render()
+
+        # Restrict operations on the 'new_users' resource
+        del domain["new_users"]["schema"]["role"]
+        del domain["new_users"]["schema"]["approval_date"]
+        domain["new_users"]["item_methods"] = []
+        domain["new_users"]["resource_methods"] = ["POST"]
+
+        return domain
 
 
 class Permissions(CommonColumns):
