@@ -28,6 +28,56 @@ from cidc_schemas import prism
 
 BaseModel = declarative_base()
 
+## Constants
+ORGS = ["CIDC", "DFCI", "ICAHN", "STANFORD", "ANDERSON"]
+ROLES = [
+    "cidc-admin",
+    "cidc-biofx-user",
+    "cimac-biofx-user",
+    "cimac-user",
+    "developer",
+    "devops",
+    "nci-biobank-user",
+]
+
+# See: https://github.com/CIMAC-CIDC/cidc-schemas/blob/master/cidc_schemas/schemas/artifacts/artifact_core.json
+ARTIFACT_CATEGORIES = [
+    "Assay Artifact from CIMAC",
+    "Pipeline Artifact",
+    "Manifest File",
+    "Other",
+]
+ASSAY_CATEGORIES = [
+    "Whole Exome Sequencing (WES)",
+    "RNASeq",
+    "Conventional Immunohistochemistry",
+    "Multiplex Immunohistochemistry",
+    "Multiplex Immunofluorescence",
+    "CyTOF",
+    "OLink",
+    "NanoString",
+    "ELISpot",
+    "Multiplexed Ion-Beam Imaging (MIBI)",
+    "Other",
+    "None",
+]
+FILE_TYPES = [
+    "FASTA",
+    "FASTQ",
+    "TIFF",
+    "VCF",
+    "TSV",
+    "Excel",
+    "NPX",
+    "BAM",
+    "MAF",
+    "PNG",
+    "JPG",
+    "XML",
+    "Other",
+]
+## End constants
+
 
 def get_DOMAIN():
     """
@@ -92,19 +142,6 @@ class CommonColumns(BaseModel):
         resource = cls.__tablename__
         domain = DomainConfig({resource: config}).render()
         return domain
-
-
-ORGS = ["CIDC", "DFCI", "ICAHN", "STANFORD", "ANDERSON"]
-ROLES = [
-    "cidc-admin",
-    "cidc-biofx-user",
-    "cimac-biofx-user",
-    "cimac-user",
-    "developer",
-    "devops",
-    "nci-biobank-user",
-]
-ASSAYS = ["cytof", "mif", "micsss", "olink", "rna expression", "wes"]
 
 
 class Users(CommonColumns):
@@ -183,7 +220,7 @@ class Permissions(CommonColumns):
         nullable=False,
         index=True,
     )
-    assay_type = Column(Enum(*ASSAYS, name="assays"), nullable=False)
+    assay_type = Column(Enum(*ASSAY_CATEGORIES, name="assays"), nullable=False)
     mode = Column(Enum("read", "write", name="mode"))
 
 
@@ -277,44 +314,6 @@ class UploadJobs(CommonColumns):
         session.commit()
 
         return job
-
-
-# See: https://github.com/CIMAC-CIDC/cidc-schemas/blob/master/cidc_schemas/schemas/artifacts/artifact_core.json
-ARTIFACT_CATEGORIES = [
-    "Assay Artifact from CIMAC",
-    "Pipeline Artifact",
-    "Manifest File",
-    "Other",
-]
-ASSAY_CATEGORIES = [
-    "Whole Exome Sequencing (WES)",
-    "RNASeq",
-    "Conventional Immunohistochemistry",
-    "Multiplex Immunohistochemistry",
-    "Multiplex Immunofluorescence",
-    "CyTOF",
-    "OLink",
-    "NanoString",
-    "ELISpot",
-    "Multiplexed Ion-Beam Imaging (MIBI)",
-    "Other",
-    "None",
-]
-FILE_TYPES = [
-    "FASTA",
-    "FASTQ",
-    "TIFF",
-    "VCF",
-    "TSV",
-    "Excel",
-    "NPX",
-    "BAM",
-    "MAF",
-    "PNG",
-    "JPG",
-    "XML",
-    "Other",
-]
 
 
 class DownloadableFiles(CommonColumns):
