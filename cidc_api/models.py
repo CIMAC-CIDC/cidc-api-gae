@@ -104,6 +104,10 @@ def get_DOMAIN() -> dict:
     domain["new_users"]["item_methods"] = []
     domain["new_users"]["resource_methods"] = ["POST"]
 
+    # Make downloadable_files read-only
+    domain["downloadable_files"]["allowed_methods"] = ["GET"]
+    domain["downloadable_files"]["allowed_item_methods"] = ["GET"]
+
     return domain
 
 
