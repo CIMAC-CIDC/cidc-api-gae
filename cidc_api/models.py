@@ -199,10 +199,10 @@ class Permissions(CommonColumns):
 
     # If user who granted this permission is deleted, this permission will be deleted.
     # TODO: is this what we want?
-    granted_by_user = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
+    granted_by_user = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     by_user = relationship("Users", foreign_keys=[granted_by_user])
     granted_to_user = Column(
-        String, ForeignKey("users.id", ondelete="CASCADE"), index=True
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
     to_user = relationship("Users", foreign_keys=[granted_to_user])
 
