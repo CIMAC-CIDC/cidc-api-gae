@@ -28,8 +28,7 @@ def get_sqlachemy_database_uri(testing: bool = False) -> str:
             # If CLOUD_SQL_INSTANCE_NAME is defined, we're connecting
             # via a unix socket from inside App Engine.
             config["query"] = {
-                "host": "/Users/jlurye/.cloudsql/%s"
-                % environ.get("CLOUD_SQL_INSTANCE_NAME")
+                "host": "/cloudsql/%s" % environ.get("CLOUD_SQL_INSTANCE_NAME")
             }
         elif environ.get("CLOUD_SQL_PROXY_HOST") and environ.get(
             "CLOUD_SQL_PROXY_PORT"
