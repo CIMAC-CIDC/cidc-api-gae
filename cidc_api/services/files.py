@@ -28,7 +28,7 @@ def insert_download_urls(payload: dict):
     """
     Get a signed GCS download URL for each of the requested files.
     """
-    # Each call to generate_download_url generates a request
+    # Each call to insert_download_url generates a request
     # to the GCS API, so we get a speed-up from multithreading:
     # although Python dispatches the requests synchronously,
     # the OS handles the network requests in parallel.

@@ -108,7 +108,7 @@ def get_DOMAIN() -> dict:
     domain["downloadable_files"]["allowed_methods"] = ["GET"]
     domain["downloadable_files"]["allowed_item_methods"] = ["GET"]
 
-    # Add the download_url field to the downloadable_files schema
+    # Add the download_link field to the downloadable_files schema
     domain["downloadable_files"]["schema"]["download_link"] = {"type": "string"}
 
     return domain
