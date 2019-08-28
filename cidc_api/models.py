@@ -282,6 +282,23 @@ class TrialMetadata(CommonColumns):
 STATUSES = ["started", "completed", "errored"]
 
 
+class ManifestUploads(CommonColumns):
+    __tablename__ = "manifest_uploads"
+
+    trial_id = Column(
+        String, ForeignKey("trial_metadata.trial_id"), nullable=False, index=True
+    )
+    trial = relationship("TrialMetadata", foreign_keys=[trial_id])
+
+    manifest_patch = Column(JSONB, nullable=False)
+
+    gcs_xlsx_uri = Column(String, nullable=False)
+
+    # Link to the user who did this upload
+    uploader_email = Column(String, ForeignKey("users.email", onupdate="CASCADE"))
+    uploader = relationship("Users", foreign_keys=[uploader_email])
+
+
 class UploadJobs(CommonColumns):
     __tablename__ = "upload_jobs"
     # The current status of the upload job
