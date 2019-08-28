@@ -14,6 +14,8 @@ from services.ingestion import extract_schema_and_xlsx
 
 from . import open_data_file
 from ..util import assert_same_elements
+from ..conftest import TEST_EMAIL
+from cidc_api.models import TrialMetadata, Users
 
 
 @pytest.fixture
@@ -113,6 +115,9 @@ def test_upload_wes(app_no_auth, wes_xlsx, test_user, monkeypatch):
     grant_write = MagicMock()
     monkeypatch.setattr("gcloud_client.grant_upload_access", grant_write)
 
+    with app_no_auth.app_context():
+        TrialMetadata.create("10021", {})
+        Users.create(profile={"email": TEST_EMAIL})
     res = client.post(UPLOAD, data=form_data("wes.xlsx", wes_xlsx, "wes"))
     assert res.json
     assert "url_mapping" in res.json
@@ -140,7 +145,7 @@ def test_upload_wes(app_no_auth, wes_xlsx, test_user, monkeypatch):
     monkeypatch.setattr("gcloud_client.publish_upload_success", publish_success)
 
     job_id = res.json["job_id"]
-    update_url = f"/upload_jobs/{job_id}"
+    update_url = f"/assay_uploads/{job_id}"
 
     # Report an upload failure
     res = client.patch(

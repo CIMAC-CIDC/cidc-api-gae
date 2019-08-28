@@ -14,7 +14,7 @@ from flask import Blueprint, request, Request, Response, jsonify, _request_ctx_s
 from cidc_schemas import constants, validate_xlsx, prism, template
 
 import gcloud_client
-from models import UploadJobs, STATUSES
+from models import AssayUploads, STATUSES
 from config.settings import GOOGLE_UPLOAD_BUCKET
 
 ingestion_api = Blueprint("ingestion", __name__, url_prefix="/ingestion")
@@ -22,7 +22,7 @@ ingestion_api = Blueprint("ingestion", __name__, url_prefix="/ingestion")
 
 def register_ingestion_hooks(app: Eve):
     """Set up ingestion-related hooks on an Eve app instance"""
-    app.on_post_PATCH_upload_jobs = on_post_PATCH_upload_jobs
+    app.on_post_PATCH_assay_uploads = on_post_PATCH_assay_uploads
 
 
 def is_xlsx(filename: str) -> bool:
@@ -154,7 +154,7 @@ def upload():
     xlsx_bytes = xlsx_file.read()
     gcs_uris = url_mapping.values()
     user_email = _request_ctx_stack.top.current_user.email
-    job = UploadJobs.create(schema_hint, user_email, gcs_uris, metadata_json)
+    job = AssayUploads.create(schema_hint, user_email, gcs_uris, metadata_json)
 
     # Grant the user upload access to the upload bucket
     gcloud_client.grant_upload_access(GOOGLE_UPLOAD_BUCKET, user_email)
@@ -168,10 +168,10 @@ def upload():
     return jsonify(response)
 
 
-def on_post_PATCH_upload_jobs(request: Request, payload: Response):
+def on_post_PATCH_assay_uploads(request: Request, payload: Response):
     """Revoke the user's write access to the objects they've uploaded to."""
     if not payload.json or not "id" in payload.json:
-        raise BadRequest("Unexpected payload while updating upload_jobs")
+        raise BadRequest("Unexpected payload while updating assay_uploads")
 
     # TODO: handle the case where the user has more than one upload running,
     # in which case we shouldn't revoke the user's write access until they
