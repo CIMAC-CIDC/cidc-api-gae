@@ -304,7 +304,11 @@ class UploadJobs(CommonColumns):
     @staticmethod
     @with_default_session
     def create(
-        assay_type: str, uploader_email: str, gcs_file_uris: list, metadata: dict, session: Session
+        assay_type: str,
+        uploader_email: str,
+        gcs_file_uris: list,
+        metadata: dict,
+        session: Session,
     ):
         """Create a new upload job for the given trial metadata patch."""
         job = UploadJobs(
@@ -313,7 +317,9 @@ class UploadJobs(CommonColumns):
             metadata_json_patch=metadata,
             uploader_email=uploader_email,
             status="started",
-            _etag=make_etag(assay_type, gcs_file_uris, metadata, uploader_email, "started"),
+            _etag=make_etag(
+                assay_type, gcs_file_uris, metadata, uploader_email, "started"
+            ),
         )
         session.add(job)
         session.commit()
