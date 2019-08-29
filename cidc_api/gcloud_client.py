@@ -32,10 +32,12 @@ def _iam_id(user_email: str) -> str:
     return f"user:{user_email}"
 
 
-def upload_xlsx_to_gcs(folder: str, filename: str, filebytes: BinaryIO) -> str:
-    """Upload a file to the given "folder" in GCS, returning the object URI."""
+def upload_xlsx_to_gcs(
+    trial_id: str, template_type: str, filename: str, filebytes: BinaryIO
+) -> str:
+    """Upload an xlsx template file to GCS, returning the object URI."""
     upload_moment = datetime.datetime.now()
-    blob_name = f"xlsx/{folder}/{filename}/{upload_moment}"
+    blob_name = f"xlsx/{trial_id}/{template_type}/{filename}/{upload_moment}"
 
     bucket: storage.Bucket = _get_bucket(GOOGLE_UPLOAD_BUCKET)
     blob = bucket.blob(blob_name)

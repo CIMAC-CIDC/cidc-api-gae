@@ -14,7 +14,7 @@ from flask import Blueprint, request, Request, Response, jsonify, _request_ctx_s
 from cidc_schemas import constants, validate_xlsx, prism, template
 
 import gcloud_client
-from models import AssayUploads, STATUSES
+from models import AssayUploads, STATUSES, TRIAL_ID_FIELD
 from config.settings import GOOGLE_UPLOAD_BUCKET
 
 ingestion_api = Blueprint("ingestion", __name__, url_prefix="/ingestion")
@@ -181,7 +181,9 @@ def upload_assay():
 
     # Upload the xlsx template file to GCS
     xlsx_file.seek(0)
-    gcs_xlsx_uri = gcloud_client.upload_xlsx_to_gcs("assays", schema_hint, xlsx_file)
+    gcs_xlsx_uri = gcloud_client.upload_xlsx_to_gcs(
+        metadata_json[TRIAL_ID_FIELD], "assays", schema_hint, xlsx_file
+    )
 
     # Save the upload job to the database
     gcs_uris = url_mapping.values()
