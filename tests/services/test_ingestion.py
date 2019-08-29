@@ -19,13 +19,13 @@ from cidc_api.models import TrialMetadata, Users
 
 
 @pytest.fixture
-def valid_xlsx():
+def pbmc_valid_xlsx():
     with open_data_file("pbmc_valid.xlsx") as xlsx:
         yield xlsx
 
 
 @pytest.fixture
-def invalid_xlsx():
+def pbmc_invalid_xlsx():
     yield open_data_file("pbmc_invalid.xlsx")
 
 
@@ -57,22 +57,23 @@ def form_data(filename=None, fp=None, schema=None):
 
 
 VALIDATE = "/ingestion/validate"
-UPLOAD = "/ingestion/upload"
+ASSAY_UPLOAD = "/ingestion/upload_assay"
+MANIFEST_UPLOAD = "/ingestion/upload_manifest"
 
 
-def test_validate_valid_template(app_no_auth, valid_xlsx):
+def test_validate_valid_template(app_no_auth, pbmc_valid_xlsx):
     """Ensure that the validation endpoint returns no errors for a known-valid .xlsx file"""
     client = app_no_auth.test_client()
-    data = form_data("pbmc.xlsx", valid_xlsx, "pbmc")
+    data = form_data("pbmc.xlsx", pbmc_valid_xlsx, "pbmc")
     res = client.post(VALIDATE, data=data)
     assert res.status_code == 200
     assert res.json["errors"] == []
 
 
-def test_validate_invalid_template(app_no_auth, invalid_xlsx):
+def test_validate_invalid_template(app_no_auth, pbmc_invalid_xlsx):
     """Ensure that the validation endpoint returns errors for a known-invalid .xlsx file"""
     client = app_no_auth.test_client()
-    data = form_data("pbmc.xlsx", invalid_xlsx, "pbmc")
+    data = form_data("pbmc.xlsx", pbmc_invalid_xlsx, "pbmc")
     res = client.post(VALIDATE, data=data)
     assert res.status_code == 200
     assert len(res.json["errors"]) > 0
@@ -108,7 +109,17 @@ def test_extract_schema_and_xlsx_failures(app, url, data, error, message):
             extract_schema_and_xlsx()
 
 
-def test_upload_wes(app_no_auth, wes_xlsx, test_user, monkeypatch):
+def test_upload_manifest(app_no_auth, pbmc_valid_xlsx):
+    """Ensure the upload_manifest endpoint follows the expected execution flow"""
+    client = app_no_auth.test_client()
+
+    res = client.post(
+        MANIFEST_UPLOAD, data=form_data("pbmc.xlsx", pbmc_valid_xlsx, "pbmc")
+    )
+    assert res.status_code == 501  # Not Implemented
+
+
+def test_upload_wes(app_no_auth, wes_xlsx, test_user, db, monkeypatch):
     """Ensure the upload endpoint follows the expected execution flow"""
     client = app_no_auth.test_client()
 
@@ -118,7 +129,7 @@ def test_upload_wes(app_no_auth, wes_xlsx, test_user, monkeypatch):
     with app_no_auth.app_context():
         TrialMetadata.create("10021", {})
         Users.create(profile={"email": TEST_EMAIL})
-    res = client.post(UPLOAD, data=form_data("wes.xlsx", wes_xlsx, "wes"))
+    res = client.post(ASSAY_UPLOAD, data=form_data("wes.xlsx", wes_xlsx, "wes"))
     assert res.json
     assert "url_mapping" in res.json
 
@@ -174,14 +185,14 @@ OLINK_TESTDATA = [
 ]
 
 
-def test_upload_olink(app_no_auth, olink_xlsx, test_user, monkeypatch):
+def test_upload_olink(app_no_auth, olink_xlsx, test_user, db, monkeypatch):
     """Ensure the upload endpoint follows the expected execution flow"""
     client = app_no_auth.test_client()
 
     grant_write = MagicMock()
     monkeypatch.setattr("gcloud_client.grant_upload_access", grant_write)
 
-    res = client.post(UPLOAD, data=form_data("olink.xlsx", olink_xlsx, "olink"))
+    res = client.post(ASSAY_UPLOAD, data=form_data("olink.xlsx", olink_xlsx, "olink"))
     assert res.json
     assert "url_mapping" in res.json
 
@@ -207,7 +218,7 @@ def test_upload_olink(app_no_auth, olink_xlsx, test_user, monkeypatch):
     monkeypatch.setattr("gcloud_client.publish_upload_success", publish_success)
 
     job_id = res.json["job_id"]
-    update_url = f"/upload_jobs/{job_id}"
+    update_url = f"/assay_uploads/{job_id}"
 
     # Report an upload failure
     res = client.patch(

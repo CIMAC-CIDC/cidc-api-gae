@@ -103,11 +103,48 @@ def validate():
         return jsonify(json)
 
 
-@ingestion_api.route("/upload", methods=["POST"])
-@requires_auth("ingestion.upload")
-def upload():
+def validate_excel_payload(f):
+    def wrapped(*args, **kwargs):
+        # Run basic validations on the provided Excel file
+        validations = validate()
+        if len(validations.json["errors"]) > 0:
+            return BadRequest(validations)
+        return f(*args, **kwargs)
+
+    wrapped.__name__ = f.__name__
+    return wrapped
+
+
+@ingestion_api.route("/upload_manifest", methods=["POST"])
+@requires_auth("ingestion.upload_manifest")
+@validate_excel_payload
+def upload_manifest():
     """
-    Initiate a metadata/data ingestion job.
+    Ingest manifest data from an excel spreadsheet.
+
+    3. API tries to load existing trial metadata blob (if fails, merge request fails; nothing saved).
+    4. API merges the merge request JSON into the trial metadata (if fails, merge request fails; nothing saved).
+    5. The manifest xlsx file is upload to the GCS uploads bucket (?).
+    6. The merge request parsed JSON is saved to `ManifestUploads`.
+    7. The updated trial metadata object is updated in the `TrialMetadata` table.
+
+    Request: multipart/form
+        schema: the schema identifier for this template
+        template: the .xlsx file to process'
+    Response:
+        201 if the upload succeeds. Otherwise, some error status code and message.
+    """
+    schema_hint, schema_path, xlsx_file = extract_schema_and_xlsx()
+
+    return NotImplemented("Manifest ingestion is not yet supported.")
+
+
+@ingestion_api.route("/upload_assay", methods=["POST"])
+@requires_auth("ingestion.upload_assay")
+@validate_excel_payload
+def upload_assay():
+    """
+    Initiate an assay metadata/data ingestion job.
 
     Request: multipart/form
         schema: the schema identifier for this template
@@ -121,19 +158,11 @@ def upload():
     
     # TODO: refactor this to be a pre-GET hook on the upload-jobs resource.
     """
-    # Run basic validations on the provided Excel file
-    validations = validate()
-    if len(validations.json["errors"]) > 0:
-        return validations
-
     schema_hint, schema_path, xlsx_file = extract_schema_and_xlsx()
-
-    # TODO: this path-resolution should happen internally in prism
-    full_schema_path = os.path.join(constants.SCHEMA_DIR, schema_path)
 
     # Extract the clinical trial metadata blob contained in the .xlsx file,
     # along with information about the files the template references.
-    metadata_json, file_infos = prism.prismify(xlsx_file, full_schema_path, schema_hint)
+    metadata_json, file_infos = prism.prismify(xlsx_file, schema_path, schema_hint)
 
     upload_moment = str(datetime.datetime.now()).replace(" ", "_")
     url_mapping = {}
