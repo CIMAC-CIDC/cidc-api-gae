@@ -119,6 +119,11 @@ To run the tests, simply run:
 pytest
 ```
 
+You might first need to set up something like
+```
+GOOGLE_APPLICATION_CREDENTIALS=.config/gcloud/application_default_credentials.json pytest
+```
+
 ## Code Formatting
 This project uses [`black`](https://black.readthedocs.io/en/stable/) for code styling. 
 
