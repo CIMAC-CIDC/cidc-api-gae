@@ -126,6 +126,10 @@ def test_upload_wes(app_no_auth, wes_xlsx, test_user, db, monkeypatch):
     grant_write = MagicMock()
     monkeypatch.setattr("gcloud_client.grant_upload_access", grant_write)
 
+    upload_xlsx = MagicMock()
+    upload_xlsx.return_value = "xlsx/assays/wes/12345"
+    monkeypatch.setattr("gcloud_client.upload_xlsx_to_gcs", upload_xlsx)
+
     with app_no_auth.app_context():
         TrialMetadata.create("10021", {})
         Users.create(profile={"email": TEST_EMAIL})
@@ -146,6 +150,9 @@ def test_upload_wes(app_no_auth, wes_xlsx, test_user, db, monkeypatch):
 
     # Check that we tried to grant IAM upload access to gcs_object_name
     grant_write.assert_called_with(GOOGLE_UPLOAD_BUCKET, test_user.email)
+
+    # Check that we tried to upload the assay metadata excelf ile
+    upload_xlsx.assert_called_once()
 
     # Track whether we revoke IAM upload access after updating the job status
     revoke_write = MagicMock()

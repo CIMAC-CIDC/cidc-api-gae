@@ -329,13 +329,14 @@ class UploadForeignKeys:
     def trial(cls):
         return relationship("TrialMetadata", foreign_keys=[cls.trial_id])
 
+    # The object URI for the raw excel form associated with this upload
+    gcs_xlsx_uri = Column(String, nullable=False)
+
 
 class ManifestUploads(CommonColumns, UploadForeignKeys):
     __tablename__ = "manifest_uploads"
     # The parsed JSON manifest blob for this upload
     manifest_patch = Column(JSONB, nullable=False)
-    # The path to the original manifest excel template stored in GCS
-    gcs_xlsx_uri = Column(String, nullable=False)
 
 
 class AssayUploads(CommonColumns, UploadForeignKeys):
@@ -363,6 +364,7 @@ class AssayUploads(CommonColumns, UploadForeignKeys):
         uploader_email: str,
         gcs_file_uris: list,
         metadata: dict,
+        gcs_xlsx_uri: str,
         session: Session,
     ):
         """Create a new upload job for the given trial metadata patch."""
@@ -375,6 +377,7 @@ class AssayUploads(CommonColumns, UploadForeignKeys):
             gcs_file_uris=gcs_file_uris,
             assay_patch=metadata,
             uploader_email=uploader_email,
+            gcs_xlsx_uri=gcs_xlsx_uri,
             status="started",
             _etag=make_etag(
                 assay_type, gcs_file_uris, metadata, uploader_email, "started"

@@ -179,11 +179,16 @@ def upload_assay():
         gcs_uri = f"{gcs_uri_prefix}/{local_path}"
         url_mapping[local_path] = gcs_uri
 
+    # Upload the xlsx template file to GCS
+    xlsx_file.seek(0)
+    gcs_xlsx_uri = gcloud_client.upload_xlsx_to_gcs("assays", schema_hint, xlsx_file)
+
     # Save the upload job to the database
-    xlsx_bytes = xlsx_file.read()
     gcs_uris = url_mapping.values()
     user_email = _request_ctx_stack.top.current_user.email
-    job = AssayUploads.create(schema_hint, user_email, gcs_uris, metadata_json)
+    job = AssayUploads.create(
+        schema_hint, user_email, gcs_uris, metadata_json, gcs_xlsx_uri
+    )
 
     # Grant the user upload access to the upload bucket
     gcloud_client.grant_upload_access(GOOGLE_UPLOAD_BUCKET, user_email)
