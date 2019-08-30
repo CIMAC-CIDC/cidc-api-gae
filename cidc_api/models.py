@@ -258,7 +258,7 @@ class TrialMetadata(CommonColumns):
 
             TODO: apply this update directly to the not-yet-existent TrialMetadata.manifest field
         """
-        TrialMetadata._patch_ct_json(trial_id, assay_patch, session=session)
+        TrialMetadata.patch_trial_metadata(trial_id, assay_patch, session=session)
 
     @staticmethod
     @with_default_session
@@ -268,13 +268,16 @@ class TrialMetadata(CommonColumns):
 
             TODO: apply this update directly to the not-yet-existent TrialMetadata.assays field
         """
-        TrialMetadata._patch_ct_json(trial_id, manifest_patch, session=session)
+        TrialMetadata.patch_trial_metadata(trial_id, manifest_patch, session=session)
 
     @staticmethod
     @with_default_session
-    def _patch_ct_json(trial_id: str, json_patch: dict, session: Session):
+    def patch_trial_metadata(trial_id: str, json_patch: dict, session: Session):
         """
             Applies updates to the metadata object from the trial with id `trial_id`.
+
+            TODO: remove this function and dependency on it, in favor of separate assay
+            and manifest patch strategies.
         """
         # Look for an existing trial
         trial = TrialMetadata.find_by_trial_id(trial_id, session=session)
