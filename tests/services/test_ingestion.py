@@ -9,13 +9,14 @@ from werkzeug.exceptions import (
     NotImplemented,
 )
 
-from config.settings import GOOGLE_UPLOAD_BUCKET
-from services.ingestion import extract_schema_and_xlsx
+from cidc_api.config.settings import GOOGLE_UPLOAD_BUCKET
+from cidc_api.services.ingestion import extract_schema_and_xlsx
+from cidc_api.models import TrialMetadata, Users
 
 from . import open_data_file
+from ..test_models import db_test
 from ..util import assert_same_elements
 from ..conftest import TEST_EMAIL
-from cidc_api.models import TrialMetadata, Users
 
 
 @pytest.fixture
@@ -37,6 +38,14 @@ def wes_xlsx():
 @pytest.fixture
 def olink_xlsx():
     yield open_data_file("olink_data.xlsx")
+
+
+@pytest.fixture
+@db_test
+def db_with_trial_and_user(db, test_user):
+    # Create the target trial and the uploader
+    TrialMetadata.create("10021", {})
+    Users.create(profile={"email": test_user.email})
 
 
 def form_data(filename=None, fp=None, schema=None):
@@ -119,7 +128,9 @@ def test_upload_manifest(app_no_auth, pbmc_valid_xlsx):
     assert res.status_code == 501  # Not Implemented
 
 
-def test_upload_wes(app_no_auth, wes_xlsx, test_user, db, monkeypatch):
+def test_upload_wes(
+    app_no_auth, wes_xlsx, test_user, db_with_trial_and_user, monkeypatch
+):
     """Ensure the upload endpoint follows the expected execution flow"""
     client = app_no_auth.test_client()
 
@@ -130,9 +141,6 @@ def test_upload_wes(app_no_auth, wes_xlsx, test_user, db, monkeypatch):
     upload_xlsx.return_value = "xlsx/assays/wes/12345"
     monkeypatch.setattr("gcloud_client.upload_xlsx_to_gcs", upload_xlsx)
 
-    with app_no_auth.app_context():
-        TrialMetadata.create("10021", {})
-        Users.create(profile={"email": TEST_EMAIL})
     res = client.post(ASSAY_UPLOAD, data=form_data("wes.xlsx", wes_xlsx, "wes"))
     assert res.json
     assert "url_mapping" in res.json
@@ -192,7 +200,9 @@ OLINK_TESTDATA = [
 ]
 
 
-def test_upload_olink(app_no_auth, olink_xlsx, test_user, db, monkeypatch):
+def test_upload_olink(
+    app_no_auth, olink_xlsx, test_user, db_with_trial_and_user, monkeypatch
+):
     """Ensure the upload endpoint follows the expected execution flow"""
     client = app_no_auth.test_client()
 
