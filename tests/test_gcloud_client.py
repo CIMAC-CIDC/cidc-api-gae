@@ -54,4 +54,3 @@ def test_upload_xlsx_to_gcs(monkeypatch):
     assert trial in uri
     assert template_type in uri
     assert assay_type in uri
-
