@@ -8,8 +8,8 @@ from .users import register_users_hooks
 
 
 def register_services(app: Eve):
-    """Register service blueprints with the provided app"""
-    # Blueprints
+    """Register service blueprint with the provided app"""
+    # Blueprint
     app.register_blueprint(ingestion_api)
     app.register_blueprint(info_api)
 
