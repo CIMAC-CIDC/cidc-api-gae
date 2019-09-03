@@ -124,7 +124,7 @@ def upload_manifest():
 
     3. API tries to load existing trial metadata blob (if fails, merge request fails; nothing saved).
     4. API merges the merge request JSON into the trial metadata (if fails, merge request fails; nothing saved).
-    5. The manifest xlsx file is upload to the GCS uploads bucket (?).
+    5. The manifest xlsx file is upload to the GCS uploads bucket.
     6. The merge request parsed JSON is saved to `ManifestUploads`.
     7. The updated trial metadata object is updated in the `TrialMetadata` table.
 
