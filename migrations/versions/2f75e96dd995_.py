@@ -22,7 +22,11 @@ def upgrade():
     op.execute('ALTER SEQUENCE IF EXISTS upload_jobs_id_seq RENAME TO assay_uploads_id_seq')
     op.execute('ALTER INDEX IF EXISTS upload_jobs_pkey RENAME TO assay_uploads_pkey')
     op.execute('ALTER INDEX IF EXISTS gcs_objects_idx RENAME TO ix_assay_uploads_gcs_file_uris')
-    op.add_column('assay_uploads', sa.Column('trial_id', sa.String(), nullable=False))
+    op.add_column('assay_uploads', sa.Column('trial_id', sa.String(), nullable=True))
+    op.execute("UPDATE assay_uploads SET trial_id = metadata_json->>'lead_organisation_study_di'")
+    op.alter_column('assay_uploads', 'trial_id',
+               existing_type=sa.VARCHAR(),
+               nullable=False)
     op.create_foreign_key('assay_uploads_trial_id_fkey', 'assay_uploads', 'trial_metadata', ['trial_id'], ['trial_id'])
     op.create_index(op.f('ix_assay_uploads_trial_id'), 'assay_uploads', ['trial_id'], unique=False)
 
