@@ -119,10 +119,13 @@ To run the tests, simply run:
 pytest
 ```
 
-You might first need to set up something like
+To run the tests, you need to set the GOOGLE_APPLICATION_CREDENTIALS environment variable to a path to JSON file containing your gcloud credentials. To create this file if it doesn't exist already, run:
+
 ```
-GOOGLE_APPLICATION_CREDENTIALS=.config/gcloud/application_default_credentials.json pytest
+gcloud auth application-default login
 ```
+Set GOOGLE_APPLICATION_CREDENTIALS to the path listed after "Credentials saved to file: " in the output of the above command.
+
 
 ## Code Formatting
 This project uses [`black`](https://black.readthedocs.io/en/stable/) for code styling. 
