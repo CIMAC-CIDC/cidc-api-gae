@@ -33,11 +33,16 @@ def _iam_id(user_email: str) -> str:
 
 
 def upload_xlsx_to_gcs(
-    trial_id: str, template_type: str, filename: str, filebytes: BinaryIO
+    trial_id: str, template_category: str, template_type: str, filebytes: BinaryIO
 ) -> str:
-    """Upload an xlsx template file to GCS, returning the object URI."""
+    """
+    Upload an xlsx template file to GCS, returning the object URI.
+    
+    `template_category` is either "manifests" or "assays".
+    `template_type` is an assay or manifest type, like "wes" or "pbmc" respectively.
+    """
     upload_moment = datetime.datetime.now()
-    blob_name = f"xlsx/{trial_id}/{template_type}/{filename}/{upload_moment}"
+    blob_name = f"xlsx/{trial_id}/{template_category}/{template_type}/{upload_moment}"
 
     bucket: storage.Bucket = _get_bucket(GOOGLE_UPLOAD_BUCKET)
     blob = bucket.blob(blob_name)
