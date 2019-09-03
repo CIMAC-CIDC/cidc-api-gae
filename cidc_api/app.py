@@ -1,3 +1,4 @@
+import logging
 from os.path import dirname, abspath, join
 
 from eve import Eve
@@ -19,6 +20,12 @@ MIGRATIONS = join(ABSPATH, "..", "migrations")
 
 # Instantiate the Eve app
 app = Eve(auth=BearerAuth, data=SQL, validator=ValidatorSQL, settings=SETTINGS)
+
+# Inherit logging config from gunicorn if running behind gunicorn
+if __name__ != "__main__":
+    gunicorn_logger = logging.getLogger("gunicorn.error")
+    app.logger.handlers = gunicorn_logger.handlers
+    app.logger.setLevel(gunicorn_logger.level)
 
 # Enable CORS
 # TODO: be more selective about which domains can make requests
