@@ -53,7 +53,7 @@ def test_duplicate_user(db):
 
 TRIAL_ID = "cimac-12345"
 METADATA = {
-    "lead_organization_study_id": "1234",
+    "lead_organization_study_id": "cimac-12345",
     "participants": [
         {
             "samples": [],
@@ -102,6 +102,24 @@ def test_update_trial_metadata(db):
     expected_participants = METADATA["participants"] + metadata_patch["participants"]
     actual_participants = trial.metadata_json["participants"]
     assert sort(actual_participants) == sort(expected_participants)
+
+
+@db_test
+def test_partial_patch_trial_metadata(db):
+    """Update an existing trial_metadata_record"""
+    # Create the initial trial
+
+    db.add(TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA))
+    db.commit()
+
+    # Create patch without all required fields (no "participants")
+    metadata_patch = {
+        "lead_organization_study_id": TRIAL_ID,
+        "assays": {}
+    }
+    
+    # patch it - should be no error/exception
+    TrialMetadata.patch_trial_metadata(TRIAL_ID, metadata_patch)
 
 
 @db_test
