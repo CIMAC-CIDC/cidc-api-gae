@@ -357,7 +357,7 @@ class AssayUploads(CommonColumns, UploadForeignKeys):
 
     # Create a GIN index on the GCS object names
     _gcs_objects_idx = Index(
-        "ix_assay_uploads_gcs_file_uris", gcs_file_uris, postgresql_using="gin"
+        "assay_uploads_gcs_file_uris_ix", gcs_file_uris, postgresql_using="gin"
     )
 
     @staticmethod

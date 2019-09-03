@@ -21,9 +21,9 @@ def upgrade():
     op.execute('ALTER TABLE IF EXISTS assay_uploads RENAME COLUMN metadata_json_patch TO assay_patch')
     op.execute('ALTER SEQUENCE IF EXISTS upload_jobs_id_seq RENAME TO assay_uploads_id_seq')
     op.execute('ALTER INDEX IF EXISTS upload_jobs_pkey RENAME TO assay_uploads_pkey')
-    op.execute('ALTER INDEX IF EXISTS gcs_objects_idx RENAME TO ix_assay_uploads_gcs_file_uris')
+    op.execute('ALTER INDEX IF EXISTS gcs_objects_idx RENAME TO assay_uploads_gcs_file_uris_idx')
     op.add_column('assay_uploads', sa.Column('trial_id', sa.String(), nullable=True))
-    op.execute("UPDATE assay_uploads SET trial_id = metadata_json->>'lead_organisation_study_di'")
+    op.execute("UPDATE assay_uploads SET trial_id = assay_patch->>'lead_organisation_study_id'")
     op.alter_column('assay_uploads', 'trial_id',
                existing_type=sa.VARCHAR(),
                nullable=False)
@@ -53,7 +53,7 @@ def downgrade():
     op.execute('ALTER TABLE IF EXISTS upload_jobs RENAME COLUMN assay_patch TO metadata_json_patch')
     op.execute('ALTER SEQUENCE assay_uploads_id_seq RENAME TO upload_jobs_id_seq')
     op.execute('ALTER INDEX assay_uploads_pkey RENAME TO upload_jobs_pkey')
-    op.execute('ALTER INDEX IF EXISTS ix_assay_uploads_gcs_objects RENAME TO gcs_objects_idx')
+    op.execute('ALTER INDEX IF EXISTS assay_uploads_gcs_file_uris_idx RENAME TO gcs_objects_idx')
     op.delete_foreign_key('assay_uploads_trial_id_fkey')
     op.drop_index(op.f('ix_assay_uploads_trial_id'), table_name='assay_uploads')
 
