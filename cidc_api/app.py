@@ -23,7 +23,7 @@ MIGRATIONS = join(ABSPATH, "..", "migrations")
 app = Eve(auth=BearerAuth, data=SQL, validator=ValidatorSQL, settings=SETTINGS)
 
 # Inherit logging config from gunicorn if running behind gunicorn
-app.logger.setLevel(logging.INFO)
+app.logger.setLevel(logging.DEBUG)
 if __name__ != "__main__":
     gunicorn_logger = logging.getLogger("gunicorn.error")
     app.logger.handlers = gunicorn_logger.handlers
