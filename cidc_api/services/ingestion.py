@@ -14,7 +14,7 @@ from flask import Blueprint, request, Request, Response, jsonify, _request_ctx_s
 from cidc_schemas import constants, validate_xlsx, prism, template
 
 import gcloud_client
-from models import AssayUploads, STATUSES, TRIAL_ID_FIELD
+from models import AssayUploads, STATUSES, TRIAL_ID_FIELD, TrialMetadata
 from config.settings import GOOGLE_UPLOAD_BUCKET
 
 ingestion_api = Blueprint("ingestion", __name__, url_prefix="/ingestion")
@@ -81,27 +81,33 @@ def validate():
     TODO: add this endpoint to the OpenAPI docs
     """
     # Extract info from the request context
-    template_type, _, template_file = extract_schema_and_xlsx()
+    template_type, schema_path, xlsx_file = extract_schema_and_xlsx()
 
     # Validate the .xlsx file with respect to the schema
     try:
         error_list = validate_xlsx(
-            template_file, template_type, raise_validation_errors=False
+            xlsx_file, template_type, raise_validation_errors=False
         )
     except Exception as e:
         if "unknown template type" in str(e):
             raise BadRequest(str(e))
         raise InternalServerError(str(e))
 
-    json = {"errors": []}
-    if type(error_list) == bool and error_list is True:
-        # The spreadsheet is valid
-        return jsonify(json)
-    else:
+    if type(error_list) != bool:
         # The spreadsheet is invalid
-        json["errors"] = error_list
-        return jsonify(json)
+        return jsonify({"errors": error_list})
+    # ELSE UNKNOW ERROR?
 
+    metadata_json, file_infos, prism_errors = prism.prismify(xlsx_file, schema_path, template_type, errors_as_list=True)
+    if prism_errors:
+        return jsonify({"errors": [str(e) for e in prism_errors]})
+
+    try:
+        trial = TrialMetadata.find_by_trial_id(metadata_json[TRIAL_ID_FIELD])
+    except Exception as e:
+        return jsonify({"errors": [str(e)]})
+
+    return jsonify({"errors": []})
 
 def validate_excel_payload(f):
     def wrapped(*args, **kwargs):
