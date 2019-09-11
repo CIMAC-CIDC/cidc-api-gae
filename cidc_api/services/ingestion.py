@@ -213,7 +213,11 @@ def upload_assay():
 
     # Extract the clinical trial metadata blob contained in the .xlsx file,
     # along with information about the files the template references.
-    metadata_json, file_infos = prism.prismify(xlsx_file, schema_path, schema_hint)
+
+    if schema_hint == 'olink':
+        metadata_json, file_infos, extra_metadata = prism.prismify(xlsx_file, schema_path, schema_hint)
+    else:
+        metadata_json, file_infos = prism.prismify(xlsx_file, schema_path, schema_hint)
 
     upload_moment = datetime.datetime.now().isoformat()
     uri2uuid = {}
@@ -255,6 +259,9 @@ def upload_assay():
         "url_mapping": url_mapping,
         "gcs_bucket": GOOGLE_UPLOAD_BUCKET,
     }
+    if schema_hint == 'olink':
+        response["extra_metadata"] = extra_metadata
+
     return jsonify(response)
 
 

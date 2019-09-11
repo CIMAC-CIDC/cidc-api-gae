@@ -10,7 +10,7 @@ from werkzeug.exceptions import (
 )
 
 from cidc_api.config.settings import GOOGLE_UPLOAD_BUCKET
-from cidc_api.services.ingestion import extract_schema_and_xlsx
+from cidc_api.services.ingestion import extract_schema_and_xlsx, upload_assay
 from cidc_api.models import TrialMetadata, Users, TRIAL_ID_FIELD
 
 from . import open_data_file
@@ -263,6 +263,10 @@ def test_upload_olink(
     res = client.post(ASSAY_UPLOAD, data=form_data("olink.xlsx", olink_xlsx, "olink"))
     assert res.json
     assert "url_mapping" in res.json
+    assert "extra_metadata" in res.json
+
+    extra_metadata = res.json["extra_metadata"]
+    assert type(extra_metadata) == list
 
     url_mapping = res.json["url_mapping"]
 
