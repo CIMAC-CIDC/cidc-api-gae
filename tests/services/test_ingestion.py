@@ -10,8 +10,9 @@ from werkzeug.exceptions import (
 )
 
 from cidc_api.config.settings import GOOGLE_UPLOAD_BUCKET
-from cidc_api.services.ingestion import extract_schema_and_xlsx, upload_assay
+from cidc_api.services.ingestion import extract_schema_and_xlsx, extract_extra_metadata, upload_assay
 from cidc_api.models import TrialMetadata, Users, TRIAL_ID_FIELD
+from cidc_schemas.util import parse_npx
 
 from . import open_data_file
 from ..test_models import db_test
@@ -124,6 +125,7 @@ def test_extract_schema_and_xlsx_failures(app, url, data, error, message):
     with app.test_request_context(url, data=data):
         with pytest.raises(error, match=message):
             extract_schema_and_xlsx()
+            extract_schema_and_extra_metadata_xlsx()
 
 
 def test_upload_manifest_non_existing_trial_id(
@@ -325,3 +327,31 @@ def test_signed_upload_urls(app_no_auth, monkeypatch):
     res = client.post("/ingestion/signed-upload-urls", json=data)
 
     assert_same_elements(res.json.keys(), data["object_names"])
+
+
+
+def test_extra_metadata(
+        app_no_auth
+):
+    """Ensure the extra metadata upload endpoint follows the expected execution flow"""
+
+    npx_test_files = [
+        'tests/services/data/npx_data/olink_assay_1_NPX_t1.xlsx',
+        'tests/services/data/npx_data/olink_assay_2_NPX_t1.xlsx'
+    ]
+
+    files = []
+    try:
+        files = [(open(fpath, 'rb'), fpath) for fpath in npx_test_files]
+        client = app_no_auth.test_client()
+        res = client.post('/ingestion/extra-metadata', data={
+            'extra_metadata': files,
+        })
+
+    finally:
+        for fp in files:
+            fp[0].close()
+
+    print(res)
+    print(res.json)
+    assert False

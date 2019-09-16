@@ -14,6 +14,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.session import Session
 from flask import Blueprint, request, Request, Response, jsonify, _request_ctx_stack
 from cidc_schemas import constants, validate_xlsx, prism, template
+from cidc_schemas.util import parse_npx
 
 import gcloud_client
 from models import (
@@ -80,6 +81,25 @@ def extract_schema_and_xlsx() -> Tuple[str, str, BinaryIO]:
 
     return schema_id, schema_path, xlsx_file
 
+
+def extract_extra_metadata() -> list:
+    """
+
+    """
+
+    # If we have a form, check that the expected metadata files exist
+    if "extra_metadata" not in request.files:
+        raise BadRequest("Expected metadata files in request body")
+
+    # Check that the metadata files appears to be .xlsx files
+    all_extra_metadata = []
+    metadata_files = request.files.getlist("extra_metadata")
+    for metadata_file in metadata_files:
+        metadata = parse_npx(metadata_file)
+        all_extra_metadata.append(metadata)
+        print(all_extra_metadata)
+
+    return all_extra_metadata
 
 @ingestion_api.route("/validate", methods=["POST"])
 @requires_auth("ingestion.validate")
@@ -336,3 +356,14 @@ def signed_upload_urls():
         object_urls[object_name] = object_url
 
     return jsonify(object_urls)
+
+@ingestion_api.route("/extra-metadata", methods=["POST"])
+def extra_metadata():
+
+    # TODO: create patch
+
+    extra_metadata = extract_extra_metadata()
+
+
+
+    return extra_metadata
