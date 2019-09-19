@@ -354,12 +354,8 @@ def signed_upload_urls():
 
     return jsonify(object_urls)
 
-<<<<<<< HEAD
 
 @ingestion_api.route("/extra-assay-metadata", methods=["POST"])
-=======
-@ingestion_api.route("/extra_assay_metadata", methods=["POST"])
->>>>>>> 0f09e9357b95c7f423bb4381721d2ea3ce74146e
 def extra_metadata():
 
     # TODO: create patch
