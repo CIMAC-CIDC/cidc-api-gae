@@ -12,7 +12,6 @@ from werkzeug.exceptions import (
 from cidc_api.config.settings import GOOGLE_UPLOAD_BUCKET
 from cidc_api.services.ingestion import extract_schema_and_xlsx, extract_extra_metadata, upload_assay
 from cidc_api.models import TrialMetadata, Users, TRIAL_ID_FIELD
-from cidc_schemas.util import parse_npx
 
 from . import open_data_file
 from ..test_models import db_test
@@ -333,7 +332,7 @@ def test_signed_upload_urls(app_no_auth, monkeypatch):
 def test_extra_metadata(
         app_no_auth
 ):
-    """Ensure the extra metadata upload endpoint follows the expected execution flow"""
+    """Ensure the extra assay metadata endpoint follows the expected execution flow"""
 
     npx_test_files = [
         'tests/services/data/npx_data/olink_assay_1_NPX_t1.xlsx',
@@ -344,7 +343,7 @@ def test_extra_metadata(
     try:
         files = [(open(fpath, 'rb'), fpath) for fpath in npx_test_files]
         client = app_no_auth.test_client()
-        res = client.post('/ingestion/extra-metadata', data={
+        res = client.post('/ingestion/extra-assay-metadata', data={
             'extra_metadata': files,
         })
 

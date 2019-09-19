@@ -14,7 +14,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.session import Session
 from flask import Blueprint, request, Request, Response, jsonify, _request_ctx_stack
 from cidc_schemas import constants, validate_xlsx, prism, template
-from cidc_schemas.util import parse_npx
+from cidc_schemas.prism import parse_npx
 
 import gcloud_client
 from models import (
@@ -234,10 +234,7 @@ def upload_assay():
     # Extract the clinical trial metadata blob contained in the .xlsx file,
     # along with information about the files the template references.
 
-    if schema_hint == 'olink':
-        metadata_json, file_infos, extra_metadata = prism.prismify(xlsx_file, schema_path, schema_hint)
-    else:
-        metadata_json, file_infos = prism.prismify(xlsx_file, schema_path, schema_hint)
+    metadata_json, file_infos = prism.prismify(xlsx_file, schema_path, schema_hint)
 
     upload_moment = datetime.datetime.now().isoformat()
     uri2uuid = {}
@@ -357,7 +354,8 @@ def signed_upload_urls():
 
     return jsonify(object_urls)
 
-@ingestion_api.route("/extra-metadata", methods=["POST"])
+
+@ingestion_api.route("/extra-assay-metadata", methods=["POST"])
 def extra_metadata():
 
     # TODO: create patch
