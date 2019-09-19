@@ -14,7 +14,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.session import Session
 from flask import Blueprint, request, Request, Response, jsonify, _request_ctx_stack
 from cidc_schemas import constants, validate_xlsx, prism, template
-from cidc_schemas.prism import parse_npx
+from cidc_schemas.prism import parse_npx, merge_artifact_extra_metadata
 
 import gcloud_client
 from models import (
@@ -91,7 +91,7 @@ def extract_extra_metadata() -> list:
     if "extra_metadata" not in request.files:
         raise BadRequest("Expected metadata files in request body")
 
-    # Check that the metadata files appears to be .xlsx files
+    # Check that the metadata files appears to be the xlsx files
     all_extra_metadata = []
     metadata_files = request.files.getlist("extra_metadata")
     for metadata_file in metadata_files:
@@ -358,10 +358,9 @@ def signed_upload_urls():
 @ingestion_api.route("/extra-assay-metadata", methods=["POST"])
 def extra_metadata():
 
-    # TODO: create patch
+    # TODO: patch
 
-    extra_metadata = extract_extra_metadata()
+    extra_md = extract_extra_metadata()
 
+    return merge_artifact_extra_metadata()
 
-
-    return extra_metadata
