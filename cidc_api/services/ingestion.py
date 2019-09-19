@@ -14,7 +14,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.session import Session
 from flask import Blueprint, request, Request, Response, jsonify, _request_ctx_stack
 from cidc_schemas import constants, validate_xlsx, prism, template
-from cidc_schemas.prism import parse_npx, merge_artifact_extra_metadata
+from cidc_schemas.prism import parse_npx, merge_artifact_extra_metadata, ASSAYS_WITH_EXTRA_METADATA
 
 import gcloud_client
 from models import (
@@ -81,25 +81,6 @@ def extract_schema_and_xlsx() -> Tuple[str, str, BinaryIO]:
 
     return schema_id, schema_path, xlsx_file
 
-
-def extract_extra_metadata() -> list:
-    """
-
-    """
-
-    # If we have a form, check that the expected metadata files exist
-    if "extra_metadata" not in request.files:
-        raise BadRequest("Expected metadata files in request body")
-
-    # Check that the metadata files appears to be the xlsx files
-    all_extra_metadata = []
-    metadata_files = request.files.getlist("extra_metadata")
-    for metadata_file in metadata_files:
-        metadata = parse_npx(metadata_file)
-        all_extra_metadata.append(metadata)
-        print(all_extra_metadata)
-
-    return all_extra_metadata
 
 @ingestion_api.route("/validate", methods=["POST"])
 @requires_auth("ingestion.validate")
@@ -357,10 +338,44 @@ def signed_upload_urls():
 
 @ingestion_api.route("/extra-assay-metadata", methods=["POST"])
 def extra_metadata():
+    """
 
-    # TODO: patch
+    Validate that a uploaded assay has the required structure.
+    Then extract: job_id, job_etag, url_mapping and gcs_bucket
 
-    extra_md = extract_extra_metadata()
+    Raises:
+        BadRequest: if the above requirements aren't satisfied
 
-    return merge_artifact_extra_metadata()
+    Returns:
+        updated patch
 
+    """
+
+    if not res.form:
+        raise BadRequest("Expected form content in request body, or failed to parse form content")
+
+    if not res.json["extra_metadata"]:
+        raise BadRequest("Expected metadata files in request body")
+
+    job_id = res.json["job_id"]
+    if not job_id:
+        raise BadRequest("Expected job_id")
+
+    job_etag = res.json["job_etag"]
+    if not job_etag:
+        raise BadRequest("Expected job_etag")
+
+    url_mapping = res.json["url_mapping"]
+    if not url_mapping:
+        raise BadRequest("Expected url_mapping")
+
+    gcs_bucket = res.json["GOOGLE_UPLOAD_BUCKET"]
+    if not gcs_bucket:
+        raise BadRequest("Expected gcs_bucket")
+
+    #md_patch, file_infos = prism.prismify(xlsx_file, schema_path, schema_hint)
+
+    #calls merger function from prism to update patch
+    _, updated_patch = merge_artifact_extra_metadata(ct, artifact_uuid)
+
+    return updated patch
