@@ -11,7 +11,7 @@ setup(
         "flask-sqlalchemy==2.4.0",
         "eve-sqlalchemy==0.7.0",
         "google-cloud-storage==1.16.1",
-        "cidc-schemas>=0.4.14,<0.5.0",
+        "cidc-schemas>=0.4.15",
     ],
     license="MIT license",
     packages=["cidc_api.config"],
