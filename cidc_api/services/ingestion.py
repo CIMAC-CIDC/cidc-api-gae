@@ -117,8 +117,9 @@ def validate():
             template_file, template_type, raise_validation_errors=False
         )
     except template_reader.ValidationError as e:
-        # TODO: in case raise_validation_errors=False isn't respected by validate_xlsx,
+        # In case raise_validation_errors=False isn't respected by validate_xlsx,
         # capture the validation error and return its message.
+        # TODO: fix this in cidc_schemas, not here.
         error_list = [str(e)]
     except Exception as e:
         if "unknown template type" in str(e):
