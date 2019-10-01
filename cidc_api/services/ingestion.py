@@ -207,6 +207,7 @@ def upload_assay():
         gcs_bucket: the bucket to upload objects to.
         job_id: the unique identifier for this upload job in the database
         job_etag: the job record's etag, required by Eve for safe updates
+        extra_metadata: optional extra metadata information only applicable to few assays
     
     # TODO: refactor this to be a pre-GET hook on the upload-jobs resource.
     """
@@ -257,7 +258,7 @@ def upload_assay():
         "url_mapping": url_mapping,
         "gcs_bucket": GOOGLE_UPLOAD_BUCKET,
     }
-    if schema_hint == 'olink':
+    if schema_hint in ASSAYS_WITH_EXTRA_METADATA:
         response["extra_metadata"] = extra_metadata
 
     return jsonify(response)
@@ -340,42 +341,27 @@ def signed_upload_urls():
 def extra_metadata():
     """
 
-    Validate that a uploaded assay has the required structure.
-    Then extract: job_id, job_etag, url_mapping and gcs_bucket
-
+    Extracts:
+        job_id, and extra_metadata from request body
     Raises:
-        BadRequest: if the above requirements aren't satisfied
-
+        BadRequest: if the request requirements aren't satisfied
     Returns:
         updated patch
 
     """
 
-    if not res.form:
+    if not request.form:
         raise BadRequest("Expected form content in request body, or failed to parse form content")
 
-    if not res.json["extra_metadata"]:
-        raise BadRequest("Expected metadata files in request body")
-
-    job_id = res.json["job_id"]
+    job_id = request.json["job_id"]
     if not job_id:
         raise BadRequest("Expected job_id")
 
-    job_etag = res.json["job_etag"]
-    if not job_etag:
-        raise BadRequest("Expected job_etag")
+    if not request.json["extra_metadata"]:
+        raise BadRequest("Expected metadata files in request body")
 
-    url_mapping = res.json["url_mapping"]
-    if not url_mapping:
-        raise BadRequest("Expected url_mapping")
-
-    gcs_bucket = res.json["GOOGLE_UPLOAD_BUCKET"]
-    if not gcs_bucket:
-        raise BadRequest("Expected gcs_bucket")
-
-    #md_patch, file_infos = prism.prismify(xlsx_file, schema_path, schema_hint)
-
-    #calls merger function from prism to update patch
+    # calls merger function from prism to update the patch
     _, updated_patch = merge_artifact_extra_metadata(ct, artifact_uuid)
 
-    return updated patch
+    return updated_patch
+
