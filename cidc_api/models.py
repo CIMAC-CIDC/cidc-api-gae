@@ -485,6 +485,14 @@ class AssayUploads(CommonColumns, UploadForeignKeys):
 
         return job
 
+    @staticmethod
+    @with_default_session
+    def merge_extra_metadata(job_id, artifact_uuid, file, session):
+
+        job = AssayUploads.find_by_id(job_id, session = session)
+        prism.merge_artifact_extra_metadata(job.assay_patch, artifact_uuid, job.assay_type, file)
+
+        session.commit()
 
 class DownloadableFiles(CommonColumns):
     """

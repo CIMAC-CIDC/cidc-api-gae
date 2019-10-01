@@ -344,7 +344,7 @@ def signed_upload_urls():
 
 
 @ingestion_api.route("/extra-assay-metadata", methods=["POST"])
-def extra_metadata():
+def extra_assay_metadata():
     """
 
     Extracts:
@@ -355,6 +355,17 @@ def extra_metadata():
         updated patch
 
     """
+
+    request.form = {
+        'job_id': the job_id to update the patch for,
+        'artifact_uuid: artifact identifier required by prism
+    }
+
+    request.files = {
+        'extra_metadata_file': open extra metadata file
+    }
+
+
 
     if not request.form:
         raise BadRequest("Expected form content in request body, or failed to parse form content")
