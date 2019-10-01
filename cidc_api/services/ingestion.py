@@ -207,7 +207,7 @@ def upload_assay():
         gcs_bucket: the bucket to upload objects to.
         job_id: the unique identifier for this upload job in the database
         job_etag: the job record's etag, required by Eve for safe updates
-        extra_metadata: optional extra metadata information only applicable to few assays
+        extra_metadata: files with extra metadata information only applicable to few assays
     
     # TODO: refactor this to be a pre-GET hook on the upload-jobs resource.
     """
@@ -221,6 +221,7 @@ def upload_assay():
     upload_moment = datetime.datetime.now().isoformat()
     uri2uuid = {}
     url_mapping = {}
+    files_with_extra_md = {}
     for file_info in file_infos:
         uuid = file_info.upload_placeholder
 
@@ -236,6 +237,11 @@ def upload_assay():
                 f"File {file_info.local_path} came twice.\nEach local file should be used only once."
             )
         url_mapping[file_info.local_path] = gcs_uri
+
+        if file_info.metadata_availability:
+            files_with_extra_md[file_info.local_path] = file_info.upload_placeholder
+
+
 
     # Upload the xlsx template file to GCS
     xlsx_file.seek(0)
@@ -259,7 +265,7 @@ def upload_assay():
         "gcs_bucket": GOOGLE_UPLOAD_BUCKET,
     }
     if schema_hint in ASSAYS_WITH_EXTRA_METADATA:
-        response["extra_metadata"] = extra_metadata
+        response["extra_metadata"] = files_with_extra_md
 
     return jsonify(response)
 
