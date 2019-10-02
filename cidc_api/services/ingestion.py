@@ -27,6 +27,7 @@ from models import (
     TrialMetadata,
     DownloadableFiles,
     ManifestUploads,
+    Permissions,
     CIDCRole,
 )
 from auth import requires_auth
@@ -182,6 +183,21 @@ def upload_manifest():
     except KeyError:
         raise BadRequest(f"{prism.PROTOCOL_ID_FIELD_NAME} field not found.")
 
+    user = _request_ctx_stack.top.current_user
+
+    # Check that the current user has permissions to upload this type of manifest
+    # to this trial.
+    perm = Permissions.find_for_user_trial_type(user, trial_id, schema_hint)
+    if not perm:
+        if not TrialMetadata.find_by_trial_id(trial_id):
+            raise BadRequest(
+                f"Trial with {prism.PROTOCOL_ID_FIELD_NAME}={trial_id} not found."
+            )
+        raise Unauthorized(
+            f"{user.email} is not authorized to upload a {schema_hint} manifest to {trial_id}. "
+            f"Please contact a CIDC administrator if you believe this is a mistake."
+        )
+
     try:
         trial = TrialMetadata.patch_manifest(trial_id, md_patch, commit=False)
     except NoResultFound as e:
@@ -205,10 +221,9 @@ def upload_manifest():
         commit=False,
     )
 
-    user_email = _request_ctx_stack.top.current_user.email
     manifest_upload = ManifestUploads.create(
         manifest_type=schema_hint,
-        uploader_email=user_email,
+        uploader_email=user.email,
         metadata=md_patch,
         gcs_xlsx_uri=gcs_blob.name,
         session=session,

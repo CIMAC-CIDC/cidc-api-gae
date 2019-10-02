@@ -15,7 +15,7 @@ from cidc_schemas import prism
 
 from cidc_api.config.settings import GOOGLE_UPLOAD_BUCKET
 from cidc_api.services.ingestion import extract_schema_and_xlsx
-from cidc_api.models import TrialMetadata, Users, AssayUploadStatus
+from cidc_api.models import TrialMetadata, Users, AssayUploadStatus, Permissions
 
 from . import open_data_file
 from ..test_models import db_test
@@ -37,12 +37,15 @@ def some_file():
         yield f
 
 
+TEST_TRIAL = "test_trial"
+
+
 @pytest.fixture
 @db_test
 def db_with_trial_and_user(db, test_user):
     # Create the target trial and the uploader
     TrialMetadata.create(
-        "test_trial", {prism.PROTOCOL_ID_FIELD_NAME: "test_trial", "participants": []}
+        "test_trial", {prism.PROTOCOL_ID_FIELD_NAME: TEST_TRIAL, "participants": []}
     )
     Users.create(profile={"email": test_user.email})
 
@@ -143,7 +146,7 @@ def test_upload_manifest_non_existing_trial_id(
 
 
 def test_upload_invalid_manifest(
-    app_no_auth, some_file, test_user, db_with_trial_and_user, monkeypatch
+    app_no_auth, some_file, test_user, db_with_trial_and_user, db, monkeypatch
 ):
     """Ensure the upload_manifest endpoint follows the expected execution flow"""
 
@@ -163,7 +166,7 @@ def test_upload_invalid_manifest(
 
 
 def test_upload_unsupported_manifest(
-    app_no_auth, some_file, test_user, db_with_trial_and_user, monkeypatch
+    app_no_auth, some_file, test_user, db_with_trial_and_user, db, monkeypatch
 ):
     """Ensure the upload_manifest endpoint follows the expected execution flow"""
 
@@ -184,7 +187,7 @@ def test_upload_unsupported_manifest(
 
 
 def test_upload_manifest(
-    app_no_auth, some_file, test_user, db_with_trial_and_user, monkeypatch
+    app_no_auth, test_user, db_with_trial_and_user, db, monkeypatch
 ):
     """Ensure the upload_manifest endpoint follows the expected execution flow"""
 
@@ -192,7 +195,31 @@ def test_upload_manifest(
 
     client = app_no_auth.test_client()
 
-    res = client.post(MANIFEST_UPLOAD, data=form_data("pbmc.xlsx", some_file, "pbmc"))
+    # Try to upload manifest without permission
+    res = client.post(
+        MANIFEST_UPLOAD, data=form_data("pbmc.xlsx", io.BytesIO(b"a"), "pbmc")
+    )
+    assert res.status_code == 401
+    assert (
+        "not authorized to upload a pbmc manifest to" in res.json["_error"]["message"]
+    )
+
+    # Add permission and retry the upload
+    db.add(
+        Permissions(
+            granted_by_user=test_user.id,
+            granted_to_user=test_user.id,
+            trial_id=TEST_TRIAL,
+            assay_type="pbmc",
+        )
+    )
+    db.commit()
+
+    mocks.clear_all()
+
+    res = client.post(
+        MANIFEST_UPLOAD, data=form_data("pbmc.xlsx", io.BytesIO(b"a"), "pbmc")
+    )
     assert res.status_code == 200
 
     # Check that we tried to publish a patient/sample update
@@ -256,6 +283,11 @@ class UploadMocks:
         self.upload_xlsx.assert_called_once()
         self.prismify.assert_called_once()
         self.validate_excel.assert_called_once()
+
+    def clear_all(self):
+        for attr in self.__dict__.values():
+            if isinstance(attr, MagicMock):
+                attr.reset_mock()
 
 
 finfo = namedtuple("finfo", ["gs_key", "local_path", "upload_placeholder"])
