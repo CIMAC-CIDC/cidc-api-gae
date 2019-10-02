@@ -10,7 +10,7 @@ from werkzeug.exceptions import (
 )
 
 from cidc_api.config.settings import GOOGLE_UPLOAD_BUCKET
-from cidc_api.services.ingestion import extract_schema_and_xlsx, extract_extra_metadata, upload_assay
+from cidc_api.services.ingestion import extract_schema_and_xlsx, extra_assay_metadata, upload_assay
 from cidc_api.models import TrialMetadata, Users, TRIAL_ID_FIELD
 
 from . import open_data_file
@@ -326,7 +326,6 @@ def test_signed_upload_urls(app_no_auth, monkeypatch):
     res = client.post("/ingestion/signed-upload-urls", json=data)
 
     assert_same_elements(res.json.keys(), data["object_names"])
-
 
 
 def test_extra_metadata(

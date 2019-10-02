@@ -348,37 +348,37 @@ def extra_assay_metadata():
     """
 
     Extracts:
-        job_id, and extra_metadata from request body
+        job_id, and extra_metadata_file from request body
     Raises:
         BadRequest: if the request requirements aren't satisfied
-    Returns:
-        updated patch
-
-    """
 
     request.form = {
         'job_id': the job_id to update the patch for,
-        'artifact_uuid: artifact identifier required by prism
     }
 
     request.files = {
-        'extra_metadata_file': open extra metadata file
+        [artifact_uuid_1]: [open extra metadata file 1],
+        [artifact_uuid_2]: [open extra metadata file 2]
     }
 
-
+    """
 
     if not request.form:
         raise BadRequest("Expected form content in request body, or failed to parse form content")
 
-    job_id = request.json["job_id"]
-    if not job_id:
-        raise BadRequest("Expected job_id")
+    if 'job_id' not in request.form:
+        raise BadRequest("Expected job_id in form")
 
-    if not request.json["extra_metadata"]:
-        raise BadRequest("Expected metadata files in request body")
+    if not request.files:
+        raise BadRequest("Expected files in request (mapping from artifact uuids to open files)")
 
-    # calls merger function from prism to update the patch
-    _, updated_patch = merge_artifact_extra_metadata(ct, artifact_uuid)
+    job_id = request.form['job_id']
 
-    return updated_patch
+    for uuid, file in request.form.item():
+        try:
+            AssayUploads.merge_extra_metadata(job_id, uuid, file)
+        except Exception as e:
+            raise BadRequest(str(e))
+
+
 
