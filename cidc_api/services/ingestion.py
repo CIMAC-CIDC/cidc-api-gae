@@ -309,7 +309,7 @@ def upload_assay():
         "url_mapping": url_mapping,
         "gcs_bucket": GOOGLE_UPLOAD_BUCKET,
     }
-    if schema_hint in ASSAYS_WITH_EXTRA_METADATA:
+    if schema_hint in prism.ASSAYS_WITH_EXTRA_METADATA:
         response["extra_metadata"] = files_with_extra_md
 
     return jsonify(response)
@@ -484,11 +484,11 @@ def extra_assay_metadata():
 
     job_id = request.form['job_id']
 
-    for uuid, file in request.form.item():
+    for uuid, file in request.files.to_dict().items():
         try:
             AssayUploads.merge_extra_metadata(job_id, uuid, file)
         except Exception as e:
             raise BadRequest(str(e))
 
-
-
+    # TODO: return something here?
+    return jsonify({})

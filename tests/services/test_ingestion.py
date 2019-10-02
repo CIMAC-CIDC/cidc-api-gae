@@ -14,19 +14,7 @@ from werkzeug.exceptions import (
 from cidc_schemas import prism
 
 from cidc_api.config.settings import GOOGLE_UPLOAD_BUCKET
-<<<<<<< HEAD
-from cidc_api.services.ingestion import extract_schema_and_xlsx, extra_assay_metadata, upload_assay
-from cidc_api.models import TrialMetadata, Users, TRIAL_ID_FIELD
-=======
-from cidc_api.services.ingestion import extract_schema_and_xlsx
-from cidc_api.models import TrialMetadata, Users, AssayUploadStatus
->>>>>>> master
-
-from . import open_data_file
-from ..test_models import db_test
-from ..util import assert_same_elements
-from ..conftest import TEST_EMAIL
-
+from cidc_api.services.ingestion import extract_schema_and_xlsx, extra_assay_metadata
 from cidc_api.models import (
     Users,
     AssayUploads,
@@ -34,6 +22,12 @@ from cidc_api.models import (
     TrialMetadata,
     CIDCRole,
 )
+
+from . import open_data_file
+from ..test_models import db_test
+from ..util import assert_same_elements
+from ..conftest import TEST_EMAIL
+
 
 
 @pytest.fixture
@@ -264,8 +258,7 @@ class UploadMocks:
         self.validate_excel.assert_called_once()
 
 
-finfo = namedtuple("finfo", ["gs_key", "local_path", "upload_placeholder"])
-
+finfo = prism.LocalFileUploadEntry
 
 def test_upload_wes(
     app_no_auth, some_file, test_user, db_with_trial_and_user, db, monkeypatch
@@ -276,7 +269,7 @@ def test_upload_wes(
     mocks = UploadMocks(
         monkeypatch,
         prismify_file_entries=[
-            finfo("test_trial/url/file.ext", "localfile.ext", "uuid-1")
+            finfo("localfile.ext", "test_trial/url/file.ext", "uuid-1", None)
         ],
     )
 
@@ -353,7 +346,7 @@ def test_upload_olink(
     mocks = UploadMocks(
         monkeypatch,
         prismify_file_entries=[
-            finfo(url, lp, "uuid" + str(i))
+            finfo(lp, url, "uuid" + str(i), 'npx' in url)
             for i, (lp, url) in enumerate(OLINK_TESTDATA)
         ],
     )
@@ -364,7 +357,7 @@ def test_upload_olink(
     assert "extra_metadata" in res.json
 
     extra_metadata = res.json["extra_metadata"]
-    assert type(extra_metadata) == list
+    assert type(extra_metadata) == dict
 
     url_mapping = res.json["url_mapping"]
 
@@ -457,36 +450,6 @@ def test_poll_upload_merge_status(app, db, test_user, monkeypatch):
 
         db.commit()
 
-<<<<<<< HEAD
-    assert_same_elements(res.json.keys(), data["object_names"])
-
-
-def test_extra_metadata(
-        app_no_auth
-):
-    """Ensure the extra assay metadata endpoint follows the expected execution flow"""
-
-    npx_test_files = [
-        'tests/services/data/npx_data/olink_assay_1_NPX_t1.xlsx',
-        'tests/services/data/npx_data/olink_assay_2_NPX_t1.xlsx'
-    ]
-
-    files = []
-    try:
-        files = [(open(fpath, 'rb'), fpath) for fpath in npx_test_files]
-        client = app_no_auth.test_client()
-        res = client.post('/ingestion/extra-assay-metadata', data={
-            'extra_metadata': files,
-        })
-
-    finally:
-        for fp in files:
-            fp[0].close()
-
-    print(res)
-    print(res.json)
-    assert False
-=======
     monkeypatch.setattr(
         app.auth, "token_auth", lambda *args: {"email": test_user.email}
     )
@@ -533,4 +496,27 @@ def test_extra_metadata(
         assert (
             "status_details" in res.json and res.json["status_details"] == test_details
         )
->>>>>>> master
+
+
+def test_extra_metadata(
+        app_no_auth, monkeypatch
+):
+    """Ensure the extra assay metadata endpoint follows the expected execution flow"""
+    from cidc_api.services.ingestion import AssayUploads as _AssayUploads
+
+    merge_extra_metadata = MagicMock()
+    monkeypatch.setattr(_AssayUploads, "merge_extra_metadata", merge_extra_metadata)
+
+    form = {
+        'job_id': 123,
+        'uuid-1': (io.BytesIO(b'fake file 1'), 'fname1'),
+        'uuid-2': (io.BytesIO(b'fake file 2'), 'fname2')
+    }
+
+    client = app_no_auth.test_client()
+    res = client.post('/ingestion/extra-assay-metadata', data=form)
+
+    assert res.status_code == 200
+    merge_extra_metadata.assert_called()
+
+
