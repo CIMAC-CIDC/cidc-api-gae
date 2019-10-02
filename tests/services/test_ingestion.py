@@ -507,13 +507,25 @@ def test_extra_metadata(
     merge_extra_metadata = MagicMock()
     monkeypatch.setattr(_AssayUploads, "merge_extra_metadata", merge_extra_metadata)
 
+    client = app_no_auth.test_client()
+    res = client.post('/ingestion/extra-assay-metadata')
+    assert res.status_code == 400
+    assert 'Expected form' in res.json['_error']['message']
+
+    res = client.post('/ingestion/extra-assay-metadata', data={'foo': 'bar'})
+    assert res.status_code == 400
+    assert 'job_id' in res.json['_error']['message']
+
+    res = client.post('/ingestion/extra-assay-metadata', data={'job_id': 123})
+    assert res.status_code == 400
+    assert 'files' in res.json['_error']['message']
+
     form = {
         'job_id': 123,
         'uuid-1': (io.BytesIO(b'fake file 1'), 'fname1'),
         'uuid-2': (io.BytesIO(b'fake file 2'), 'fname2')
     }
 
-    client = app_no_auth.test_client()
     res = client.post('/ingestion/extra-assay-metadata', data=form)
 
     assert res.status_code == 200
