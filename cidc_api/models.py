@@ -261,9 +261,11 @@ class Permissions(CommonColumns):
         user: Users, trial_id: str, type_: str, session: Session
     ):
         """Check if a Permissions record exists for the given user, trial, and type."""
-        return session.query(Permissions).filter_by(
-            granted_to_user=user.id, trial_id=trial_id, assay_type=type_
-        ).first()
+        return (
+            session.query(Permissions)
+            .filter_by(granted_to_user=user.id, trial_id=trial_id, assay_type=type_)
+            .first()
+        )
 
 
 class TrialMetadata(CommonColumns):
