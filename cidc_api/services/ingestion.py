@@ -482,9 +482,9 @@ def extra_assay_metadata():
     job_id = request.form['job_id']
 
     for uuid, file in request.files.to_dict().items():
-        file_info = job_id, uuid, file
+        file_info = uuid, file
         try:
-            AssayUploads.merge_extra_metadata(file_info)
+            AssayUploads.merge_extra_metadata(job_id, file_info)
         except Exception as e:
             raise BadRequest(str(e))
 
