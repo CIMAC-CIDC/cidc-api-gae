@@ -9,7 +9,7 @@ test_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(test_dir, "..", "cidc_api"))
 
 # Can only import cidc_api modules after the above paths are set
-from cidc_api.models import (
+from models import (
     Users,
     TrialMetadata,
     AssayUploads,
