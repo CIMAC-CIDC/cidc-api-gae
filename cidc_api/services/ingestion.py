@@ -145,7 +145,6 @@ def check_permissions(user, trial_id, template_type):
     If no permission exists for this user-trial-template_type trio, raise a 401.
     """
     perm = Permissions.find_for_user_trial_type(user, trial_id, template_type)
-    print(user.role)
     if not perm and user.role != CIDCRole.ADMIN.value:
         if not TrialMetadata.find_by_trial_id(trial_id):
             raise BadRequest(
