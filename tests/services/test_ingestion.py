@@ -186,6 +186,18 @@ def test_upload_unsupported_manifest(
     mocks.upload_xlsx.assert_not_called()
 
 
+def give_upload_permission(user, trial, type_, db):
+    db.add(
+        Permissions(
+            granted_by_user=user.id,
+            granted_to_user=user.id,
+            trial_id=TEST_TRIAL,
+            assay_type=type_,
+        )
+    )
+    db.commit()
+
+
 def test_upload_manifest(
     app_no_auth, test_user, db_with_trial_and_user, db, monkeypatch
 ):
@@ -200,20 +212,10 @@ def test_upload_manifest(
         MANIFEST_UPLOAD, data=form_data("pbmc.xlsx", io.BytesIO(b"a"), "pbmc")
     )
     assert res.status_code == 401
-    assert (
-        "not authorized to upload a pbmc manifest to" in res.json["_error"]["message"]
-    )
+    assert "not authorized to upload pbmc data" in res.json["_error"]["message"]
 
     # Add permission and retry the upload
-    db.add(
-        Permissions(
-            granted_by_user=test_user.id,
-            granted_to_user=test_user.id,
-            trial_id=TEST_TRIAL,
-            assay_type="pbmc",
-        )
-    )
-    db.commit()
+    give_upload_permission(test_user, TEST_TRIAL, "pbmc", db)
 
     mocks.clear_all()
 
@@ -293,9 +295,7 @@ class UploadMocks:
 finfo = namedtuple("finfo", ["gs_key", "local_path", "upload_placeholder"])
 
 
-def test_upload_wes(
-    app_no_auth, some_file, test_user, db_with_trial_and_user, db, monkeypatch
-):
+def test_upload_wes(app_no_auth, test_user, db_with_trial_and_user, db, monkeypatch):
     """Ensure the upload endpoint follows the expected execution flow"""
     client = app_no_auth.test_client()
 
@@ -306,7 +306,21 @@ def test_upload_wes(
         ],
     )
 
-    res = client.post(ASSAY_UPLOAD, data=form_data("wes.xlsx", some_file, "wes"))
+    # No permission to upload yet
+    res = client.post(
+        ASSAY_UPLOAD, data=form_data("wes.xlsx", io.BytesIO(b"1234"), "wes")
+    )
+    assert res.status_code == 401
+    assert "not authorized to upload wes data" in res.json["_error"]["message"]
+
+    mocks.clear_all()
+
+    # Give permission and retry
+    give_upload_permission(test_user, TEST_TRIAL, "wes", db)
+
+    res = client.post(
+        ASSAY_UPLOAD, data=form_data("wes.xlsx", io.BytesIO(b"1234"), "wes")
+    )
     assert res.json
     assert "url_mapping" in res.json
 
@@ -370,9 +384,7 @@ OLINK_TESTDATA = [
 ]
 
 
-def test_upload_olink(
-    app_no_auth, some_file, test_user, db_with_trial_and_user, db, monkeypatch
-):
+def test_upload_olink(app_no_auth, test_user, db_with_trial_and_user, db, monkeypatch):
     """Ensure the upload endpoint follows the expected execution flow"""
     client = app_no_auth.test_client()
 
@@ -384,8 +396,22 @@ def test_upload_olink(
         ],
     )
 
-    res = client.post(ASSAY_UPLOAD, data=form_data("olink.xlsx", some_file, "olink"))
-    assert res.json
+    # No permission to upload yet
+    res = client.post(
+        ASSAY_UPLOAD, data=form_data("olink.xlsx", io.BytesIO(b"1234"), "olink")
+    )
+    assert res.status_code == 401
+    assert "not authorized to upload olink data" in res.json["_error"]["message"]
+
+    mocks.clear_all()
+
+    # Give permission and retry
+    give_upload_permission(test_user, TEST_TRIAL, "olink", db)
+
+    res = client.post(
+        ASSAY_UPLOAD, data=form_data("olink.xlsx", io.BytesIO(b"1234"), "olink")
+    )
+    assert res.status_code == 200
     assert "url_mapping" in res.json
 
     url_mapping = res.json["url_mapping"]
