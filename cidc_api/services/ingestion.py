@@ -4,7 +4,7 @@ Endpoints for validating and ingesting metadata and data.
 import os
 import json
 import datetime
-from typing import BinaryIO, Tuple, List
+from typing import BinaryIO, Tuple, List, NamedTuple
 
 from werkzeug.exceptions import (
     BadRequest,
@@ -29,6 +29,7 @@ from models import (
     ManifestUploads,
     Permissions,
     CIDCRole,
+    Users,
 )
 from auth import requires_auth
 from config.settings import GOOGLE_UPLOAD_BUCKET
@@ -98,19 +99,17 @@ def validate_endpoint():
     Separated from `validate` function so that RBAC from requires_auth doesn't affect
     internal invocations of `validate` (in, e.g., the /ingestion/upload_assay endpoint).
     """
-    return validate()
+    template_type, _, template_file = extract_schema_and_xlsx()
+    return validate(template_type, template_file)
 
 
-def validate():
+def validate(template_type, template_file):
     """
     Validate a .xlsx manifest or assay metadata template.
 
     TODO: add this endpoint to the OpenAPI docs
     """
     print(f"validate started")
-    # Extract info from the request context
-    template_type, _, template_file = extract_schema_and_xlsx()
-
     # Validate the .xlsx file with respect to the schema
     try:
         error_list = validate_xlsx(
@@ -138,20 +137,7 @@ def validate():
         return jsonify(json)
 
 
-def validate_excel_payload(f):
-    def wrapped(*args, **kwargs):
-        print(f"validate_excel_payload started")
-        # Run basic validations on the provided Excel file
-        validations = validate()
-        if len(validations.json["errors"]) > 0:
-            raise BadRequest(validations.json)
-        return f(*args, **kwargs)
-
-    wrapped.__name__ = f.__name__
-    return wrapped
-
-
-def _check_permissions(user, trial_id, template_type):
+def check_permissions(user, trial_id, template_type):
     """
     Check that the given user has permissions to access the given trial / template type.
 
@@ -170,12 +156,64 @@ def _check_permissions(user, trial_id, template_type):
         )
 
 
+def upload_handler(f):
+    """
+    Extracts and validates the xlsx file from the request form body,
+    prismifies the xlsx file, checks that the current user has
+    permission to complete this upload, then passes relevant data
+    along to `f` as positional arguments.
+
+    This decorator factors out common code from `upload_manifest` and `upload_assay`.
+    """
+
+    def wrapped(*args, **kwargs):
+        print(f"upload_handler started")
+        template_type, schema_path, xlsx_file = extract_schema_and_xlsx()
+
+        # Run basic validations on the provided Excel file
+        validations = validate(template_type, xlsx_file)
+        if len(validations.json["errors"]) > 0:
+            raise BadRequest(validations.json)
+
+        md_patch, file_infos = prism.prismify(xlsx_file, schema_path, template_type)
+
+        try:
+            trial_id = md_patch[prism.PROTOCOL_ID_FIELD_NAME]
+        except KeyError:
+            raise BadRequest(f"{prism.PROTOCOL_ID_FIELD_NAME} field not found.")
+
+        user = _request_ctx_stack.top.current_user
+
+        check_permissions(user, trial_id, template_type)
+
+        return f(
+            user,
+            trial_id,
+            template_type,
+            xlsx_file,
+            md_patch,
+            file_infos,
+            *args,
+            **kwargs,
+        )
+
+    wrapped.__name__ = f.__name__
+    return wrapped
+
+
 @ingestion_api.route("/upload_manifest", methods=["POST"])
 @requires_auth(
     "ingestion/upload_manifest", [CIDCRole.ADMIN.value, CIDCRole.NCI_BIOBANK_USER.value]
 )
-@validate_excel_payload
-def upload_manifest():
+@upload_handler
+def upload_manifest(
+    user: Users,
+    trial_id: str,
+    template_type: str,
+    xlsx_file: BinaryIO,
+    md_patch: dict,
+    file_infos: List[prism.LocalFileUploadEntry],
+):
     """
     Ingest manifest data from an excel spreadsheet.
 
@@ -192,19 +230,6 @@ def upload_manifest():
         201 if the upload succeeds. Otherwise, some error status code and message.
     """
     upload_moment = datetime.datetime.now().isoformat()
-
-    template_type, schema_path, xlsx_file = extract_schema_and_xlsx()
-
-    md_patch, file_infos = prism.prismify(xlsx_file, schema_path, template_type)
-
-    try:
-        trial_id = md_patch[prism.PROTOCOL_ID_FIELD_NAME]
-    except KeyError:
-        raise BadRequest(f"{prism.PROTOCOL_ID_FIELD_NAME} field not found.")
-
-    user = _request_ctx_stack.top.current_user
-
-    _check_permissions(user, trial_id, template_type)
 
     try:
         trial = TrialMetadata.patch_manifest(trial_id, md_patch, commit=False)
@@ -247,8 +272,15 @@ def upload_manifest():
 @requires_auth(
     "ingestion/upload_assay", [CIDCRole.ADMIN.value, CIDCRole.CIMAC_BIOFX_USER.value]
 )
-@validate_excel_payload
-def upload_assay():
+@upload_handler
+def upload_assay(
+    user: Users,
+    trial_id: str,
+    template_type: str,
+    xlsx_file: BinaryIO,
+    md_patch: dict,
+    file_infos: List[prism.LocalFileUploadEntry],
+):
     """
     Initiate an assay metadata/data ingestion job.
 
@@ -265,21 +297,6 @@ def upload_assay():
     # TODO: refactor this to be a pre-GET hook on the upload-jobs resource.
     """
     print(f"upload_assay started")
-    template_type, schema_path, xlsx_file = extract_schema_and_xlsx()
-
-    # Extract the clinical trial metadata blob contained in the .xlsx file,
-    # along with information about the files the template references.
-    md_patch, file_infos = prism.prismify(xlsx_file, schema_path, template_type)
-
-    try:
-        trial_id = md_patch[prism.PROTOCOL_ID_FIELD_NAME]
-    except KeyError:
-        print(f"{prism.PROTOCOL_ID_FIELD_NAME} field not found in patch {md_patch}.")
-        raise BadRequest(f"{prism.PROTOCOL_ID_FIELD_NAME} field not found.")
-
-    user = _request_ctx_stack.top.current_user
-    _check_permissions(user, trial_id, template_type)
-
     upload_moment = datetime.datetime.now().isoformat()
     uri2uuid = {}
     url_mapping = {}
