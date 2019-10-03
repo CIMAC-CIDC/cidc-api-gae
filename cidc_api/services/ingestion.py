@@ -286,8 +286,6 @@ def upload_assay():
         if file_info.metadata_availability:
             files_with_extra_md[file_info.local_path] = file_info.upload_placeholder
 
-
-
     # Upload the xlsx template file to GCS
     xlsx_file.seek(0)
     gcs_blob = gcloud_client.upload_xlsx_to_gcs(
@@ -470,7 +468,6 @@ def extra_assay_metadata():
         [artifact_uuid_1]: [open extra metadata file 1],
         [artifact_uuid_2]: [open extra metadata file 2]
     }
-
     """
 
     if not request.form:
@@ -485,8 +482,9 @@ def extra_assay_metadata():
     job_id = request.form['job_id']
 
     for uuid, file in request.files.to_dict().items():
+        file_info = job_id, uuid, file
         try:
-            AssayUploads.merge_extra_metadata(job_id, uuid, file)
+            AssayUploads.merge_extra_metadata(file_info)
         except Exception as e:
             raise BadRequest(str(e))
 

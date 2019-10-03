@@ -553,7 +553,7 @@ class AssayUploads(CommonColumns, UploadForeignKeys):
             status="started",
             _etag=make_etag(
                 assay_type, gcs_file_map, metadata, uploader_email, "started"
-            ),
+            )
         )
         session.add(job)
         if commit:
@@ -563,10 +563,15 @@ class AssayUploads(CommonColumns, UploadForeignKeys):
 
     @staticmethod
     @with_default_session
-    def merge_extra_metadata(job_id, artifact_uuid, file, session):
+    def merge_extra_metadata(file_info, session):
 
-        job = AssayUploads.find_by_id(job_id, session = session)
-        prism.merge_artifact_extra_metadata(job.assay_patch, artifact_uuid, job.assay_type, file)
+        for job_id, artifact_uuid, file in file_info:
+            job = AssayUploads.find_by_id(job_id, session=session)
+            prism.merge_artifact_extra_metadata(
+                job.assay_patch,
+                artifact_uuid,
+                job.assay_type,
+                file)
 
         session.commit()
 
