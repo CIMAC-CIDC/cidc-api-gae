@@ -585,16 +585,21 @@ class AssayUploads(CommonColumns, UploadForeignKeys):
 
     @staticmethod
     @with_default_session
-    def merge_extra_metadata(job_id, file_info, session):
+    def merge_extra_metadata(job_id, files, session):
 
         job = AssayUploads.find_by_id(job_id, session=session)
-        for artifact_uuid, file in file_info:
-            prism.merge_artifact_extra_metadata(
+
+        for f in files.items():
+            artifact_uuid = f[0]
+            file = f[1]
+            updated_patch, _ = prism.merge_artifact_extra_metadata(
                 job.assay_patch,
                 artifact_uuid,
                 job.assay_type,
                 file)
-        session.add()
+            job.assay_patch = updated_patch
+
+        session.add(job)
         session.commit()
 
     @classmethod

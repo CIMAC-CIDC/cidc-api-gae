@@ -12,7 +12,7 @@ from werkzeug.exceptions import (
     BadRequest,
     NotImplemented,
 )
-
+from cidc_schemas import prism
 from cidc_schemas.prism import merge_artifact_extra_metadata, PROTOCOL_ID_FIELD_NAME, LocalFileUploadEntry
 
 from cidc_api.config.settings import GOOGLE_UPLOAD_BUCKET
@@ -631,6 +631,7 @@ fake_form = {
         'uuid-2': (io.BytesIO(b'fake file 2'), 'fname2')
     }
 
+
 def test_extra_metadata(app_no_auth, monkeypatch):
     """Ensure the extra assay metadata endpoint follows the expected execution flow"""
 
@@ -655,18 +656,38 @@ def test_extra_metadata(app_no_auth, monkeypatch):
     assert res.status_code == 200
     merge_extra_metadata.assert_called()
 
+fake_form_2 = {
+        'job_id': 123,
+        'uuid-1': (io.BytesIO(b'fake file 1'), 'fname1'),
+        'uuid-2': (io.BytesIO(b'fake file 2'), 'fname2')
+    }
 
-def test_merge_extra_metadata(app_no_auth, monkeypatch):
+
+def test_merge_extra_metadata(app_no_auth, monkeypatch, db, test_user, db_with_trial_and_user):
     """Ensure merging of extra metadata follows the expected execution flow"""
+    with app_no_auth.app_context():
+        assay_upload = AssayUploads.create(
+            assay_type="wes",
+            uploader_email=test_user.email,
+            gcs_file_map={},
+            metadata={PROTOCOL_ID_FIELD_NAME: TEST_TRIAL, "participants": []},
+            gcs_xlsx_uri="",
+            commit=False
+        )
+        assay_upload.id = 123
+        db.commit()
 
-    from cidc_api.services.ingestion import AssayUploads as _AssayUploads
-    merge_extra_metadata = MagicMock()
-    monkeypatch.setattr(_AssayUploads, "merge_extra_metadata", merge_extra_metadata)
+        merge = MagicMock()
+        merge.return_value = ({'dict1': 'dict1'}, {"dict2": "dict2"})
 
-    client = app_no_auth.test_client()
-    res = client.post('/ingestion/extra-assay-metadata', data=fake_form)
-    merge_artifact_extra_metadata.assert_called()
-    print(AssayUploads.find_by_id_and_email(job_id))
+        monkeypatch.setattr(prism, "merge_artifact_extra_metadata", merge)
 
+        client = app_no_auth.test_client()
+        res = client.post('/ingestion/extra-assay-metadata', data=fake_form_2)
+        assert res.status_code == 200
+        assert merge.call_count == 2
 
-    # mock merge_artifact_extra_metadata?
+        print(db.query(AssayUploads))
+        assert 1 == db.query(AssayUploads).count()
+        au = db.query(AssayUploads).first()
+        assert au.assay_patch == merge.return_value[0]

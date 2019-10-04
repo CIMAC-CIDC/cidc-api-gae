@@ -516,12 +516,13 @@ def extra_assay_metadata():
 
     job_id = request.form['job_id']
 
-    for uuid, file in request.files.to_dict().items():
-        file_info = uuid, file
-        try:
-            AssayUploads.merge_extra_metadata(job_id, file_info)
-        except Exception as e:
-            raise BadRequest(str(e))
+    files = request.files.to_dict()
+
+    try:
+        AssayUploads.merge_extra_metadata(job_id, files)
+    except Exception as e:
+        raise (e)
+        raise BadRequest(str(e))
 
     # TODO: return something here?
     return jsonify({})
