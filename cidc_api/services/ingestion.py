@@ -506,15 +506,19 @@ def extra_assay_metadata():
     """
 
     if not request.form:
-        raise BadRequest("Expected form content in request body, or failed to parse form content")
+        raise BadRequest(
+            "Expected form content in request body, or failed to parse form content"
+        )
 
-    if 'job_id' not in request.form:
+    if "job_id" not in request.form:
         raise BadRequest("Expected job_id in form")
 
     if not request.files:
-        raise BadRequest("Expected files in request (mapping from artifact uuids to open files)")
+        raise BadRequest(
+            "Expected files in request (mapping from artifact uuids to open files)"
+        )
 
-    job_id = request.form['job_id']
+    job_id = request.form["job_id"]
 
     files = request.files.to_dict()
 

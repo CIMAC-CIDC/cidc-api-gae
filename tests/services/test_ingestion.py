@@ -13,7 +13,11 @@ from werkzeug.exceptions import (
     NotImplemented,
 )
 from cidc_schemas import prism
-from cidc_schemas.prism import merge_artifact_extra_metadata, PROTOCOL_ID_FIELD_NAME, LocalFileUploadEntry
+from cidc_schemas.prism import (
+    merge_artifact_extra_metadata,
+    PROTOCOL_ID_FIELD_NAME,
+    LocalFileUploadEntry,
+)
 
 from cidc_api.config.settings import GOOGLE_UPLOAD_BUCKET
 from cidc_api.services.ingestion import extract_schema_and_xlsx
@@ -344,8 +348,7 @@ class UploadMocks:
         monkeypatch.setattr("cidc_schemas.prism.prismify", self.prismify)
         self.prismify.return_value = (
             dict(
-                **{PROTOCOL_ID_FIELD_NAME: prismify_trial_id},
-                **(prismify_extra or {}),
+                **{PROTOCOL_ID_FIELD_NAME: prismify_trial_id}, **(prismify_extra or {})
             ),
             prismify_file_entries or [],
         )
@@ -362,6 +365,7 @@ class UploadMocks:
 
 
 finfo = LocalFileUploadEntry
+
 
 def test_upload_wes(app_no_auth, test_user, db_with_trial_and_user, db, monkeypatch):
     """Ensure the upload endpoint follows the expected execution flow"""
@@ -459,7 +463,7 @@ def test_upload_olink(app_no_auth, test_user, db_with_trial_and_user, db, monkey
     mocks = UploadMocks(
         monkeypatch,
         prismify_file_entries=[
-            finfo(lp, url, "uuid" + str(i), 'npx' in url)
+            finfo(lp, url, "uuid" + str(i), "npx" in url)
             for i, (lp, url) in enumerate(OLINK_TESTDATA)
         ],
     )
@@ -626,44 +630,48 @@ def test_poll_upload_merge_status(app, db, test_user, monkeypatch):
 
 
 fake_form = {
-        'job_id': 123,
-        'uuid-1': (io.BytesIO(b'fake file 1'), 'fname1'),
-        'uuid-2': (io.BytesIO(b'fake file 2'), 'fname2')
-    }
+    "job_id": 123,
+    "uuid-1": (io.BytesIO(b"fake file 1"), "fname1"),
+    "uuid-2": (io.BytesIO(b"fake file 2"), "fname2"),
+}
 
 
 def test_extra_metadata(app_no_auth, monkeypatch):
     """Ensure the extra assay metadata endpoint follows the expected execution flow"""
 
     client = app_no_auth.test_client()
-    res = client.post('/ingestion/extra-assay-metadata')
+    res = client.post("/ingestion/extra-assay-metadata")
     assert res.status_code == 400
-    assert 'Expected form' in res.json['_error']['message']
+    assert "Expected form" in res.json["_error"]["message"]
 
-    res = client.post('/ingestion/extra-assay-metadata', data={'foo': 'bar'})
+    res = client.post("/ingestion/extra-assay-metadata", data={"foo": "bar"})
     assert res.status_code == 400
-    assert 'job_id' in res.json['_error']['message']
+    assert "job_id" in res.json["_error"]["message"]
 
-    res = client.post('/ingestion/extra-assay-metadata', data={'job_id': 123})
+    res = client.post("/ingestion/extra-assay-metadata", data={"job_id": 123})
     assert res.status_code == 400
-    assert 'files' in res.json['_error']['message']
+    assert "files" in res.json["_error"]["message"]
 
     from cidc_api.services.ingestion import AssayUploads as _AssayUploads
+
     merge_extra_metadata = MagicMock()
     monkeypatch.setattr(_AssayUploads, "merge_extra_metadata", merge_extra_metadata)
 
-    res = client.post('/ingestion/extra-assay-metadata', data=fake_form)
+    res = client.post("/ingestion/extra-assay-metadata", data=fake_form)
     assert res.status_code == 200
     merge_extra_metadata.assert_called()
 
+
 fake_form_2 = {
-        'job_id': 123,
-        'uuid-1': (io.BytesIO(b'fake file 1'), 'fname1'),
-        'uuid-2': (io.BytesIO(b'fake file 2'), 'fname2')
-    }
+    "job_id": 123,
+    "uuid-1": (io.BytesIO(b"fake file 1"), "fname1"),
+    "uuid-2": (io.BytesIO(b"fake file 2"), "fname2"),
+}
 
 
-def test_merge_extra_metadata(app_no_auth, monkeypatch, db, test_user, db_with_trial_and_user):
+def test_merge_extra_metadata(
+    app_no_auth, monkeypatch, db, test_user, db_with_trial_and_user
+):
     """Ensure merging of extra metadata follows the expected execution flow"""
     with app_no_auth.app_context():
         assay_upload = AssayUploads.create(
@@ -672,18 +680,18 @@ def test_merge_extra_metadata(app_no_auth, monkeypatch, db, test_user, db_with_t
             gcs_file_map={},
             metadata={PROTOCOL_ID_FIELD_NAME: TEST_TRIAL, "participants": []},
             gcs_xlsx_uri="",
-            commit=False
+            commit=False,
         )
         assay_upload.id = 123
         db.commit()
 
         merge = MagicMock()
-        merge.return_value = ({'dict1': 'dict1'}, {"dict2": "dict2"})
+        merge.return_value = ({"dict1": "dict1"}, {"dict2": "dict2"})
 
         monkeypatch.setattr(prism, "merge_artifact_extra_metadata", merge)
 
         client = app_no_auth.test_client()
-        res = client.post('/ingestion/extra-assay-metadata', data=fake_form_2)
+        res = client.post("/ingestion/extra-assay-metadata", data=fake_form_2)
         assert res.status_code == 200
         assert merge.call_count == 2
 

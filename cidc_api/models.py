@@ -575,7 +575,7 @@ class AssayUploads(CommonColumns, UploadForeignKeys):
             status="started",
             _etag=make_etag(
                 assay_type, gcs_file_map, metadata, uploader_email, "started"
-            )
+            ),
         )
         session.add(job)
         if commit:
@@ -593,10 +593,8 @@ class AssayUploads(CommonColumns, UploadForeignKeys):
             artifact_uuid = f[0]
             file = f[1]
             updated_patch, _ = prism.merge_artifact_extra_metadata(
-                job.assay_patch,
-                artifact_uuid,
-                job.assay_type,
-                file)
+                job.assay_patch, artifact_uuid, job.assay_type, file
+            )
             job.assay_patch = updated_patch
 
         session.add(job)
