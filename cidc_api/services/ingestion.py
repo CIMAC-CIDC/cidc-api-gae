@@ -342,7 +342,7 @@ def upload_assay(
         "url_mapping": url_mapping,
         "gcs_bucket": GOOGLE_UPLOAD_BUCKET,
     }
-    if schema_hint in prism.ASSAYS_WITH_EXTRA_METADATA:
+    if bool(files_with_extra_md):
         response["extra_metadata"] = files_with_extra_md
 
     return jsonify(response)

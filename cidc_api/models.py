@@ -594,7 +594,7 @@ class AssayUploads(CommonColumns, UploadForeignKeys):
                 artifact_uuid,
                 job.assay_type,
                 file)
-
+        session.add()
         session.commit()
 
     @classmethod
