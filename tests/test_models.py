@@ -205,21 +205,22 @@ def test_assay_upload_merge_extra_metadata(db, monkeypatch):
     custom_extra_md_parse = MagicMock()
     custom_extra_md_parse.side_effect = lambda f: {"extra": f.read().decode()}
     monkeypatch.setattr(
-        prism,
-        "_EXTRA_METADATA_PARSERS",
-        {"assay_with_extra_md": custom_extra_md_parse},
+        prism, "_EXTRA_METADATA_PARSERS", {"assay_with_extra_md": custom_extra_md_parse}
     )
 
-    AssayUploads.merge_extra_metadata(111, {
-        "uuid-1": io.BytesIO(b"within extra md file 1"),
-        "uuid-2": io.BytesIO(b"within extra md file 2"),
-        }, session=db)
+    AssayUploads.merge_extra_metadata(
+        111,
+        {
+            "uuid-1": io.BytesIO(b"within extra md file 1"),
+            "uuid-2": io.BytesIO(b"within extra md file 2"),
+        },
+        session=db,
+    )
 
     assert 1 == db.query(AssayUploads).count()
     au = db.query(AssayUploads).first()
     assert "extra" in au.assay_patch["whatever"]["hierarchy"][0]
     assert "extra" in au.assay_patch["whatever"]["hierarchy"][1]
-
 
 
 @db_test

@@ -525,7 +525,7 @@ def extra_assay_metadata():
     try:
         AssayUploads.merge_extra_metadata(job_id, files)
     except Exception as e:
-        # TODO see if it's validation sort of error and return BadRequest 
+        # TODO see if it's validation sort of error and return BadRequest
         raise e
 
     # TODO: return something here?
