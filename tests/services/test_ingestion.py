@@ -29,6 +29,11 @@ from cidc_api.models import (
     DownloadableFiles,
 )
 
+from . import open_data_file
+from ..test_models import db_test
+from ..util import assert_same_elements
+from ..conftest import TEST_EMAIL
+
 from cidc_api.models import (
     Users,
     AssayUploads,
@@ -57,7 +62,7 @@ TEST_TRIAL = "test_trial"
 def db_with_trial_and_user(db, test_user):
     # Create the target trial and the uploader
     TrialMetadata.create(
-        "test_trial", {PROTOCOL_ID_FIELD_NAME: TEST_TRIAL, "participants": []}
+        "test_trial", {prism.PROTOCOL_ID_FIELD_NAME: TEST_TRIAL, "participants": []}
     )
     Users.create(profile={"email": test_user.email})
 
