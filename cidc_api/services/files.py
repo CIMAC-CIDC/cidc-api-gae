@@ -36,15 +36,14 @@ def get_download_url():
 
     # Ensure user has permission to access this file
     perms = Permissions.find_for_user(user)
-    if (
-        not any(
+    if user.role != CIDCRole.ADMIN.value:
+        # Check for a permission matching this file's trial and assay
+        if not any(
             perm.assay_type == file_record.assay_type
             and perm.trial_id == file_record.trial_id
             for perm in perms
-        )
-        and user.role != CIDCRole.ADMIN.value
-    ):
-        raise NotFound(f"No file with id {file_id}.")
+        ):
+            raise NotFound(f"No file with id {file_id}.")
 
     # Generate the signed URL and return it.
     download_url = gcloud_client.get_signed_url(file_record.object_url)
