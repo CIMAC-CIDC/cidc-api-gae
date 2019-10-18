@@ -111,4 +111,3 @@ def update_file_filters(request: Request, _):
     lookup = request.args.copy()
     lookup["where"] = where_query
     request.args = ImmutableMultiDict(lookup)
-
