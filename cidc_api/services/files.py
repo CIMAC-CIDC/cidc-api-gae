@@ -36,10 +36,13 @@ def get_download_url():
 
     # Ensure user has permission to access this file
     perms = Permissions.find_for_user(user)
-    if not any(
-        perm.assay_type == file_record.assay_type
-        and perm.trial_id == file_record.trial_id
-        for perm in perms
+    if (
+        not any(
+            perm.assay_type == file_record.assay_type
+            and perm.trial_id == file_record.trial_id
+            for perm in perms
+        )
+        and CIDCRole(user.role) != CIDCRole.ADMIN
     ):
         raise NotFound(f"No file with id {file_id}.")
 
