@@ -122,6 +122,8 @@ def get_signed_url(
         method=method,
         response_disposition=f'attachment; filename="{full_filename}"',
     )
+    print(f"generated signed URL for {object_name}")
+    print(url)
 
     return url
 
