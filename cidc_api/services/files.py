@@ -42,7 +42,7 @@ def get_download_url():
             and perm.trial_id == file_record.trial_id
             for perm in perms
         )
-        and CIDCRole(user.role) != CIDCRole.ADMIN
+        and user.role != CIDCRole.ADMIN.value
     ):
         raise NotFound(f"No file with id {file_id}.")
 
