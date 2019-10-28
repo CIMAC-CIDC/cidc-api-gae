@@ -82,7 +82,39 @@ class BearerAuth(TokenAuth):
 
         log_user_and_request_details(is_authorized)
 
+        self.enforce_cli_version()
+
         return is_authorized
+
+    def enforce_cli_version(self):
+        """
+        If the current request appears to come from the CLI and not the Portal, enforce the configured
+        minimum CLI version.
+        """
+        user_agent = request.headers.get("User-Agent")
+
+        # e.g., during testing no User-Agent header is supplied
+        if not user_agent:
+            return
+
+        client, version = user_agent.split("/")
+
+        # Old CLI versions don't update the User-Agent header, so we (perhaps dangerously)
+        # assume any request coming from the python requests library is from a "very" old
+        # version of the CLI.
+        is_very_old_cli = client == "python-requests"
+
+        # Newer version of the CLI update the User-Agent header to `cidc-cli/{version}`,
+        # so we can assess whether the requester needs to update their CLI.
+        is_old_cli = client == "cidc-cli" and version < app.config["MIN_CLI_VERSION"]
+
+        if is_very_old_cli or is_old_cli:
+            print("cancelling request: detected outdated CLI")
+            raise BadRequest(
+                "You appear to be using an out-of-date version of the CIDC CLI. "
+                "Please upgrade to the most recent version:\n"
+                "    pip3 install --upgrade cidc-cli"
+            )
 
     def role_auth(
         self, profile: dict, allowed_roles: List[str], resource: str, method: str
