@@ -18,6 +18,10 @@ DEBUG = ENV == "dev" and environ.get("DEBUG")
 TESTING = environ.get("TESTING") == "True"
 ## End application environment config
 
+## Configure Dev CFn
+CFNS_HTTP = environ.get("CFNS_HTTP")
+## End Dev CFn Config
+
 secrets = get_secret_manager(TESTING)
 
 ## Configure Auth0
