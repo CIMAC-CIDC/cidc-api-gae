@@ -1,4 +1,5 @@
 import logging
+from packaging import version
 from functools import wraps
 from typing import List
 
@@ -97,7 +98,7 @@ class BearerAuth(TokenAuth):
         if not user_agent:
             return
 
-        client, version = user_agent.split("/")
+        client, client_version = user_agent.split("/")
 
         # Old CLI versions don't update the User-Agent header, so we (perhaps dangerously)
         # assume any request coming from the python requests library is from a "very" old
@@ -106,7 +107,9 @@ class BearerAuth(TokenAuth):
 
         # Newer version of the CLI update the User-Agent header to `cidc-cli/{version}`,
         # so we can assess whether the requester needs to update their CLI.
-        is_old_cli = client == "cidc-cli" and version < app.config["MIN_CLI_VERSION"]
+        is_old_cli = client == "cidc-cli" and version.parse(
+            client_version
+        ) < version.parse(app.config["MIN_CLI_VERSION"])
 
         if is_very_old_cli or is_old_cli:
             print("cancelling request: detected outdated CLI")
