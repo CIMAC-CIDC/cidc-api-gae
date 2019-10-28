@@ -6,7 +6,7 @@ import requests
 from eve.auth import TokenAuth
 from jose import jwt
 from flask import _request_ctx_stack, request, current_app as app
-from werkzeug.exceptions import Unauthorized
+from werkzeug.exceptions import Unauthorized, BadRequest
 
 from models import Users
 from config.settings import AUTH0_DOMAIN, ALGORITHMS, AUTH0_CLIENT_ID, TESTING
