@@ -7,7 +7,12 @@ import requests
 from eve.auth import TokenAuth
 from jose import jwt
 from flask import _request_ctx_stack, request, current_app as app
-from werkzeug.exceptions import Unauthorized, BadRequest, PreconditionFailed
+from werkzeug.exceptions import (
+    Unauthorized,
+    BadRequest,
+    PreconditionFailed,
+    InternalServerError,
+)
 
 from models import Users
 from config.settings import AUTH0_DOMAIN, ALGORITHMS, AUTH0_CLIENT_ID, TESTING
@@ -98,7 +103,11 @@ class BearerAuth(TokenAuth):
         if not user_agent:
             return
 
-        client, client_version = user_agent.split("/", 1)
+        try:
+            client, client_version = user_agent.split("/", 1)
+        except ValueError:
+            print(f"Unrecognized user-agent string format: {user_agent}")
+            raise BadRequest("could not parse User-Agent string")
 
         # Old CLI versions don't update the User-Agent header, so we (perhaps dangerously)
         # assume any request coming from the python requests library is from a "very" old

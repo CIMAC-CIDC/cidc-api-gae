@@ -73,6 +73,8 @@ def test_enforce_cli_version(bearer_auth, app_no_auth):
         ):
             bearer_auth.enforce_cli_version()
 
+    test_with_user_agent("asdlfj", "")
+
     match = "upgrade to the most recent version"
 
     # Reject python-requests requests
@@ -92,6 +94,13 @@ def test_enforce_cli_version(bearer_auth, app_no_auth):
 
     # Accept non-CLI clients
     test_with_user_agent("Mozilla/2.0 Firefox", "")
+
+    # Reject weird user-agent strings
+    with app_no_auth.test_request_context(
+        "/", headers={"User-Agent": f"not a valid user agent"}
+    ):
+        with pytest.raises(BadRequest, match="could not parse User-Agent string"):
+            bearer_auth.enforce_cli_version()
 
 
 def test_token_auth(monkeypatch, bearer_auth):
