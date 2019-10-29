@@ -190,6 +190,10 @@ def upload_handler(f):
             )
         except ValidationError as e:
             errors_so_far.append(f"{e.message} in {e.instance}")
+        except prism.MergeCollisionException as e:
+            errors_so_far.append(
+                f"{str(e)} If you need to update a previous upload, contact a CIDC administrator."
+            )
         except prism.InvalidMergeTargetException as e:
             # we have an invalid MD stored in db - users can't do anything about it.
             # So we log it
