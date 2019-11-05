@@ -58,6 +58,8 @@ def templates(template_family, template_type):
 
     # Check that the template exists
     if not os.path.exists(path):
-        raise NotFound(f"No {template_family} template exists for {template_type}")
+        raise NotFound(
+            f"No template found for the given template family and template type"
+        )
 
     return send_file(path)
