@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -46,9 +48,21 @@ def test_templates(app_no_auth):
     assert res.status_code == 404
 
     # Existing manifest
+    pbmc_path = os.path.join(
+        app_no_auth.config["TEMPLATES_DIR"], "manifests", "pbmc_template.xlsx"
+    )
+    with open(pbmc_path, "rb") as f:
+        real_pbmc_file = f.read()
     res = client.get(f"{INFO_ENDPOINT}/templates/manifests/pbmc")
     assert res.status_code == 200
+    assert res.data == real_pbmc_file
 
     # Existing assay
+    olink_path = os.path.join(
+        app_no_auth.config["TEMPLATES_DIR"], "metadata", "olink_template.xlsx"
+    )
+    with open(olink_path, "rb") as f:
+        real_olink_file = f.read()
     res = client.get(f"{INFO_ENDPOINT}/templates/metadata/olink")
     assert res.status_code == 200
+    assert res.data == real_olink_file
