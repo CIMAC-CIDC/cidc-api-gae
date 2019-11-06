@@ -1,6 +1,5 @@
 """Endpoints providing info related to this API"""
 import os
-import re
 
 from flask import Blueprint, jsonify, current_app as app, send_file
 from werkzeug.exceptions import NotFound, BadRequest
@@ -36,9 +35,6 @@ def extra_data_types():
     return jsonify(EXTRA_DATA_TYPES)
 
 
-alphabetic = re.compile(r"^[a-zA-Z]*$")
-
-
 @info_api.route("templates/<template_family>/<template_type>", methods=["GET"])
 def templates(template_family, template_type):
     """
@@ -47,9 +43,9 @@ def templates(template_family, template_type):
     `template_type` (e.g., pbmc, olink).
     """
     # Check that both strings are alphabetic
-    if not alphabetic.match(template_family):
+    if not template_family.isalpha():
         raise BadRequest(f"Invalid template family: {template_family}")
-    elif not alphabetic.match(template_type):
+    elif not template_type.isalpha():
         raise BadRequest(f"Invalid template type: {template_type}")
 
     path = os.path.join(
