@@ -415,6 +415,7 @@ def test_upload_wes(app_no_auth, test_user, db_with_trial_and_user, db, monkeypa
     assert "url_mapping" in res.json
     url_mapping = res.json["url_mapping"]
 
+    # WES assay does have any extra_metadata files
     assert "extra_metadata" in res.json
     extra_metadata = res.json["extra_metadata"]
     assert extra_metadata is None
@@ -509,6 +510,7 @@ def test_upload_olink(app_no_auth, test_user, db_with_trial_and_user, db, monkey
     assert "url_mapping" in res.json
     url_mapping = res.json["url_mapping"]
 
+    # Olink assay has extra_metadata files
     assert "extra_metadata" in res.json
     extra_metadata = res.json["extra_metadata"]
     assert type(extra_metadata) == dict
