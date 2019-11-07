@@ -363,7 +363,7 @@ def upload_assay(
         "job_etag": job._etag,
         "url_mapping": url_mapping,
         "gcs_bucket": GOOGLE_UPLOAD_BUCKET,
-        "extra_metadata": None
+        "extra_metadata": None,
     }
     if bool(files_with_extra_md):
         response["extra_metadata"] = files_with_extra_md
