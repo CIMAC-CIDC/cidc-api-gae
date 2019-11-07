@@ -318,7 +318,7 @@ def upload_assay(
         gcs_bucket: the bucket to upload objects to.
         job_id: the unique identifier for this upload job in the database
         job_etag: the job record's etag, required by Eve for safe updates
-        extra_metadata: files with extra metadata information (only applicable to few assays), else none
+        extra_metadata: files with extra metadata information (only applicable to few assays), else None
     
     # TODO: refactor this to be a pre-GET hook on the upload-jobs resource.
     """
