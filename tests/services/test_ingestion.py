@@ -415,7 +415,8 @@ def test_upload_wes(app_no_auth, test_user, db_with_trial_and_user, db, monkeypa
     assert "url_mapping" in res.json
     url_mapping = res.json["url_mapping"]
 
-    # WES assay does have any extra_metadata files
+    # WES assay does not have any extra_metadata files, but its (and every assay's) response 
+    # should have an extra_metadata field.
     assert "extra_metadata" in res.json
     extra_metadata = res.json["extra_metadata"]
     assert extra_metadata is None
