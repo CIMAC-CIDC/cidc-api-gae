@@ -455,6 +455,14 @@ class UploadForeignKeys:
     # The object URI for the raw excel form associated with this upload
     gcs_xlsx_uri = Column(String, nullable=False)
 
+    def alert_upload_success(self):
+        """Send an email notification that an upload has succeeded."""
+        # (import these here to avoid a circular import error)
+        import emails, gcloud_client
+
+        # Send admin notification email
+        gcloud_client.send_email(**emails.new_upload_alert(self))
+
 
 class ManifestUploads(CommonColumns, UploadForeignKeys):
     __tablename__ = "manifest_uploads"
@@ -523,6 +531,8 @@ class AssayUploadStatus(EnumBaseClass):
                 if t not in merge_statuses:
                     return False
             if c in merge_statuses:
+                return False
+            if c == cls.STARTED and t in merge_statuses:
                 return False
         return True
 
@@ -631,8 +641,17 @@ class AssayUploads(CommonColumns, UploadForeignKeys):
     @with_default_session
     def ingestion_success(self, session):
         """Set own status to reflect successful merge and trigger email notifying CIDC admins."""
+        # Do status update if the transition is valid
+        if not AssayUploadStatus.is_valid_transition(
+            self.status, AssayUploadStatus.MERGE_COMPLETED.value
+        ):
+            raise Exception(
+                f"Cannot declare ingestion success given current status: {self.status}"
+            )
         self.status = AssayUploadStatus.MERGE_COMPLETED.value
         session.commit()
+
+        self.alert_upload_success()
 
 
 class DownloadableFiles(CommonColumns):
