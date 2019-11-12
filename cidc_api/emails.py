@@ -1,6 +1,7 @@
 """Template functions for CIDC email bodies."""
+from typing import Union
 
-from models import Users
+from models import Users, AssayUploads, ManifestUploads
 from config.settings import ENV
 
 CIDC_MAILING_LIST = "cidc@jimmy.harvard.edu"
@@ -39,6 +40,33 @@ def new_user_registration(email: str) -> dict:
         f"A new user, {email}, has registered for the CIMAC-CIDC Data Portal ({ENV}). If you are a CIDC Admin, "
         "please visit the accounts management tab in the Portal to review their request."
     )
+
+    email = {
+        "to_emails": [CIDC_MAILING_LIST],
+        "subject": subject,
+        "html_content": html_content,
+    }
+
+    return email
+
+
+def new_upload_alert(upload: Union[AssayUploads, ManifestUploads]) -> dict:
+    """Alert the CIDC administrators that an upload succeeded."""
+
+    upload_type = (
+        upload.assay_type if hasattr(upload, "assay_type") else upload.manifest_type
+    )
+
+    subject = f"[UPLOAD SUCCESS] {upload_type} uploaded to {upload.trial_id}"
+
+    html_content = f"""
+    <ul>
+        <li><strong>upload job id:</strong> {upload.id}</li>
+        <li><strong>trial id:</strong> {upload.trial_id}</li>
+        <li><strong>type:</strong> {upload_type}</li>
+        <li><strong>uploader:</strong> {upload.uploader_email}</li>
+    </ul
+    """
 
     email = {
         "to_emails": [CIDC_MAILING_LIST],

@@ -582,9 +582,13 @@ class AssayUploads(CommonColumns, UploadForeignKeys):
             assay_patch=metadata,
             uploader_email=uploader_email,
             gcs_xlsx_uri=gcs_xlsx_uri,
-            status="started",
+            status=AssayUploadStatus.STARTED.value,
             _etag=make_etag(
-                assay_type, gcs_file_map, metadata, uploader_email, "started"
+                assay_type,
+                gcs_file_map,
+                metadata,
+                uploader_email,
+                AssayUploadStatus.STARTED.value,
             ),
         )
         session.add(job)
@@ -623,6 +627,12 @@ class AssayUploads(CommonColumns, UploadForeignKeys):
         if upload and upload.uploader_email != email:
             return None
         return upload
+
+    @with_default_session
+    def ingestion_success(self, session):
+        """Set own status to reflect successful merge and trigger email notifying CIDC admins."""
+        self.status = AssayUploadStatus.MERGE_COMPLETED.value
+        session.commit()
 
 
 class DownloadableFiles(CommonColumns):
