@@ -287,6 +287,9 @@ def upload_manifest(
         session=session,
     )
 
+    # Manifest has been uploaded successfully
+    manifest_upload.alert_upload_success()
+
     # Publish that this trial's metadata has been updated
     gcloud_client.publish_patient_sample_update(trial.trial_id)
 
