@@ -57,7 +57,7 @@ def new_upload_alert(upload: Union[AssayUploads, ManifestUploads]) -> dict:
         upload.assay_type if hasattr(upload, "assay_type") else upload.manifest_type
     )
 
-    subject = f"[UPLOAD SUCCESS] {upload_type} uploaded to {upload.trial_id}"
+    subject = f"[UPLOAD SUCCESS]({ENV}) {upload_type} uploaded to {upload.trial_id}"
 
     html_content = f"""
     <ul>
