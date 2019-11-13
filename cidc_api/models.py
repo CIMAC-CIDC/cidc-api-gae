@@ -458,7 +458,7 @@ class UploadForeignKeys:
     def alert_upload_success(self):
         """Send an email notification that an upload has succeeded."""
         # (import these here to avoid a circular import error)
-        import emails
+        from cidc_api import emails
 
         # Send admin notification email
         emails.new_upload_alert(self, send_email=True)

@@ -2,9 +2,9 @@
 from functools import wraps
 from typing import Union
 
-import gcloud_client
-from models import Users, AssayUploads, ManifestUploads
-from config.settings import ENV
+from cidc_api import gcloud_client
+from cidc_api.models import Users, AssayUploads, ManifestUploads
+from cidc_api.config.settings import ENV
 
 CIDC_MAILING_LIST = "cidc@jimmy.harvard.edu"
 
