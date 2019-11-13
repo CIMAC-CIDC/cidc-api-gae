@@ -1,12 +1,31 @@
 """Template functions for CIDC email bodies."""
+from functools import wraps
 from typing import Union
 
+import gcloud_client
 from models import Users, AssayUploads, ManifestUploads
 from config.settings import ENV
 
 CIDC_MAILING_LIST = "cidc@jimmy.harvard.edu"
 
 
+def sendable(email_template):
+    """
+    Adds the `send` kwarg to an email template. If send_email=True, 
+    send the email on function call.
+    """
+
+    @wraps(email_template)
+    def wrapped(*args, send_email=False, **kwargs):
+        email = email_template(*args, **kwargs)
+        if send_email:
+            gcloud_client.send_email(**email)
+        return email
+
+    return wrapped
+
+
+@sendable
 def confirm_account_approval(user: Users) -> dict:
     """Send a message to the user confirming that they are approved to use the CIDC."""
 
@@ -31,6 +50,7 @@ def confirm_account_approval(user: Users) -> dict:
     return email
 
 
+@sendable
 def new_user_registration(email: str) -> dict:
     """Alert the CIDC admin mailing list to a new user registration."""
 
@@ -50,6 +70,7 @@ def new_user_registration(email: str) -> dict:
     return email
 
 
+@sendable
 def new_upload_alert(upload: Union[AssayUploads, ManifestUploads]) -> dict:
     """Alert the CIDC administrators that an upload succeeded."""
 

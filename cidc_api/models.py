@@ -458,10 +458,10 @@ class UploadForeignKeys:
     def alert_upload_success(self):
         """Send an email notification that an upload has succeeded."""
         # (import these here to avoid a circular import error)
-        import emails, gcloud_client
+        import emails
 
         # Send admin notification email
-        gcloud_client.send_email(**emails.new_upload_alert(self))
+        emails.new_upload_alert(self, send_email=True)
 
 
 class ManifestUploads(CommonColumns, UploadForeignKeys):
