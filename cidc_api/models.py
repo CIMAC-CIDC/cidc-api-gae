@@ -639,7 +639,7 @@ class AssayUploads(CommonColumns, UploadForeignKeys):
         return upload
 
     @with_default_session
-    def ingestion_success(self, session, commit=False):
+    def ingestion_success(self, session: Session, commit: bool = False):
         """Set own status to reflect successful merge and trigger email notifying CIDC admins."""
         # Do status update if the transition is valid
         if not AssayUploadStatus.is_valid_transition(
