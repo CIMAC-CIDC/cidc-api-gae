@@ -482,6 +482,7 @@ class ManifestUploads(CommonColumns, UploadForeignKeys):
         gcs_xlsx_uri: str,
         session: Session,
         commit: bool = True,
+        send_email: bool = False,
     ):
         """Create a new ManifestUpload for the given trial manifest patch."""
         assert (
@@ -500,6 +501,9 @@ class ManifestUploads(CommonColumns, UploadForeignKeys):
         session.add(upload)
         if commit:
             session.commit()
+
+        if send_email:
+            upload.alert_upload_success()
 
         return upload
 
@@ -639,7 +643,9 @@ class AssayUploads(CommonColumns, UploadForeignKeys):
         return upload
 
     @with_default_session
-    def ingestion_success(self, session: Session, commit: bool = False):
+    def ingestion_success(
+        self, session: Session, commit: bool = False, send_email: bool = False
+    ):
         """Set own status to reflect successful merge and trigger email notifying CIDC admins."""
         # Do status update if the transition is valid
         if not AssayUploadStatus.is_valid_transition(
@@ -653,7 +659,8 @@ class AssayUploads(CommonColumns, UploadForeignKeys):
         if commit:
             session.commit()
 
-        self.alert_upload_success()
+        if send_email:
+            self.alert_upload_success()
 
 
 class DownloadableFiles(CommonColumns):

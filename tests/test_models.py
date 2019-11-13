@@ -248,9 +248,15 @@ def test_assay_upload_ingestion_success(db, monkeypatch, capsys):
     assay_upload.status = AssayUploadStatus.UPLOAD_COMPLETED.value
     assay_upload.ingestion_success()
 
-    # Check that status was updated and email was sent
+    # Check that status was updated and email wasn't sent by default
     db_record = AssayUploads.find_by_id(assay_upload.id)
     assert db_record.status == AssayUploadStatus.MERGE_COMPLETED.value
+    assert (
+        "Would send email with subject '[UPLOAD SUCCESS]" not in capsys.readouterr()[0]
+    )
+
+    # Check that email gets sent when specified
+    assay_upload.ingestion_success(send_email=True)
     assert "Would send email with subject '[UPLOAD SUCCESS]" in capsys.readouterr()[0]
 
 

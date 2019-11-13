@@ -285,10 +285,8 @@ def upload_manifest(
         metadata=md_patch,
         gcs_xlsx_uri=gcs_blob.name,
         session=session,
+        send_email=True,
     )
-
-    # Manifest has been uploaded successfully
-    manifest_upload.alert_upload_success()
 
     # Publish that this trial's metadata has been updated
     gcloud_client.publish_patient_sample_update(trial.trial_id)
