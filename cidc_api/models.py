@@ -639,7 +639,7 @@ class AssayUploads(CommonColumns, UploadForeignKeys):
         return upload
 
     @with_default_session
-    def ingestion_success(self, session):
+    def ingestion_success(self, session, commit=False):
         """Set own status to reflect successful merge and trigger email notifying CIDC admins."""
         # Do status update if the transition is valid
         if not AssayUploadStatus.is_valid_transition(
@@ -649,7 +649,9 @@ class AssayUploads(CommonColumns, UploadForeignKeys):
                 f"Cannot declare ingestion success given current status: {self.status}"
             )
         self.status = AssayUploadStatus.MERGE_COMPLETED.value
-        session.commit()
+
+        if commit:
+            session.commit()
 
         self.alert_upload_success()
 
