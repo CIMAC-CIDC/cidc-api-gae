@@ -5,6 +5,7 @@ Revises: b8eaf567ac2f
 Create Date: 2019-11-14 11:43:49.297901
 
 """
+import os
 from typing import Callable
 
 from alembic import op
@@ -22,8 +23,10 @@ down_revision = "b8eaf567ac2f"
 branch_labels = None
 depends_on = None
 
+is_testing = os.environ.get("TESTING")
+
 session = Session(bind=op.get_bind())
-storage_client = storage.Client()
+storage_client = storage.Client() if not is_testing else None
 
 
 def _do_metadata_migration(metadata_migration: Callable[[dict], MigrationResult]):
@@ -61,9 +64,17 @@ def _do_metadata_migration(metadata_migration: Callable[[dict], MigrationResult]
 
 def upgrade():
     """Update Olink's assay_raw_ct artifact data format to CSV"""
+    # Don't run this migration on the test database
+    if is_testing:
+        return
+
     _do_metadata_migration(v0_10_0_to_v0_10_2.upgrade)
 
 
 def downgrade():
     """Downgrade Olink's assay_raw_ct artifact data format to XLSX"""
+    # Don't run this migration on the test database
+    if is_testing:
+        return
+
     _do_metadata_migration(v0_10_0_to_v0_10_2.downgrade)
