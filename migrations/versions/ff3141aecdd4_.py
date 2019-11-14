@@ -1,4 +1,4 @@
-"""empty message
+"""Update Olink's assay_raw_ct artifact data format from XLSX to CSV.
 
 Revision ID: ff3141aecdd4
 Revises: b8eaf567ac2f
