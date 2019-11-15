@@ -8,8 +8,7 @@ Create Date: 2019-11-14 11:43:49.297901
 import os
 
 from cidc_schemas.migrations import v0_10_0_to_v0_10_2
-
-from cidc_api.migration_utils import run_metadata_migration
+from cidc_api.utils.migrations import run_metadata_migration
 
 # revision identifiers, used by Alembic.
 revision = "ff3141aecdd4"
