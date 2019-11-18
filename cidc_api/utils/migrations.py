@@ -106,10 +106,11 @@ def run_metadata_migration(metadata_migration: Callable[[dict], MigrationResult]
 
         # Update the GCS URIs of files that were part of this upload
         old_file_map = upload.gcs_file_map
+        new_file_map = {}
         for (
             old_upload_uri,
             old_target_uri,
-            _,
+            artifact_uuid,
         ) in upload.upload_uris_with_data_uris_with_uuids():
             upload_timestamp = old_upload_uri[len(old_target_uri) + 1 :]
             if old_target_uri in migration.file_updates:
@@ -125,9 +126,20 @@ def run_metadata_migration(metadata_migration: Callable[[dict], MigrationResult]
                         ),
                     )
                     gcs_tasks.schedule(renamer)
+                new_file_map[new_target_uri] = artifact_uuid
 
-    # TODO Migrate all manifest records
-    # manifest_uploads = session.query(ManifestUploads).with_for_update().all()
+        # Update the patch file map
+        upload.gcs_file_map = new_file_map
+
+    # Migrate all manifest records
+    manifest_uploads: List[ManifestUploads] = session.query(
+        ManifestUploads
+    ).with_for_update().all()
+    for upload in manifest_uploads:
+        migration = metadata_migration(upload.metadata_patch)
+
+        # Update the metadata patch
+        upload.metadata_patch = migration.result
 
     # Attempt to make GCS updates
     gcs_tasks.run_all()
