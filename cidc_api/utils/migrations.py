@@ -126,7 +126,7 @@ def run_metadata_migration(metadata_migration: Callable[[dict], MigrationResult]
                         ),
                     )
                     gcs_tasks.schedule(renamer)
-                new_file_map[new_target_uri] = artifact_uuid
+                new_file_map[new_upload_uri] = artifact_uuid
 
         # Update the patch file map
         upload.gcs_file_map = new_file_map
