@@ -69,12 +69,12 @@ def upload_xlsx_to_gcs(
         upload_moment=upload_moment,
     )
 
-    if ENV == "dev":
-        size = filebytes.seek(0, 2) or 0
-        print(
-            f"Would've saved (size:{size}) {blob_name} to {GOOGLE_UPLOAD_BUCKET} and {GOOGLE_DATA_BUCKET}"
-        )
-        return _pseudo_blob(blob_name, size, "_pseudo_md5_hash", upload_moment)
+    # if ENV == "dev":
+    #     size = filebytes.seek(0, 2) or 0
+    #     print(
+    #         f"Would've saved (size:{size}) {blob_name} to {GOOGLE_UPLOAD_BUCKET} and {GOOGLE_DATA_BUCKET}"
+    #     )
+    #     return _pseudo_blob(blob_name, size, "_pseudo_md5_hash", upload_moment)
 
     upload_bucket: storage.Bucket = _get_bucket(GOOGLE_UPLOAD_BUCKET)
     blob = upload_bucket.blob(blob_name)
