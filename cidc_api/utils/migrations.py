@@ -134,7 +134,7 @@ def _run_metadata_migration(
             upload_timestamp = old_upload_uri[len(old_target_uri) + 1 :]
             if old_target_uri in migration.file_updates:
                 new_target_uri = migration.file_updates[old_target_uri]["object_url"]
-                if old_gcs_uri != new_target_uri:
+                if old_target_uri != new_target_uri:
                     new_upload_uri = "/".join([new_target_uri, upload_timestamp])
                     renamer = PieceOfWork(
                         lambda: rename_gcs_blob(
