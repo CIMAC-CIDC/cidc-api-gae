@@ -85,10 +85,7 @@ def _run_metadata_migration(
         for old_gcs_uri, artifact in migration.file_updates.items():
             # Update the downloadable file associated with this blob
             df: DownloadableFiles = (
-                session.query(DownloadableFiles)
-                .filter_by(object_url=old_gcs_uri)
-                .with_for_update()
-                .one()
+                session.query(DownloadableFiles).filter_by(object_url=old_gcs_uri).one()
             )
             for column, value in artifact.items():
                 if hasattr(df, column):
