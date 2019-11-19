@@ -1,4 +1,5 @@
 import os
+from contextlib import contextmanager
 from typing import Callable, List, NamedTuple
 
 from alembic import op
@@ -47,10 +48,28 @@ class RollbackableQueue:
                 raise
 
 
-def run_metadata_migration(metadata_migration: Callable[[dict], MigrationResult]):
-    """Migrate trial metadata, upload job patches, and downloadable files according to `metadata_migration`"""
+@contextmanager
+def migration_session():
     session = Session(bind=op.get_bind())
 
+    try:
+        yield session
+    except:
+        session.rollback()
+        raise
+    finally:
+        session.commit()
+
+
+def run_metadata_migration(metadata_migration: Callable[[dict], MigrationResult]):
+    """Migrate trial metadata, upload job patches, and downloadable files according to `metadata_migration`"""
+    with migration_session() as session:
+        _run_metadata_migration(metadata_migration, session)
+
+
+def _run_metadata_migration(
+    metadata_migration: Callable[[dict], MigrationResult], session: Session
+):
     # Initialize an empty list of pieces of work to do on GCS resources
     gcs_tasks = RollbackableQueue()
 
@@ -144,15 +163,15 @@ def run_metadata_migration(metadata_migration: Callable[[dict], MigrationResult]
     # Attempt to make GCS updates
     gcs_tasks.run_all()
 
-    # Update the database if everything else has succeeded
-    session.commit()
-
 
 is_testing = os.environ.get("TESTING")
 
 
 def rename_gcs_blob(bucket, old_name, new_name):
-    storage_client = storage.Client() if not is_testing else None
+    if is_testing:
+        return
+
+    storage_client = storage.Client()
     bucket = storage_client.get_bucket(bucket)
     old_blob = bucket.blob(old_name)
     new_blob = bucket.rename_blob(old_blob, new_name)

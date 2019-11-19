@@ -21,17 +21,9 @@ is_testing = os.environ.get("TESTING")
 
 def upgrade():
     """Update Olink's assay_raw_ct artifact data format to CSV"""
-    # Don't run this migration on the test database
-    if is_testing:
-        return
-
     run_metadata_migration(v0_10_0_to_v0_10_2.upgrade)
 
 
 def downgrade():
     """Downgrade Olink's assay_raw_ct artifact data format to XLSX"""
-    # Don't run this migration on the test database
-    if is_testing:
-        return
-
     run_metadata_migration(v0_10_0_to_v0_10_2.downgrade)
