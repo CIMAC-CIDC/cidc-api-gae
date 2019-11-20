@@ -146,12 +146,8 @@ def _run_metadata_migration(
                     f"Encountered GCS data bucket artifact URI to update: {old_gcs_uri}"
                 )
                 renamer = PieceOfWork(
-                    lambda: rename_gcs_blob(
-                        GOOGLE_DATA_BUCKET, old_gcs_uri, new_gcs_uri
-                    ),
-                    lambda: rename_gcs_blob(
-                        GOOGLE_DATA_BUCKET, new_gcs_uri, old_gcs_uri
-                    ),
+                    lazy_rename_gcs_blob(GOOGLE_DATA_BUCKET, old_gcs_uri, new_gcs_uri),
+                    lazy_rename_gcs_blob(GOOGLE_DATA_BUCKET, new_gcs_uri, old_gcs_uri),
                 )
                 gcs_tasks.schedule(renamer)
 
@@ -181,10 +177,10 @@ def _run_metadata_migration(
                     )
                     new_upload_uri = "/".join([new_target_uri, upload_timestamp])
                     renamer = PieceOfWork(
-                        lambda: rename_gcs_blob(
+                        lazy_rename_gcs_blob(
                             GOOGLE_UPLOAD_BUCKET, old_upload_uri, new_upload_uri
                         ),
-                        lambda: rename_gcs_blob(
+                        lazy_rename_gcs_blob(
                             GOOGLE_UPLOAD_BUCKET, new_upload_uri, old_upload_uri
                         ),
                     )
@@ -210,6 +206,13 @@ def _run_metadata_migration(
 
 
 is_testing = os.environ.get("TESTING")
+
+
+def lazy_rename_gcs_blob(bucket, old_name, new_name):
+    def do():
+        return rename_gcs_blob(bucket, old_name, new_name)
+
+    return do
 
 
 def rename_gcs_blob(bucket, old_name, new_name):
