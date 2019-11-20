@@ -65,14 +65,21 @@ def migration_session():
 
     try:
         yield session, task_queue
+        print("Commiting SQL session...")
         session.commit()
+        print("Session commit succeeded.")
     except:
+        print("SQL failure. Initiating rollback...")
+        print("Running SQL rollback.")
         session.rollback()
         if task_queue:
             try:
+                print("Running GCS rollback.")
                 task_queue.rollback()
+                print("GCS rollback succeeded.")
             except Exception as e:
                 print(f"GCS rollback failed: {e.__class__}: {e}")
+        print("SQL rollback failed.")
         raise
     finally:
         session.close()
@@ -109,6 +116,7 @@ def _run_metadata_migration(
     # Migrate all trial records
     trials = _select_trials(session)
     for trial in trials:
+        print(f"Running metadata migration for trial: {trial.trial_id}")
         migration = metadata_migration(trial.metadata_json)
 
         # Update the trial metadata object
@@ -116,6 +124,7 @@ def _run_metadata_migration(
 
         # Update the relevant downloadable files and GCS objects
         for old_gcs_uri, artifact in migration.file_updates.items():
+            print(f"Updating GCS and artifact info for {old_gcs_uri}: {artifact}")
             # Update the downloadable file associated with this blob
             df = DownloadableFiles.get_by_object_url(old_gcs_uri, session=session)
             for column, value in artifact.items():
@@ -124,6 +133,9 @@ def _run_metadata_migration(
 
             # Regenerate additional metadata from the migrated clinical trial
             # metadata object.
+            print(
+                f"Regenerating additional metadata for artifact with uuid {artifact['upload_placeholder']}"
+            )
             df.additional_metadata = _get_uuid_info(
                 migration.result, artifact["upload_placeholder"]
             )[1]
@@ -131,6 +143,9 @@ def _run_metadata_migration(
             # If the GCS URI has changed, rename the blob
             new_gcs_uri = artifact["object_url"]
             if old_gcs_uri != new_gcs_uri:
+                print(
+                    f"Encountered GCS data bucket artifact URI to update: {old_gcs_uri}"
+                )
                 renamer = PieceOfWork(
                     lambda: rename_gcs_blob(
                         GOOGLE_DATA_BUCKET, old_gcs_uri, new_gcs_uri
@@ -144,6 +159,7 @@ def _run_metadata_migration(
     # Migrate all assay upload successes
     successful_assay_uploads = _select_successful_assay_uploads(session)
     for upload in successful_assay_uploads:
+        print(f"Running metadata migration for assay upload: {upload.id}")
         migration = metadata_migration(upload.assay_patch)
 
         # Update the metadata patch
@@ -161,6 +177,9 @@ def _run_metadata_migration(
             if old_target_uri in migration.file_updates:
                 new_target_uri = migration.file_updates[old_target_uri]["object_url"]
                 if old_target_uri != new_target_uri:
+                    print(
+                        f"Encountered GCS upload bucket artifact URI to update: {old_upload_uri}"
+                    )
                     new_upload_uri = "/".join([new_target_uri, upload_timestamp])
                     renamer = PieceOfWork(
                         lambda: rename_gcs_blob(
@@ -179,21 +198,30 @@ def _run_metadata_migration(
     # Migrate all manifest records
     manifest_uploads = _select_manifest_uploads(session)
     for upload in manifest_uploads:
+        print(f"Running metadata migration for manifest upload: {upload.id}")
         migration = metadata_migration(upload.metadata_patch)
 
         # Update the metadata patch
         upload.metadata_patch = migration.result
 
     # Attempt to make GCS updates
+    print(f"Running all GCS tasks...")
     gcs_tasks.run_all()
+    print(f"GCS tasks succeeded.")
 
 
 is_testing = os.environ.get("TESTING")
 
 
 def rename_gcs_blob(bucket, old_name, new_name):
+    full_old_uri = f"gs://{bucket}/{old_name}"
+    full_new_uri = f"gs://{bucket}/{new_name}"
+    message = f"GCS: moving {full_old_uri} to {full_new_uri}"
     if is_testing:
+        print(f"SKIPPING: {message}")
         return
+
+    print(message)
 
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(bucket)
