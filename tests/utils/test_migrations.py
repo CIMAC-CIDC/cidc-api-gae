@@ -1,5 +1,4 @@
 from unittest.mock import MagicMock
-from collections import defaultdict
 
 import pytest
 from cidc_schemas.migrations import MigrationResult
@@ -41,6 +40,18 @@ def test_rollbackable_queue():
         tasks.run_all()
     assert state == orig
 
+    # Ensure rollback only calls `undo` once.
+    tasks = RollbackableQueue()
+    t1 = MagicMock()
+    t2 = MagicMock()
+    t2.side_effect = KeyError
+    tasks.schedule(PieceOfWork(t1, t1))
+    tasks.schedule(PieceOfWork(t2, t2))
+    with pytest.raises(KeyError):
+        tasks.run_all()
+    assert len(t1.call_args_list) == 2
+    t2.assert_called_once()
+
 
 def test_migrations_rollback(monkeypatch):
     """Test that changes get rolled back in potential failure scenarios."""
@@ -55,7 +66,7 @@ def test_migrations_rollback(monkeypatch):
 
     # Mock cidc_api and prism functions
     select_trials = MagicMock()
-    select_trials.return_value = [MagicMock()] * 10
+    select_trials.return_value = [MagicMock()]
     monkeypatch.setattr(migrations, "_select_trials", select_trials)
 
     select_df = MagicMock()
@@ -63,20 +74,24 @@ def test_migrations_rollback(monkeypatch):
     monkeypatch.setattr(DownloadableFiles, "get_by_object_url", select_df)
 
     select_assay_uploads = MagicMock()
-    select_assay_uploads.return_value = [MagicMock()] * 10
+    select_assay_uploads.return_value = [MagicMock()]
     monkeypatch.setattr(
         migrations, "_select_successful_assay_uploads", select_assay_uploads
     )
 
     select_manifest_uploads = MagicMock()
-    select_manifest_uploads.return_value = [MagicMock()] * 10
+    select_manifest_uploads.return_value = [MagicMock()]
     monkeypatch.setattr(migrations, "_select_manifest_uploads", select_manifest_uploads)
 
     monkeypatch.setattr(migrations, "_get_uuid_info", MagicMock())
 
     mock_migration = MagicMock()
     mock_migration.return_value = MigrationResult(
-        {}, {"a": defaultdict(str), "b": defaultdict(str)}
+        {},
+        {
+            "a_old_url": {"object_url": "a_new_url", "upload_placeholder": ""},
+            "b_old_url": {"object_url": "b_new_url", "upload_placeholder": ""},
+        },
     )
 
     rename_gcs_obj = MagicMock()
@@ -88,12 +103,13 @@ def test_migrations_rollback(monkeypatch):
         mock_session.rollback.reset_mock()
         mock_session.close.reset_mock()
 
-    # GCS failure
-    rename_gcs_obj.side_effect = Exception("gcs failure")
+    # GCS failure config
+    rename_gcs_obj.side_effect = [None, Exception("gcs failure"), None]
 
     with pytest.raises(Exception, match="gcs failure"):
         run_metadata_migration(mock_migration)
-    rename_gcs_obj.assert_called_once()
+    # Called 3 times - task 1 succeeds, task 2 fails, task 1 rolls back
+    assert len(rename_gcs_obj.call_args_list) == 3
     mock_session.commit.assert_not_called()
     mock_session.rollback.assert_called_once()
     mock_session.close.assert_called_once()

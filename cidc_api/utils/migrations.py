@@ -55,6 +55,7 @@ class RollbackableQueue:
         for i, task in enumerate(self.tasks):
             if i in self.done:
                 task.undo()
+                self.done.discard(i)
 
 
 @contextmanager
@@ -68,7 +69,10 @@ def migration_session():
     except:
         session.rollback()
         if task_queue:
-            task_queue.rollback()
+            try:
+                task_queue.rollback()
+            except Exception as e:
+                print(f"GCS rollback failed: {e.__class__}: {e}")
         raise
     finally:
         session.close()
