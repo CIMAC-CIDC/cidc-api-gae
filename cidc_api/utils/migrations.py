@@ -113,7 +113,7 @@ def _run_metadata_migration(
         # Update the relevant downloadable files and GCS objects
         for old_gcs_uri, artifact in migration.file_updates.items():
             # Update the downloadable file associated with this blob
-            df = DownloadableFiles.get_by_object_url(old_gcs_uri, session)
+            df = DownloadableFiles.get_by_object_url(old_gcs_uri, session=session)
             for column, value in artifact.items():
                 if hasattr(df, column):
                     setattr(df, column, value)
