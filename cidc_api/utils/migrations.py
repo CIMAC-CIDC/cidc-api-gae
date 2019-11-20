@@ -69,17 +69,16 @@ def migration_session():
         session.commit()
         print("Session commit succeeded.")
     except:
-        print("SQL failure. Initiating rollback...")
-        print("Running SQL rollback.")
+        print("Encountered exception. Running SQL rollback...")
         session.rollback()
+        print("SQL rollback succeeded.")
         if task_queue:
             try:
-                print("Running GCS rollback.")
+                print("Running GCS rollback...")
                 task_queue.rollback()
                 print("GCS rollback succeeded.")
             except Exception as e:
                 print(f"GCS rollback failed: {e.__class__}: {e}")
-        print("SQL rollback failed.")
         raise
     finally:
         session.close()
