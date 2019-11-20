@@ -29,6 +29,7 @@ class RollbackableQueue:
 
     def __init__(self):
         self.tasks = []
+        self.done = set()
 
     def schedule(self, task: PieceOfWork):
         """Add a task to the task queue."""
@@ -42,39 +43,67 @@ class RollbackableQueue:
         for i, task in enumerate(self.tasks):
             try:
                 task.do()
+                self.done.add(i)
             except:
-                for done_task in self.tasks[:i]:
-                    done_task.undo()
+                self.rollback()
                 raise
+
+    def rollback(self):
+        """
+        Undo any work that has been carried out.
+        """
+        for i, task in enumerate(self.tasks):
+            if i in self.done:
+                task.undo()
 
 
 @contextmanager
 def migration_session():
     session = Session(bind=op.get_bind())
+    task_queue = RollbackableQueue()
 
     try:
-        yield session
+        yield session, task_queue
+        session.commit()
     except:
         session.rollback()
+        if task_queue:
+            task_queue.rollback()
         raise
     finally:
-        session.commit()
+        session.close()
 
 
 def run_metadata_migration(metadata_migration: Callable[[dict], MigrationResult]):
     """Migrate trial metadata, upload job patches, and downloadable files according to `metadata_migration`"""
-    with migration_session() as session:
-        _run_metadata_migration(metadata_migration, session)
+    with migration_session() as (session, task_queue):
+        _run_metadata_migration(metadata_migration, task_queue, session)
+
+
+def _select_trials(session: Session) -> List[TrialMetadata]:
+    return session.query(TrialMetadata).with_for_update().all()
+
+
+def _select_successful_assay_uploads(session: Session) -> List[AssayUploads]:
+    return (
+        session.query(AssayUploads)
+        .filter_by(status=AssayUploadStatus.MERGE_COMPLETED.value)
+        .with_for_update()
+        .all()
+    )
+
+
+def _select_manifest_uploads(session: Session) -> List[ManifestUploads]:
+    return session.query(ManifestUploads).with_for_update().all()
 
 
 def _run_metadata_migration(
-    metadata_migration: Callable[[dict], MigrationResult], session: Session
+    metadata_migration: Callable[[dict], MigrationResult],
+    gcs_tasks: RollbackableQueue,
+    session: Session,
 ):
-    # Initialize an empty list of pieces of work to do on GCS resources
-    gcs_tasks = RollbackableQueue()
-
     # Migrate all trial records
-    trials: List[TrialMetadata] = session.query(TrialMetadata).with_for_update().all()
+    trials = _select_trials(session)
     for trial in trials:
         migration = metadata_migration(trial.metadata_json)
 
@@ -84,9 +113,7 @@ def _run_metadata_migration(
         # Update the relevant downloadable files and GCS objects
         for old_gcs_uri, artifact in migration.file_updates.items():
             # Update the downloadable file associated with this blob
-            df: DownloadableFiles = (
-                session.query(DownloadableFiles).filter_by(object_url=old_gcs_uri).one()
-            )
+            df = DownloadableFiles.get_by_object_url(old_gcs_uri, session)
             for column, value in artifact.items():
                 if hasattr(df, column):
                     setattr(df, column, value)
@@ -111,9 +138,7 @@ def _run_metadata_migration(
                 gcs_tasks.schedule(renamer)
 
     # Migrate all assay upload successes
-    successful_assay_uploads: List[AssayUploads] = session.query(
-        AssayUploads
-    ).filter_by(status=AssayUploadStatus.MERGE_COMPLETED.value).with_for_update().all()
+    successful_assay_uploads = _select_successful_assay_uploads(session)
     for upload in successful_assay_uploads:
         migration = metadata_migration(upload.assay_patch)
 
@@ -148,9 +173,7 @@ def _run_metadata_migration(
         upload.gcs_file_map = new_file_map
 
     # Migrate all manifest records
-    manifest_uploads: List[ManifestUploads] = session.query(
-        ManifestUploads
-    ).with_for_update().all()
+    manifest_uploads = _select_manifest_uploads(session)
     for upload in manifest_uploads:
         migration = metadata_migration(upload.metadata_patch)
 

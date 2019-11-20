@@ -1,6 +1,22 @@
-import pytest
+from unittest.mock import MagicMock
+from collections import defaultdict
 
-from cidc_api.utils.migrations import RollbackableQueue, PieceOfWork
+import pytest
+from cidc_schemas.migrations import MigrationResult
+
+import cidc_api.utils.migrations as migrations
+from cidc_api.utils.migrations import (
+    RollbackableQueue,
+    PieceOfWork,
+    Session,
+    run_metadata_migration,
+)
+from cidc_api.models import (
+    AssayUploads,
+    ManifestUploads,
+    TrialMetadata,
+    DownloadableFiles,
+)
 
 
 def test_rollbackable_queue():
@@ -24,3 +40,74 @@ def test_rollbackable_queue():
     with pytest.raises(KeyError):
         tasks.run_all()
     assert state == orig
+
+
+def test_migrations_rollback(monkeypatch):
+    """Test that changes get rolled back in potential failure scenarios."""
+    # Mock alembic
+    monkeypatch.setattr(migrations, "op", MagicMock())
+
+    # Mock sqlalchemy
+    mock_session_builder = MagicMock()
+    mock_session = MagicMock()
+    mock_session_builder.return_value = mock_session
+    monkeypatch.setattr(migrations, "Session", mock_session_builder)
+
+    # Mock cidc_api and prism functions
+    select_trials = MagicMock()
+    select_trials.return_value = [MagicMock()] * 10
+    monkeypatch.setattr(migrations, "_select_trials", select_trials)
+
+    select_df = MagicMock()
+    select_df.return_value = MagicMock()
+    monkeypatch.setattr(DownloadableFiles, "get_by_object_url", select_df)
+
+    select_assay_uploads = MagicMock()
+    select_assay_uploads.return_value = [MagicMock()] * 10
+    monkeypatch.setattr(
+        migrations, "_select_successful_assay_uploads", select_assay_uploads
+    )
+
+    select_manifest_uploads = MagicMock()
+    select_manifest_uploads.return_value = [MagicMock()] * 10
+    monkeypatch.setattr(migrations, "_select_manifest_uploads", select_manifest_uploads)
+
+    monkeypatch.setattr(migrations, "_get_uuid_info", MagicMock())
+
+    mock_migration = MagicMock()
+    mock_migration.return_value = MigrationResult(
+        {}, {"a": defaultdict(str), "b": defaultdict(str)}
+    )
+
+    rename_gcs_obj = MagicMock()
+    monkeypatch.setattr(migrations, "rename_gcs_blob", rename_gcs_obj)
+
+    def reset_mocks():
+        rename_gcs_obj.reset_mock()
+        mock_session.commit.reset_mock()
+        mock_session.rollback.reset_mock()
+        mock_session.close.reset_mock()
+
+    # GCS failure
+    rename_gcs_obj.side_effect = Exception("gcs failure")
+
+    with pytest.raises(Exception, match="gcs failure"):
+        run_metadata_migration(mock_migration)
+    rename_gcs_obj.assert_called_once()
+    mock_session.commit.assert_not_called()
+    mock_session.rollback.assert_called_once()
+    mock_session.close.assert_called_once()
+
+    rename_gcs_obj.side_effect = None
+    reset_mocks()
+
+    # SQL failure
+    select_assay_uploads.side_effect = Exception("sql failure")
+
+    with pytest.raises(Exception, match="sql failure"):
+        run_metadata_migration(mock_migration)
+    mock_session.commit.assert_not_called()
+    mock_session.rollback.assert_called_once()
+    mock_session.close.assert_called_once()
+    # Ensure no GCS operations were carried out
+    rename_gcs_obj.assert_not_called()
