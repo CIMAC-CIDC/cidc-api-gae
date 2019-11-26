@@ -685,7 +685,6 @@ class DownloadableFiles(CommonColumns):
     visible = Column(Boolean, default=True)
 
     # Visualization data columns (should always be nullable)
-    _visualization_columns = ["clustergrammer"]
     clustergrammer = Column(JSONB, nullable=True)
 
     @staticmethod
