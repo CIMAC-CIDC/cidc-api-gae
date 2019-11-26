@@ -22,6 +22,21 @@ from cidc_schemas.migrations import MigrationResult
 from cidc_schemas.prism import _get_uuid_info
 
 
+def trigger_visualization_pipelines():
+    """
+    Publish all downloadable_file IDs to the `artifact_upload` Pub/Sub topic,
+    triggering downstream file post-processing (e.g., pre-computation for visualization
+    purposes).
+    """
+    with migration_session() as session:
+        files = session.query(DownloadableFiles).all()
+        for f in files:
+            print(
+                f"Publishing to 'artifact_upload' topic for downloadable file with id {f.id}"
+            )
+            publish_artifact_upload(f.id)
+
+
 class PieceOfWork(NamedTuple):
     do: Callable[[], None]
     undo: Callable[[], None]
