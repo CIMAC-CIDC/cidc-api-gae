@@ -16,9 +16,25 @@ from cidc_api.models import (
     AssayUploadStatus,
     ManifestUploads,
 )
+from cidc_api.gcloud_client import publish_artifact_upload
 from cidc_api.config.settings import GOOGLE_DATA_BUCKET, GOOGLE_UPLOAD_BUCKET
 from cidc_schemas.migrations import MigrationResult
 from cidc_schemas.prism import _get_uuid_info
+
+
+def trigger_visualization_pipelines():
+    """
+    Publish all downloadable_file IDs to the `artifact_upload` Pub/Sub topic,
+    triggering downstream file post-processing (e.g., pre-computation for visualization
+    purposes).
+    """
+    with migration_session() as session:
+        files = session.query(DownloadableFiles).all()
+        for f in files:
+            print(
+                f"Publishing to 'artifact_upload' topic for downloadable file with id {f.id}"
+            )
+            publish_artifact_upload(f.id)
 
 
 class PieceOfWork(NamedTuple):
@@ -225,7 +241,6 @@ def _run_metadata_migration(
         # by SQLalchemy for some reason. Using MutableDict.as_mutable(JSON)
         # in the model doesn't seem to help.
         flag_modified(upload, "metadata_patch")
-
 
     # Attempt to make GCS updates
     print(f"Running all GCS tasks...")
