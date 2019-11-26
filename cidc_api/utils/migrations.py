@@ -22,7 +22,7 @@ from cidc_schemas.migrations import MigrationResult
 from cidc_schemas.prism import _get_uuid_info
 
 
-def trigger_visualization_pipelines():
+def republish_artifact_uploads():
     """
     Publish all downloadable_file IDs to the `artifact_upload` Pub/Sub topic,
     triggering downstream file post-processing (e.g., pre-computation for visualization

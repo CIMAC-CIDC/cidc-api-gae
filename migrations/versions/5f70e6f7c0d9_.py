@@ -9,6 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+from cidc_api.utils.migrations import republish_artifact_uploads
+
 # revision identifiers, used by Alembic.
 revision = "5f70e6f7c0d9"
 down_revision = "facd42b8f277"
@@ -26,7 +28,7 @@ def upgrade():
     )
     # ### end Alembic commands ###
 
-    # TODO: fire visualization pre-processing event for every downloadable file record
+    republish_artifact_uploads()
 
 
 def downgrade():
