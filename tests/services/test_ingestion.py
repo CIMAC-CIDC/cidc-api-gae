@@ -404,6 +404,8 @@ def test_upload_endpoint_blocking(app_no_auth, test_user, monkeypatch):
 
     mocks = UploadMocks(monkeypatch)
 
+    print(prism.SUPPORTED_ANALYSES)
+
     assay_form = lambda: form_data("cytof.xlsx", io.BytesIO(b"1234"), "cytof")
     analysis_form = lambda: form_data(
         "cytof_analysis.xlsx", io.BytesIO(b"1234"), "cytof_analysis"
@@ -413,7 +415,7 @@ def test_upload_endpoint_blocking(app_no_auth, test_user, monkeypatch):
         return "not supported" in res.json["_error"]["message"]
 
     def ingestion_attempted(res) -> bool:
-        return "trial not found" in res.json["_error"]["message"]["errors"][0]
+        return "not authorized" in res.json["_error"]["message"]["errors"][0]
 
     res = client.post(ASSAY_UPLOAD, data=assay_form())
     assert ingestion_attempted(res)
