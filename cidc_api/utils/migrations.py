@@ -270,4 +270,4 @@ def republish_artifact_uploads():
             print(
                 f"Publishing to 'artifact_upload' topic for downloadable file with id {f.id}"
             )
-            publish_artifact_upload(f.id)
+            publish_artifact_upload(f.object_url)
