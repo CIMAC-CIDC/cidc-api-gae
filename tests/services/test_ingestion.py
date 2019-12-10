@@ -139,7 +139,7 @@ def test_validate_invalid_template(app_no_auth, some_file, monkeypatch):
             VALIDATE,
             form_data("test.xlsx", schema="foo/bar"),
             BadRequest,
-            "Unknown template type.*foo/bar",
+            "not supported",
         ],
     ],
 )
@@ -150,7 +150,7 @@ def test_extract_schema_and_xlsx_failures(app, url, data, error, message):
     """
     with app.test_request_context(url, data=data):
         with pytest.raises(error, match=message):
-            extract_schema_and_xlsx()
+            extract_schema_and_xlsx([])
 
 
 def test_upload_manifest_non_existing_trial_id(
@@ -208,7 +208,10 @@ def test_upload_unsupported_manifest(
     )
     assert res.status_code == 400
 
-    assert "Unknown template type" in res.json["_error"]["message"]
+    assert (
+        "'unsupported_' is not supported for this endpoint."
+        in res.json["_error"]["message"]
+    )
     assert "UNSUPPORTED_".lower() in res.json["_error"]["message"]
 
     # Check that we tried to upload the excel file
