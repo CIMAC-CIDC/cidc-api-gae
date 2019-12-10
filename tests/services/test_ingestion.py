@@ -92,6 +92,7 @@ def form_data(filename=None, fp=None, schema=None):
 
 VALIDATE = "/ingestion/validate"
 ASSAY_UPLOAD = "/ingestion/upload_assay"
+ANALYSIS_UPLOAD = "/ingestion/upload_analysis"
 MANIFEST_UPLOAD = "/ingestion/upload_manifest"
 
 
@@ -395,6 +396,36 @@ class UploadMocks:
 
 
 finfo = LocalFileUploadEntry
+
+
+def test_upload_endpoint_blocking(app_no_auth, test_user, monkeypatch):
+    """Ensure you can't upload an analysis to the upload assay endpoint or vice versa"""
+    client = app_no_auth.test_client()
+
+    mocks = UploadMocks(monkeypatch)
+
+    assay_form = lambda: form_data("cytof.xlsx", io.BytesIO(b"1234"), "cytof")
+    analysis_form = lambda: form_data(
+        "cytof_analysis.xlsx", io.BytesIO(b"1234"), "cytof_analysis"
+    )
+
+    def ingestion_blocked(res) -> bool:
+        return "not supported" in res.json["_error"]["message"]
+
+    def ingestion_attempted(res) -> bool:
+        return "trial not found" in res.json["_error"]["message"]["errors"][0]
+
+    res = client.post(ASSAY_UPLOAD, data=assay_form())
+    assert ingestion_attempted(res)
+    res = client.post(ASSAY_UPLOAD, data=analysis_form())
+    assert ingestion_blocked(res)
+    assert res.status_code == 400
+
+    res = client.post(ANALYSIS_UPLOAD, data=analysis_form())
+    assert ingestion_attempted(res)
+    res = client.post(ANALYSIS_UPLOAD, data=assay_form())
+    assert ingestion_blocked(res)
+    assert res.status_code == 400
 
 
 def test_upload_wes(app_no_auth, test_user, db_with_trial_and_user, db, monkeypatch):
