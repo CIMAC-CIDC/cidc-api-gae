@@ -409,7 +409,11 @@ def upload_data_files(
 @ingestion_api.route("/poll_upload_merge_status", methods=["GET"])
 @requires_auth(
     "ingestion/poll_upload_merge_status",
-    [CIDCRole.ADMIN.value, CIDCRole.CIMAC_BIOFX_USER.value],
+    [
+        CIDCRole.ADMIN.value,
+        CIDCRole.CIMAC_BIOFX_USER.value,
+        CIDCRole.CIDC_BIOFX_USER.value,
+    ],
 )
 def poll_upload_merge_status():
     """
