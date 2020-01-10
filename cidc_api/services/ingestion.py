@@ -85,7 +85,7 @@ def extract_schema_and_xlsx(allowed_types: List[str]) -> Tuple[str, str, BinaryI
     # Check that the schema type is allowed
     if schema_id not in allowed_types:
         raise BadRequest(
-            f"Schema type '{schema_id}' is not supported for this endpoint."
+            f"Schema type '{schema_id}' is not supported for this endpoint. Available options: {allowed_types}"
         )
 
     try:
@@ -179,7 +179,7 @@ def upload_handler(allowed_types: List[str]):
             if not trial:
                 errors_so_far.insert(
                     0,
-                    f"Trial with {prism.PROTOCOL_ID_FIELD_NAME}={trial_id} not found.",
+                    f"Trial with {prism.PROTOCOL_ID_FIELD_NAME}={trial_id!r} not found.",
                 )
                 # we can't find trial so we can't proceed trying to check_perm or merge
                 raise BadRequest({"errors": [str(e) for e in errors_so_far]})
@@ -303,12 +303,13 @@ def upload_manifest(
         uploader_email=user.email,
         metadata=md_patch,
         gcs_xlsx_uri=gcs_blob.name,
+        trial=trial,
         session=session,
         send_email=True,
     )
 
-    # Publish that this trial's metadata has been updated
-    gcloud_client.publish_patient_sample_update(trial.trial_id)
+    # Publish that a manifest upload has been received
+    gcloud_client.publish_patient_sample_update(manifest_upload.id)
 
     return jsonify({"metadata_json_patch": md_patch})
 
@@ -391,7 +392,7 @@ def upload_data_files(
     )
 
     # Grant the user upload access to the upload bucket
-    gcloud_client.grant_upload_access(GOOGLE_UPLOAD_BUCKET, user.email)
+    gcloud_client.grant_upload_access(user.email)
 
     response = {
         "job_id": job.id,
@@ -493,7 +494,7 @@ def on_post_PATCH_assay_uploads(request: Request, payload: Response):
 
     # Revoke the user's write access
     user_email = _request_ctx_stack.top.current_user.email
-    gcloud_client.revoke_upload_access(GOOGLE_UPLOAD_BUCKET, user_email)
+    gcloud_client.revoke_upload_access(user_email)
 
 
 # @ingestion_api.route("/signed-upload-urls", methods=["POST"])

@@ -252,7 +252,7 @@ def test_admin_upload(app, test_user, db_with_trial_and_user, monkeypatch):
     assert res.status_code == 200
 
     res = client.post(
-        ASSAY_UPLOAD, data=form_data("wes.xlsx", io.BytesIO(b"1234"), "wes")
+        ASSAY_UPLOAD, data=form_data("wes.xlsx", io.BytesIO(b"1234"), "wes_fastq")
     )
     assert res.status_code == 200
 
@@ -344,6 +344,7 @@ class UploadMocks:
         self.upload_xlsx.return_value.name = "trial_id/xlsx/assays/wes/12345"
         self.upload_xlsx.return_value.size = 100
         self.upload_xlsx.return_value.md5_hash = "md5_hash"
+        self.upload_xlsx.return_value.crc32c = "crc32c_hash"
         self.upload_xlsx.return_value.time_created = datetime.now()
 
         monkeypatch.setattr("gcloud_client.upload_xlsx_to_gcs", self.upload_xlsx)
@@ -404,8 +405,6 @@ def test_upload_endpoint_blocking(app_no_auth, test_user, monkeypatch):
 
     mocks = UploadMocks(monkeypatch)
 
-    print(prism.SUPPORTED_ANALYSES)
-
     assay_form = lambda: form_data("cytof.xlsx", io.BytesIO(b"1234"), "cytof")
     analysis_form = lambda: form_data(
         "cytof_analysis.xlsx", io.BytesIO(b"1234"), "cytof_analysis"
@@ -443,18 +442,20 @@ def test_upload_wes(app_no_auth, test_user, db_with_trial_and_user, db, monkeypa
 
     # No permission to upload yet
     res = client.post(
-        ASSAY_UPLOAD, data=form_data("wes.xlsx", io.BytesIO(b"1234"), "wes")
+        ASSAY_UPLOAD, data=form_data("wes.xlsx", io.BytesIO(b"1234"), "wes_fastq")
     )
     assert res.status_code == 401
-    assert "not authorized to upload wes data" in str(res.json["_error"]["message"])
+    assert "not authorized to upload wes_fastq data" in str(
+        res.json["_error"]["message"]
+    )
 
     mocks.clear_all()
 
     # Give permission and retry
-    give_upload_permission(test_user, TEST_TRIAL, "wes", db)
+    give_upload_permission(test_user, TEST_TRIAL, "wes_fastq", db)
 
     res = client.post(
-        ASSAY_UPLOAD, data=form_data("wes.xlsx", io.BytesIO(b"1234"), "wes")
+        ASSAY_UPLOAD, data=form_data("wes.xlsx", io.BytesIO(b"1234"), "wes_fastq")
     )
     assert res.json
     assert "url_mapping" in res.json
@@ -477,7 +478,7 @@ def test_upload_wes(app_no_auth, test_user, db_with_trial_and_user, db, monkeypa
     ), "PHI from local_path shouldn't end up in gcs urls"
 
     # Check that we tried to grant IAM upload access to gcs_object_name
-    mocks.grant_write.assert_called_with(GOOGLE_UPLOAD_BUCKET, test_user.email)
+    mocks.grant_write.assert_called_with(test_user.email)
 
     # Check that we tried to upload the assay metadata excel file
     mocks.upload_xlsx.assert_called_once()
@@ -492,7 +493,7 @@ def test_upload_wes(app_no_auth, test_user, db_with_trial_and_user, db, monkeypa
         headers={"If-Match": res.json["job_etag"]},
     )
     assert res.status_code == 200
-    mocks.revoke_write.assert_called_with(GOOGLE_UPLOAD_BUCKET, test_user.email)
+    mocks.revoke_write.assert_called_with(test_user.email)
     # This was an upload failure, so success shouldn't have been published
     mocks.publish_success.assert_not_called()
 
@@ -571,7 +572,7 @@ def test_upload_olink(app_no_auth, test_user, db_with_trial_and_user, db, monkey
         ), "PHI from local_path shouldn't end up in gcs urls"
 
     # Check that we tried to grant IAM upload access to gcs_object_name
-    mocks.grant_write.assert_called_with(GOOGLE_UPLOAD_BUCKET, test_user.email)
+    mocks.grant_write.assert_called_with(test_user.email)
 
     # Check that we tried to upload the assay metadata excel file
     mocks.upload_xlsx.assert_called_once()
@@ -586,7 +587,7 @@ def test_upload_olink(app_no_auth, test_user, db_with_trial_and_user, db, monkey
         headers={"If-Match": res.json["job_etag"]},
     )
     assert res.status_code == 200
-    mocks.revoke_write.assert_called_with(GOOGLE_UPLOAD_BUCKET, test_user.email)
+    mocks.revoke_write.assert_called_with(test_user.email)
     # This was an upload failure, so success shouldn't have been published
     mocks.publish_success.assert_not_called()
 

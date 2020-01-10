@@ -121,12 +121,16 @@ def get_DOMAIN() -> dict:
 
     # Restrict operations on the 'assay_uploads' resource:
     # * only admins can list 'assay_uploads' (TODO: we may want people to be able to view their own uploads)
-    # * only admins and cimac users can GET items or PATCH 'assay_uploads'
-    admin_and_cimac = [CIDCRole.ADMIN.value, CIDCRole.CIMAC_BIOFX_USER.value]
+    # * only admins, cimac biofx users, and cidc biofx users can GET items or PATCH 'assay_uploads'
+    admin_cimac_cidc = [
+        CIDCRole.ADMIN.value,
+        CIDCRole.CIMAC_BIOFX_USER.value,
+        CIDCRole.CIDC_BIOFX_USER.value,
+    ]
     domain["assay_uploads"]["allowed_read_roles"] = [CIDCRole.ADMIN.value]
-    domain["assay_uploads"]["allowed_item_read_roles"] = admin_and_cimac
-    domain["assay_uploads"]["allowed_write_roles"] = admin_and_cimac
-    domain["assay_uploads"]["allowed_item_write_roles"] = admin_and_cimac
+    domain["assay_uploads"]["allowed_item_read_roles"] = admin_cimac_cidc
+    domain["assay_uploads"]["allowed_write_roles"] = admin_cimac_cidc
+    domain["assay_uploads"]["allowed_item_write_roles"] = admin_cimac_cidc
     domain["assay_uploads"]["resource_methods"] = ["GET"]
     domain["assay_uploads"]["item_methods"] = ["GET", "PATCH"]
 
@@ -400,7 +404,9 @@ class TrialMetadata(CommonColumns):
         return trial
 
     @staticmethod
-    def merge_gcs_artifact(metadata, assay_type, uuid, gcs_object):
+    def merge_gcs_artifact(
+        metadata: dict, assay_type: str, uuid: str, gcs_object: Blob
+    ):
         return prism.merge_artifact(
             ct=metadata,
             assay_type=assay_type,
@@ -409,6 +415,7 @@ class TrialMetadata(CommonColumns):
             file_size_bytes=gcs_object.size,
             uploaded_timestamp=gcs_object.time_created.isoformat(),
             md5_hash=gcs_object.md5_hash,
+            crc32c_hash=gcs_object.crc32c,
         )
 
     @classmethod
@@ -456,13 +463,13 @@ class UploadForeignKeys:
     # The object URI for the raw excel form associated with this upload
     gcs_xlsx_uri = Column(String, nullable=False)
 
-    def alert_upload_success(self):
+    def alert_upload_success(self, trial: TrialMetadata):
         """Send an email notification that an upload has succeeded."""
         # (import these here to avoid a circular import error)
         from cidc_api import emails
 
         # Send admin notification email
-        emails.new_upload_alert(self, send_email=True)
+        emails.new_upload_alert(self, trial.metadata_json, send_email=True)
 
 
 class ManifestUploads(CommonColumns, UploadForeignKeys):
@@ -481,6 +488,7 @@ class ManifestUploads(CommonColumns, UploadForeignKeys):
         uploader_email: str,
         metadata: dict,
         gcs_xlsx_uri: str,
+        trial: TrialMetadata,
         session: Session,
         commit: bool = True,
         send_email: bool = False,
@@ -489,10 +497,11 @@ class ManifestUploads(CommonColumns, UploadForeignKeys):
         assert (
             prism.PROTOCOL_ID_FIELD_NAME in metadata
         ), "metadata patch must have a trial ID"
-        trial_id = metadata[prism.PROTOCOL_ID_FIELD_NAME]
+
+        assert trial.trial_id == metadata[prism.PROTOCOL_ID_FIELD_NAME]
 
         upload = ManifestUploads(
-            trial_id=trial_id,
+            trial_id=trial.trial_id,
             manifest_type=manifest_type,
             metadata_patch=metadata,
             uploader_email=uploader_email,
@@ -504,7 +513,7 @@ class ManifestUploads(CommonColumns, UploadForeignKeys):
             session.commit()
 
         if send_email:
-            upload.alert_upload_success()
+            upload.alert_upload_success(trial)
 
         return upload
 
@@ -645,7 +654,7 @@ class AssayUploads(CommonColumns, UploadForeignKeys):
 
     @with_default_session
     def ingestion_success(
-        self, session: Session, commit: bool = False, send_email: bool = False
+        self, trial, session: Session, commit: bool = False, send_email: bool = False
     ):
         """Set own status to reflect successful merge and trigger email notifying CIDC admins."""
         # Do status update if the transition is valid
@@ -661,7 +670,7 @@ class AssayUploads(CommonColumns, UploadForeignKeys):
             session.commit()
 
         if send_email:
-            self.alert_upload_success()
+            self.alert_upload_success(trial)
 
 
 class DownloadableFiles(CommonColumns):
@@ -675,11 +684,14 @@ class DownloadableFiles(CommonColumns):
     file_name = Column(String, nullable=False)
     file_size_bytes = Column(BigInteger, nullable=False)
     uploaded_timestamp = Column(DateTime, nullable=False)
+    # NOTE: this column actually has type CITEXT.
     data_format = Column(String, nullable=False)
     additional_metadata = Column(JSONB, nullable=True)
     # TODO rename assay_type, because we store manifests in there too.
+    # NOTE: this column actually has type CITEXT.
     assay_type = Column(String, nullable=False)
-    md5_hash = Column(String, nullable=False)
+    md5_hash = Column(String, nullable=True)
+    crc32c_hash = Column(String, nullable=True)
     trial_id = Column(String, ForeignKey("trial_metadata.trial_id"), nullable=False)
     trial = relationship(TrialMetadata, foreign_keys=[trial_id])
     object_url = Column(String, nullable=False, index=True, unique=True)
@@ -767,6 +779,7 @@ class DownloadableFiles(CommonColumns):
         df.file_name = blob.name
         df.file_size_bytes = blob.size
         df.md5_hash = blob.md5_hash
+        df.crc32c_hash = blob.crc32c
         df.uploaded_timestamp = blob.time_created
 
         session.add(df)

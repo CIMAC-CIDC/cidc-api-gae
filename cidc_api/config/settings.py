@@ -16,7 +16,7 @@ ENV = environ.get("ENV", "staging")
 assert ENV in ("dev", "staging", "prod")
 DEBUG = ENV == "dev" and environ.get("DEBUG")
 TESTING = environ.get("TESTING") == "True"
-MIN_CLI_VERSION = "0.6.1"
+MIN_CLI_VERSION = "0.7.0"
 TEMPLATES_DIR = path.join("/tmp", "templates")
 ## End application environment config
 
@@ -37,7 +37,7 @@ GOOGLE_CLOUD_PROJECT = environ.get("GOOGLE_CLOUD_PROJECT")
 GOOGLE_UPLOAD_BUCKET = environ.get("GOOGLE_UPLOAD_BUCKET")
 GOOGLE_UPLOAD_TOPIC = environ.get("GOOGLE_UPLOAD_TOPIC")
 GOOGLE_DATA_BUCKET = environ.get("GOOGLE_DATA_BUCKET")
-GOOGLE_UPLOAD_ROLE = "roles/storage.objectCreator"
+GOOGLE_UPLOAD_ROLE = environ.get("GOOGLE_UPLOAD_ROLE")
 GOOGLE_PATIENT_SAMPLE_TOPIC = environ.get("GOOGLE_PATIENT_SAMPLE_TOPIC")
 GOOGLE_EMAILS_TOPIC = environ.get("GOOGLE_EMAILS_TOPIC")
 GOOGLE_ARTIFACT_UPLOAD_TOPIC = environ.get("GOOGLE_ARTIFACT_UPLOAD_TOPIC")
@@ -68,6 +68,6 @@ RESOURCE_METHODS = ["GET", "POST"]
 ITEM_METHODS = ["GET", "PATCH"]
 CACHE_CONTROL = "no-cache"
 DOMAIN = get_DOMAIN()
-PAGINATION_DEFAULT = 100
+PAGINATION_DEFAULT = 200
 PAGINATION_LIMIT = 200
 ## End Eve REST API config
