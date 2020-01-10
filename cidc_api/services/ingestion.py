@@ -309,7 +309,7 @@ def upload_manifest(
     )
 
     # Publish that a manifest upload has been received
-    gcloud_client.publish_patient_sample_update(manifest_upload.trial_id)
+    gcloud_client.publish_patient_sample_update(manifest_upload.id)
 
     return jsonify({"metadata_json_patch": md_patch})
 
