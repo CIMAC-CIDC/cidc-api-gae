@@ -69,17 +69,15 @@ def test_migrations_rollback(monkeypatch):
     select_df.return_value = MagicMock()
     monkeypatch.setattr(DownloadableFiles, "get_by_object_url", select_df)
 
-    select_assay_UploadJobs = MagicMock()
-    select_assay_UploadJobs.return_value = [MagicMock()]
+    select_assay_uploads = MagicMock()
+    select_assay_uploads.return_value = [MagicMock()]
     monkeypatch.setattr(
-        migrations, "_select_successful_assay_UploadJobs", select_assay_UploadJobs
+        migrations, "_select_successful_assay_uploads", select_assay_uploads
     )
 
-    select_manifest_UploadJobs = MagicMock()
-    select_manifest_UploadJobs.return_value = [MagicMock()]
-    monkeypatch.setattr(
-        migrations, "_select_manifest_UploadJobs", select_manifest_UploadJobs
-    )
+    select_manifest_uploads = MagicMock()
+    select_manifest_uploads.return_value = [MagicMock()]
+    monkeypatch.setattr(migrations, "_select_manifest_uploads", select_manifest_uploads)
 
     monkeypatch.setattr(migrations, "_get_uuid_info", MagicMock())
 
@@ -116,7 +114,7 @@ def test_migrations_rollback(monkeypatch):
     reset_mocks()
 
     # SQL failure
-    select_assay_UploadJobs.side_effect = Exception("sql failure")
+    select_assay_uploads.side_effect = Exception("sql failure")
 
     with pytest.raises(Exception, match="sql failure"):
         run_metadata_migration(mock_migration)
@@ -129,7 +127,7 @@ def test_migrations_rollback(monkeypatch):
     reset_mocks()
 
     # No failures
-    select_assay_UploadJobs.side_effect = None
+    select_assay_uploads.side_effect = None
     run_metadata_migration(mock_migration)
     # Ensure we renamed the right objects
     assert rename_gcs_obj.call_args_list == [

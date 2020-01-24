@@ -320,7 +320,7 @@ def upload_manifest(
 )
 @upload_handler(prism.SUPPORTED_ASSAYS)
 def upload_assay(*args, **kwargs):
-    """Handle assay metadata / file UploadJobs."""
+    """Handle assay metadata / file uploads."""
     return upload_data_files(*args, **kwargs)
 
 
@@ -330,7 +330,7 @@ def upload_assay(*args, **kwargs):
 )
 @upload_handler(prism.SUPPORTED_ANALYSES)
 def upload_analysis(*args, **kwargs):
-    """Handle analysis metadata / file UploadJobs."""
+    """Handle analysis metadata / file uploads."""
     return upload_data_files(*args, **kwargs)
 
 
@@ -479,7 +479,7 @@ def validate_upload_status_update(request: Request, _: dict):
 def on_post_PATCH_upload_job(request: Request, payload: Response):
     """Revoke the user's write access to the objects they've uploaded to."""
     if not payload.json or not "id" in payload.json:
-        raise BadRequest("Unexpected payload while updating assay_UploadJobs")
+        raise BadRequest("Unexpected payload while updating assay_uploads")
 
     # TODO: handle the case where the user has more than one upload running,
     # in which case we shouldn't revoke the user's write access until they
