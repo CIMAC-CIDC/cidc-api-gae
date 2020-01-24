@@ -186,7 +186,7 @@ def _encode_and_publish(content: str, topic: str) -> Future:
 
 
 def publish_upload_success(job_id: int):
-    """Publish to the UploadJobs topic that the upload job with the provided `job_id` succeeded."""
+    """Publish to the uploads topic that the upload job with the provided `job_id` succeeded."""
     report = _encode_and_publish(str(job_id), GOOGLE_UPLOAD_TOPIC)
 
     # For now, we wait await this Future. Going forward, maybe

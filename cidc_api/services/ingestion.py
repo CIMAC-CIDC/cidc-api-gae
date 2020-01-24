@@ -264,7 +264,7 @@ def upload_manifest(
 
     * API tries to load existing trial metadata blob (if fails, merge request fails; nothing saved).
     * API merges the merge request JSON into the trial metadata (if fails, merge request fails; nothing saved).
-    * The manifest xlsx file is upload to the GCS UploadJobs bucket and goes to Downloadable files.
+    * The manifest xlsx file is upload to the GCS uploads bucket and goes to Downloadable files.
     * The merge request parsed JSON is saved to `UploadJobs`.
     * The updated trial metadata object is updated in the `TrialMetadata` table.
 
@@ -368,7 +368,7 @@ def upload_data_files(
 
         # Build the path to the "directory" in GCS where the
         # local file should be uploaded. Attach a timestamp (upload_moment)
-        # to prevent collisions with previous UploadJobs of this file.
+        # to prevent collisions with previous uploads of this file.
         gcs_uri = f"{file_info.gs_key}/{upload_moment}"
 
         uri2uuid[gcs_uri] = uuid
