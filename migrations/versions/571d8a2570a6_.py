@@ -30,17 +30,17 @@ assay_upload_status = sa.Enum(
 def upgrade():
     assay_upload_status.create(op.get_bind())
 
-    op.execute("ALTER TABLE assay_uploads ALTER COLUMN status TYPE text")
+    op.execute("ALTER TABLE assay_UploadJobs ALTER COLUMN status TYPE text")
 
     op.execute(
-        "UPDATE assay_uploads SET status = 'upload-completed' WHERE status = 'completed'"
+        "UPDATE assay_UploadJobs SET status = 'upload-completed' WHERE status = 'completed'"
     )
     op.execute(
-        "UPDATE assay_uploads SET status = 'upload-failed' WHERE status = 'errored'"
+        "UPDATE assay_UploadJobs SET status = 'upload-failed' WHERE status = 'errored'"
     )
 
     op.execute(
-        "ALTER TABLE assay_uploads ALTER COLUMN status TYPE assay_upload_status USING status::assay_upload_status"
+        "ALTER TABLE assay_UploadJobs ALTER COLUMN status TYPE assay_upload_status USING status::assay_upload_status"
     )
 
     job_statuses.drop(op.get_bind())
@@ -49,15 +49,15 @@ def upgrade():
 def downgrade():
     job_statuses.create(op.get_bind())
 
-    op.execute("ALTER TABLE assay_uploads ALTER COLUMN status TYPE text")
+    op.execute("ALTER TABLE assay_UploadJobs ALTER COLUMN status TYPE text")
     op.execute(
-        "UPDATE assay_uploads SET status = 'completed' WHERE status = 'upload-completed' OR status = 'merge-completed'"
+        "UPDATE assay_UploadJobs SET status = 'completed' WHERE status = 'upload-completed' OR status = 'merge-completed'"
     )
     op.execute(
-        "UPDATE assay_uploads SET status = 'errored' WHERE status = 'upload-failed' OR status = 'merge-failed'"
+        "UPDATE assay_UploadJobs SET status = 'errored' WHERE status = 'upload-failed' OR status = 'merge-failed'"
     )
     op.execute(
-        "ALTER TABLE assay_uploads ALTER COLUMN status TYPE status::job_statuses"
+        "ALTER TABLE assay_UploadJobs ALTER COLUMN status TYPE status::job_statuses"
     )
 
     assay_upload_status.drop(op.get_bind())

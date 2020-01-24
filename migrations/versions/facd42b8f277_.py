@@ -10,6 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 from cidc_schemas.migrations import v0_10_2_to_v0_11_0
+
 from cidc_api.utils.migrations import run_metadata_migration
 
 

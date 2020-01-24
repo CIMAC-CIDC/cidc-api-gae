@@ -12,9 +12,9 @@ from google.cloud import storage
 from cidc_api.models import (
     TrialMetadata,
     DownloadableFiles,
-    AssayUploads,
-    AssayUploadStatus,
-    ManifestUploads,
+    UploadJobs,
+    UploadJobStatus,
+    UploadJobs,
 )
 from cidc_api.gcloud_client import publish_artifact_upload
 from cidc_api.config.settings import GOOGLE_DATA_BUCKET, GOOGLE_UPLOAD_BUCKET
@@ -98,17 +98,17 @@ def _select_trials(session: Session) -> List[TrialMetadata]:
     return session.query(TrialMetadata).with_for_update().all()
 
 
-def _select_successful_assay_uploads(session: Session) -> List[AssayUploads]:
+def _select_successful_assay_UploadJobs(session: Session) -> List[UploadJobs]:
     return (
-        session.query(AssayUploads)
-        .filter_by(status=AssayUploadStatus.MERGE_COMPLETED.value)
+        session.query(UploadJobs)
+        .filter_by(status=UploadJobStatus.MERGE_COMPLETED.value)
         .with_for_update()
         .all()
     )
 
 
-def _select_manifest_uploads(session: Session) -> List[ManifestUploads]:
-    return session.query(ManifestUploads).with_for_update().all()
+def _select_manifest_UploadJobs(session: Session) -> List[UploadJobs]:
+    return session.query(UploadJobs).with_for_update().all()
 
 
 def _run_metadata_migration(
@@ -165,8 +165,8 @@ def _run_metadata_migration(
                 gcs_tasks.schedule(renamer)
 
     # Migrate all assay upload successes
-    successful_assay_uploads = _select_successful_assay_uploads(session)
-    for upload in successful_assay_uploads:
+    successful_assay_UploadJobs = _select_successful_assay_UploadJobs(session)
+    for upload in successful_assay_UploadJobs:
         print(f"Running metadata migration for assay upload: {upload.id}")
         migration = metadata_migration(upload.assay_patch)
 
@@ -215,8 +215,8 @@ def _run_metadata_migration(
         upload.gcs_file_map = new_file_map
 
     # Migrate all manifest records
-    manifest_uploads = _select_manifest_uploads(session)
-    for upload in manifest_uploads:
+    manifest_UploadJobs = _select_manifest_UploadJobs(session)
+    for upload in manifest_UploadJobs:
         print(f"Running metadata migration for manifest upload: {upload.id}")
         migration = metadata_migration(upload.metadata_patch)
 
@@ -254,14 +254,14 @@ def rename_gcs_blob(bucket, old_name, new_name):
     return new_blob
 
 
-def republish_artifact_uploads():
+def republish_artifact_UploadJobs():
     """
     Publish all downloadable_file IDs to the `artifact_upload` Pub/Sub topic,
     triggering downstream file post-processing (e.g., pre-computation for visualization
     purposes).
     """
     if is_testing:
-        print("Skipping 'republish_artifact_uploads' because this is a test")
+        print("Skipping 'republish_artifact_UploadJobs' because this is a test")
         return
 
     with migration_session() as (session, _):

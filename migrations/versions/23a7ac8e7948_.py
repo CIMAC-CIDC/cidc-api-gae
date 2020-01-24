@@ -8,7 +8,7 @@ Create Date: 2019-12-02 12:40:16.956281
 from alembic import op
 import sqlalchemy as sa
 
-from cidc_api.utils.migrations import republish_artifact_uploads
+from cidc_api.utils.migrations import republish_artifact_UploadJobs
 
 # revision identifiers, used by Alembic.
 revision = "23a7ac8e7948"
@@ -19,7 +19,7 @@ depends_on = None
 
 def upgrade():
     # Trigger visualization preprocessing
-    republish_artifact_uploads()
+    republish_artifact_UploadJobs()
 
 
 def downgrade():
