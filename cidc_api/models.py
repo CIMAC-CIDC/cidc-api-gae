@@ -543,6 +543,7 @@ class UploadJobs(CommonColumns):
         session: Session,
         commit: bool = True,
         send_email: bool = False,
+        status: UploadJobStatus = UploadJobStatus.STARTED.value,
     ):
         """Create a new upload job for the given trial metadata patch."""
         assert prism.PROTOCOL_ID_FIELD_NAME in metadata, "metadata must have a trial ID"
@@ -562,7 +563,7 @@ class UploadJobs(CommonColumns):
             metadata_patch=metadata,
             uploader_email=uploader_email,
             gcs_xlsx_uri=gcs_xlsx_uri,
-            status=UploadJobStatus.STARTED.value,
+            status=status,
             _etag=make_etag(
                 upload_type,
                 gcs_file_map,

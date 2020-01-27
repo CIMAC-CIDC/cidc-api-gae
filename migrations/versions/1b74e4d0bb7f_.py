@@ -20,8 +20,8 @@ depends_on = None
 
 
 def upgrade():
-    run_metadata_migration(v0_15_2_to_v0_15_3.upgrade)
+    run_metadata_migration(v0_15_2_to_v0_15_3.upgrade, False)
 
 
 def downgrade():
-    run_metadata_migration(v0_15_2_to_v0_15_3.downgrade)
+    run_metadata_migration(v0_15_2_to_v0_15_3.downgrade, False)

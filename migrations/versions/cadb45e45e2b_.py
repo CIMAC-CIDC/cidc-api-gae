@@ -21,8 +21,11 @@ def upgrade():
 
     conn.execute("ALTER TABLE assay_uploads RENAME TO upload_jobs")
     conn.execute("ALTER TABLE upload_jobs RENAME COLUMN assay_type TO upload_type")
+    conn.execute("ALTER TABLE upload_jobs RENAME COLUMN assay_patch TO metadata_patch")
     conn.execute("ALTER TABLE upload_jobs ALTER COLUMN gcs_file_map DROP NOT NULL")
-    conn.execute("ALTER TABLE upload_jobs ADD COLUMN multifile NOT NULL DEFAULT true")
+    conn.execute(
+        "ALTER TABLE upload_jobs ADD COLUMN multifile BOOLEAN NOT NULL DEFAULT true"
+    )
     conn.execute(
         "ALTER TABLE upload_jobs ADD CONSTRAINT check_gcs_file_map CHECK (multifile = false OR gcs_file_map != null)"
     )
@@ -100,6 +103,9 @@ def downgrade():
     conn.execute("ALTER TYPE upload_job_status RENAME TO assay_upload_status")
     conn.execute("ALTER TABLE upload_jobs RENAME TO assay_uploads")
     conn.execute("ALTER TABLE assay_uploads RENAME COLUMN upload_type TO assay_type")
+    conn.execute(
+        "ALTER TABLE assay_uploads RENAME COLUMN metadata_patch TO assay_patch"
+    )
     conn.execute("ALTER TABLE assay_uploads ALTER COLUMN gcs_file_map SET NOT NULL")
     conn.execute("ALTER TABLE assay_uploads DROP COLUMN multifile")
     conn.execute("ALTER TABLE assay_uploads DROP CONSTRAINT check_gcs_file_map")

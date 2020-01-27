@@ -71,7 +71,6 @@ def upgrade():
         ["trial_id"],
         unique=False,
     )
-    # ### end Alembic commands ###
 
 
 def downgrade():

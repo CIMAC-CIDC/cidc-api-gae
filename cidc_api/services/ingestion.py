@@ -306,6 +306,7 @@ def upload_manifest(
         gcs_file_map=None,
         session=session,
         send_email=True,
+        status=UploadJobStatus.MERGE_COMPLETED.value,
     )
 
     # Publish that a manifest upload has been received

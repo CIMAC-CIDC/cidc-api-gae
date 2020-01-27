@@ -23,9 +23,9 @@ depends_on = None
 
 def upgrade():
     """Update Olink's assay_raw_ct artifact data format to CSV"""
-    run_metadata_migration(v0_10_2_to_v0_11_0.upgrade)
+    run_metadata_migration(v0_10_2_to_v0_11_0.upgrade, False)
 
 
 def downgrade():
     """Downgrade Olink's assay_raw_ct artifact data format to XLSX"""
-    run_metadata_migration(v0_10_2_to_v0_11_0.downgrade)
+    run_metadata_migration(v0_10_2_to_v0_11_0.downgrade, False)

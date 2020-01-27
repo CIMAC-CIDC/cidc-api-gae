@@ -22,9 +22,9 @@ is_testing = os.environ.get("TESTING")
 
 def upgrade():
     """Update Olink's assay_raw_ct artifact data format to CSV"""
-    run_metadata_migration(v0_10_0_to_v0_10_2.upgrade)
+    run_metadata_migration(v0_10_0_to_v0_10_2.upgrade, False)
 
 
 def downgrade():
     """Downgrade Olink's assay_raw_ct artifact data format to XLSX"""
-    run_metadata_migration(v0_10_0_to_v0_10_2.downgrade)
+    run_metadata_migration(v0_10_0_to_v0_10_2.downgrade, False)
