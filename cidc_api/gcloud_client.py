@@ -113,6 +113,7 @@ def revoke_upload_access(user_email: str):
     # Update the bucket IAM policy to remove the user's uploader privileges.
     policy = bucket.get_iam_policy()
     policy[GOOGLE_UPLOAD_ROLE].discard(f"user:{user_email}")
+    print(f"{GOOGLE_UPLOAD_ROLE} binding updated to {policy[GOOGLE_UPLOAD_ROLE]}")
     bucket.set_iam_policy(policy)
 
 
