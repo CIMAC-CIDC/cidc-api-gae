@@ -26,7 +26,7 @@ def upgrade():
     conn.execute(
         """
         UPDATE downloadable_files SET analysis_friendly = true 
-        WHERE upload_type in ('participant info', 'sample info', 'cell counts assignment', 'cell counts compartment', 'cell counts profiling', 'combined maf', 'ihc marker combined')
+        WHERE upload_type in ('participants info', 'samples info', 'cell counts assignment', 'cell counts compartment', 'cell counts profiling', 'combined maf', 'ihc marker combined')
         """
     )
     # ### end Alembic commands ###
