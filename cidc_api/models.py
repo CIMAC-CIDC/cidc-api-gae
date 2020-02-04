@@ -78,7 +78,8 @@ class FKResourceConfig(ResourceConfig):
         """
         Eve-SQLAlchemy's built-in ResourceConfig generator doesn't include foreign keys
         without relationships in the schema config, but we want to allow this, so
-        we override this method: https://github.com/pyeve/eve-sqlalchemy/blob/22bdd96fe5b461fbdfe4a4dfdc394569f7e9b8b4/eve_sqlalchemy/config/resourceconfig.py#L157
+        we override this method by removing the foreign key filter (`len(f.expression.foreign_keys) == 0)`): 
+        https://github.com/pyeve/eve-sqlalchemy/blob/22bdd96fe5b461fbdfe4a4dfdc394569f7e9b8b4/eve_sqlalchemy/config/resourceconfig.py#L157
         """
         return (
             f.key
