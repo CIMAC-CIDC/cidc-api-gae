@@ -107,10 +107,15 @@ def test_validate_valid_template(
     mocks.iter_errors.assert_called_once()
 
 
-def test_validate_invalid_template(app_no_auth, some_file, monkeypatch):
+def test_validate_invalid_template(
+    app_no_auth, some_file, test_user, db, db_with_trial_and_user, monkeypatch
+):
     """Ensure that the validation endpoint returns errors for a known-invalid .xlsx file"""
     mocks = UploadMocks(monkeypatch)
     mocks.iter_errors.return_value = ["test error"]
+
+    give_upload_permission(test_user, TEST_TRIAL, "pbmc", db)
+
     client = app_no_auth.test_client()
     data = form_data("pbmc.xlsx", some_file, "pbmc")
     res = client.post(VALIDATE, data=data)
@@ -214,6 +219,7 @@ def test_upload_unsupported_manifest(
 
 
 def give_upload_permission(user, trial, type_, db):
+    user.id = Users.find_by_email(user.email, session=db).id
     db.add(
         Permissions(
             granted_by_user=user.id,

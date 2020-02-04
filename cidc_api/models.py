@@ -22,6 +22,7 @@ from sqlalchemy import (
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.session import Session
+from sqlalchemy.sql import expression
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import declarative_base
 from eve_sqlalchemy.config import DomainConfig, ResourceConfig
@@ -72,16 +73,33 @@ FILE_TYPES = [
 ]
 
 
+class FKResourceConfig(ResourceConfig):
+    def _get_column_fields(self):
+        """
+        Eve-SQLAlchemy's built-in ResourceConfig generator doesn't include foreign keys
+        without relationships in the schema config, but we want to allow this, so
+        we override this method: https://github.com/pyeve/eve-sqlalchemy/blob/22bdd96fe5b461fbdfe4a4dfdc394569f7e9b8b4/eve_sqlalchemy/config/resourceconfig.py#L157
+        """
+        return (
+            f.key
+            for f in self._mapper.column_attrs
+            if f.key not in self._ignored_fields
+            and isinstance(f.expression, expression.ColumnElement)
+        )
+
+
 def get_DOMAIN() -> dict:
     """
     Render all cerberus domains for API resources and set up method restrictions
     and role-based access controls.
     """
     domain_config = {}
-    domain_config["new_users"] = ResourceConfig(Users)
-    domain_config["trial_metadata"] = ResourceConfig(TrialMetadata, id_field="trial_id")
+    domain_config["new_users"] = FKResourceConfig(Users)
+    domain_config["trial_metadata"] = FKResourceConfig(
+        TrialMetadata, id_field="trial_id"
+    )
     for model in [Users, UploadJobs, Permissions, DownloadableFiles]:
-        domain_config[model.__tablename__] = ResourceConfig(model)
+        domain_config[model.__tablename__] = FKResourceConfig(model)
 
     domain = DomainConfig(domain_config).render()
 
@@ -126,7 +144,6 @@ def get_DOMAIN() -> dict:
     # * downloadable_files are read-only through the API
     domain["downloadable_files"]["resource_methods"] = ["GET"]
     domain["downloadable_files"]["item_methods"] = ["GET"]
-    domain["downloadable_files"]["schema"]["trial_id"] = {"type": "string"}
 
     # Add the download_link field to the 'downloadable_files' resource schema
     domain["downloadable_files"]["schema"]["download_link"] = {"type": "string"}
