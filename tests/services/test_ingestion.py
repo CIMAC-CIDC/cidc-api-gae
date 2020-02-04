@@ -630,6 +630,7 @@ def test_poll_upload_merge_status(app, db, test_user, monkeypatch):
 
         Users.create({"email": "other@email.com"})
         db.add(TrialMetadata(trial_id=trial_id, metadata_json={}))
+        db.commit()
         upload_1 = UploadJobs.create(
             upload_type="wes",
             uploader_email=test_user.email,
