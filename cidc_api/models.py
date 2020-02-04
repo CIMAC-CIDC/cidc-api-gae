@@ -678,7 +678,6 @@ class DownloadableFiles(CommonColumns):
     md5_hash = Column(String, nullable=True)
     crc32c_hash = Column(String, nullable=True)
     trial_id = Column(String, nullable=False)
-    # trial = relationship(TrialMetadata, foreign_keys=[trial_id])
     object_url = Column(String, nullable=False, index=True, unique=True)
     visible = Column(Boolean, default=True)
 
