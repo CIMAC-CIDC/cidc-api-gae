@@ -61,6 +61,7 @@ if not environ.get("GOOGLE_APPLICATION_CREDENTIALS") and not TESTING:
 ## Configure database
 SQLALCHEMY_DATABASE_URI = db.get_sqlachemy_database_uri(TESTING)
 SQLALCHEMY_TRACK_MODIFICATIONS = False
+SQLALCHEMY_ECHO = True if ENV == "dev" else False
 ## End database config
 
 ## Configure Eve REST API

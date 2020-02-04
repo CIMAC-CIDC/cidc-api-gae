@@ -21,6 +21,11 @@ ABSPATH = dirname(abspath(__file__))
 SETTINGS = join(ABSPATH, "config", "settings.py")
 MIGRATIONS = join(ABSPATH, "..", "migrations")
 
+# import logging
+
+# logging.basicConfig()
+# logging.getLogger("sqlalchemy.engine").setLevel(logging.DEBUG)
+
 # Instantiate the Eve app
 app = Eve(auth=BearerAuth, data=SQL, validator=ValidatorSQL, settings=SETTINGS)
 

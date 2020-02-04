@@ -2,7 +2,7 @@ import os
 import hashlib
 from enum import Enum as EnumBaseClass
 from functools import wraps
-from typing import BinaryIO, Optional, List
+from typing import Optional, List
 
 from flask import current_app as app
 from google.cloud.storage import Blob
@@ -10,22 +10,20 @@ from sqlalchemy import (
     Column,
     Boolean,
     DateTime,
-    ForeignKey,
     Integer,
     BigInteger,
     String,
-    VARCHAR,
     Enum,
     Index,
     func,
     CheckConstraint,
+    ForeignKeyConstraint,
 )
-from sqlalchemy.orm import relationship
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.session import Session
-from sqlalchemy.dialects.postgresql import JSONB, ARRAY, BYTEA
-from sqlalchemy.ext.declarative import declarative_base, declared_attr
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.declarative import declarative_base
 from eve_sqlalchemy.config import DomainConfig, ResourceConfig
 
 from cidc_schemas import prism, unprism
@@ -85,19 +83,7 @@ def get_DOMAIN() -> dict:
     for model in [Users, UploadJobs, Permissions, DownloadableFiles]:
         domain_config[model.__tablename__] = ResourceConfig(model)
 
-    # Eve-sqlalchemy needs this to be specified explicitly for foreign key relations
-    related_resources = {
-        (Permissions, "to_user"): "users",
-        (Permissions, "by_user"): "users",
-        (Permissions, "trial"): "trial_metadata",
-        (UploadJobs, "uploader"): "users",
-        (UploadJobs, "trial"): "trial_metadata",
-        (UploadJobs, "uploader"): "users",
-        (UploadJobs, "trial"): "trial_metadata",
-        (DownloadableFiles, "trial"): "trial_metadata",
-    }
-
-    domain = DomainConfig(domain_config, related_resources).render()
+    domain = DomainConfig(domain_config).render()
 
     # Restrict operations on the 'new_users' resource:
     # * A new_user cannot be created with a role or an approval date
@@ -140,6 +126,7 @@ def get_DOMAIN() -> dict:
     # * downloadable_files are read-only through the API
     domain["downloadable_files"]["resource_methods"] = ["GET"]
     domain["downloadable_files"]["item_methods"] = ["GET"]
+    domain["downloadable_files"]["schema"]["trial_id"] = {"type": "string"}
 
     # Add the download_link field to the 'downloadable_files' resource schema
     domain["downloadable_files"]["schema"]["download_link"] = {"type": "string"}
@@ -246,24 +233,32 @@ class Users(CommonColumns):
 
 class Permissions(CommonColumns):
     __tablename__ = "permissions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["granted_by_user"],
+            ["users.id"],
+            name="ix_permissions_granted_by_user",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["granted_to_user"],
+            ["users.id"],
+            name="ix_permissions_granted_to_user",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["trial_id"],
+            ["trial_metadata.trial_id"],
+            name="ix_permissions_trial_id",
+            ondelete="CASCADE",
+        ),
+    )
 
     # If user who granted this permission is deleted, this permission will be deleted.
     # TODO: is this what we want?
-    granted_by_user = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
-    by_user = relationship("Users", foreign_keys=[granted_by_user])
-    granted_to_user = Column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True
-    )
-    to_user = relationship("Users", foreign_keys=[granted_to_user])
-
-    trial_id = Column(
-        String,
-        ForeignKey("trial_metadata.trial_id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    trial = relationship("TrialMetadata", foreign_keys=[trial_id])
-
+    granted_by_user = Column(Integer)
+    granted_to_user = Column(Integer, nullable=False, index=True)
+    trial_id = Column(String, nullable=False, index=True)
     upload_type = Column(String, nullable=False)
 
     @staticmethod
@@ -479,7 +474,20 @@ UPLOAD_STATUSES = [s.value for s in UploadJobStatus]
 class UploadJobs(CommonColumns):
     __tablename__ = "upload_jobs"
     # An upload job must contain a gcs_file_map is it isn't a manifest upload
-    __tableargs__ = (CheckConstraint(f"multifile = true OR gcs_file_map != null"),)
+    __table_args__ = (
+        CheckConstraint(f"multifile = true OR gcs_file_map != null"),
+        ForeignKeyConstraint(
+            ["uploader_email"],
+            ["users.email"],
+            name="upload_jobs_uploader_email_fkey",
+            onupdate="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["trial_id"],
+            ["trial_metadata.trial_id"],
+            name="assay_uploads_trial_id_fkey",
+        ),
+    )
 
     # The current status of the upload job
     status = Column(Enum(*UPLOAD_STATUSES, name="upload_job_status"), nullable=False)
@@ -496,28 +504,10 @@ class UploadJobs(CommonColumns):
     metadata_patch = Column(JSONB, nullable=False)
     # The type of upload (pbmc, wes, olink, wes_analysis, ...)
     upload_type = Column(String, nullable=False)
-
     # Link to the user who created this upload.
-    @declared_attr
-    def uploader_email(cls):
-        return Column(String, ForeignKey("users.email", onupdate="CASCADE"))
-
-    @declared_attr
-    def uploader(cls):
-        return relationship("Users", foreign_keys=[cls.uploader_email])
-
+    uploader_email = Column(String, nullable=False)
     # The trial that this is an upload for.
-    # This foreign key constraint means that it won't be possible
-    # to create an upload for a trial that doesn't exist.
-    @declared_attr
-    def trial_id(cls):
-        return Column(
-            String, ForeignKey("trial_metadata.trial_id"), nullable=False, index=True
-        )
-
-    @declared_attr
-    def trial(cls):
-        return relationship("TrialMetadata", foreign_keys=[cls.trial_id])
+    trial_id = Column(String, nullable=False, index=True)
 
     # Create a GIN index on the GCS object names
     _gcs_objects_idx = Index(
@@ -651,6 +641,13 @@ class DownloadableFiles(CommonColumns):
     """
 
     __tablename__ = "downloadable_files"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["trial_id"],
+            ["trial_metadata.trial_id"],
+            name="downloadable_files_trial_id_fkey",
+        ),
+    )
 
     file_name = Column(String, nullable=False)
     file_size_bytes = Column(BigInteger, nullable=False)
@@ -663,8 +660,8 @@ class DownloadableFiles(CommonColumns):
     upload_type = Column(String, nullable=False)
     md5_hash = Column(String, nullable=True)
     crc32c_hash = Column(String, nullable=True)
-    trial_id = Column(String, ForeignKey("trial_metadata.trial_id"), nullable=False)
-    trial = relationship(TrialMetadata, foreign_keys=[trial_id])
+    trial_id = Column(String, nullable=False)
+    # trial = relationship(TrialMetadata, foreign_keys=[trial_id])
     object_url = Column(String, nullable=False, index=True, unique=True)
     visible = Column(Boolean, default=True)
 
