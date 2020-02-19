@@ -22,7 +22,13 @@ SETTINGS = join(ABSPATH, "config", "settings.py")
 MIGRATIONS = join(ABSPATH, "..", "migrations")
 
 # Instantiate the Eve app
-app = Eve(auth=BearerAuth, data=SQL, validator=ValidatorSQL, settings=SETTINGS)
+app = Eve(
+    auth=BearerAuth,
+    data=SQL,
+    validator=ValidatorSQL,
+    settings=SETTINGS,
+    static_folder=None,
+)
 
 # Inherit logging config from gunicorn if running behind gunicorn
 app.logger.setLevel(logging.DEBUG)
