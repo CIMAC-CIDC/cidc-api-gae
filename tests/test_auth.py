@@ -35,10 +35,10 @@ def bearer_auth(monkeypatch):
     return BearerAuth()
 
 
-def test_requires_auth_current_user(app, monkeypatch):
+def test_requires_auth_no_auth_headers(app, monkeypatch):
     """
-    Check that the requires_auth decorator ensures a current user
-    is available in the request context.
+    Check that the requires_auth decorator throws 401 when 
+    no authorization header is provided.
     """
 
     @app.route("/test")
@@ -48,7 +48,7 @@ def test_requires_auth_current_user(app, monkeypatch):
 
     client = app.test_client()
 
-    # 401 when no authentication headers provided
+    # 401 when no auth headers provided
     response = client.get("/test")
     assert response.status_code == 401
 

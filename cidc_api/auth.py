@@ -27,6 +27,8 @@ def requires_auth(resource: str, allowed_roles: list = []):
     def decorator(f):
         @wraps(f)
         def wrapped(*args, **kwargs):
+            if not request.headers.get("Authorization"):
+                app.auth.authenticate()
             app.auth.authorized(allowed_roles, resource, request.method)
             return f(*args, **kwargs)
 
