@@ -4,7 +4,6 @@ def test_api_rules(app):
     """
     expected_endpoints = {
         "/",
-        "/api-docs",
         "/downloadable_files",
         "/downloadable_files/download_url",
         "/downloadable_files/filter_facets",
