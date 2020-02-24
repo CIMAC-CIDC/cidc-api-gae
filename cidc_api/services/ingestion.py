@@ -487,7 +487,7 @@ def on_post_PATCH_upload_job(request: Request, payload: Response):
     # have no remaining jobs with status "started".
 
     job_id = payload.json["id"]
-    status = request.json["status"]
+    status = request.json.get("status")
 
     # If this is a successful upload job, publish this info to Pub/Sub
     if status == UploadJobStatus.UPLOAD_COMPLETED.value:
