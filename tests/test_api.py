@@ -4,7 +4,7 @@ This file doesn't contain tests for methods that don't directly correspond
 to data resources, like those implemented in the services module (e.g., for
 handling upload-related functionality).
 """
-
+from unittest.mock import MagicMock
 from datetime import datetime
 
 from flask import _request_ctx_stack
@@ -86,20 +86,29 @@ def db_with_records(db):
     return db
 
 
-print(CIDCRole.CIMAC_USER.value)
-
+# Configuration for resource tests below. For each resource, the following keywords are supported:
+#   `json` (required): a JSON instance of this resource.
+#   `model` (required): the SQLAlchemy model for this resource.
+#   `allowed_methods` (required): the HTTP methods this resource supports.
+#   `POST_setup`: a list of other resources to add to the database before POSTing this resource.
+#   `PATCH_json` (required if "PATCH" in `allowed_methods`): a JSON patch update for this resource.
+#   `filters`: a dictionary containing two entries representing possible filter queries:
+#       `empty`: a query filter that should return empty results.
+#       `one`: a query filter that should return exactly one result.
+#   `additional_records`: a list of JSON instances of this resource to insert before testing pagination.
+#   `mocks`: a list of functions that accept pytest's `monkeypatch` as their argument.
 resource_requests = {
     "new_users": {"json": new_user, "model": Users, "allowed_methods": {"POST"}},
     "users": {
         "json": user,
         "model": Users,
         "allowed_methods": {"POST", "PATCH", "GET"},
-        "update": {"role": CIDCRole.CIMAC_USER.value},
+        "PATCH_json": {"role": CIDCRole.CIMAC_USER.value},
         "filters": {
             "empty": {
                 "where": f"role=='{CIDCRole.CIMAC_USER.value}' and email=='{user['email']}'"
             },
-            "full": {
+            "one": {
                 "where": f"role=='{CIDCRole.CIMAC_USER.value}' or email=='{user['email']}'"
             },
         },
@@ -113,20 +122,20 @@ resource_requests = {
         "model": TrialMetadata,
         "allowed_methods": {"POST", "PATCH", "GET"},
         "lookup_field": "trial_id",
-        "update": {"metadata_json": {"foo": "bar"}},
+        "PATCH_json": {"metadata_json": {"foo": "bar"}},
     },
     "downloadable_files": {
         "json": downloadable_file,
         "model": DownloadableFiles,
         "allowed_methods": {"GET"},
-        "setup": ["trial_metadata"],
-        "update": {"upload_type": "fizzbuzz"},
+        "POST_setup": ["trial_metadata"],
+        "PATCH_json": {"upload_type": "fizzbuzz"},
         "filters": {
             "empty": {
                 "where": f"trial_id=='{trial_metadata['trial_id']}' and upload_type=='wes'"
             },
-            "full": {
-                "where": f"trial_id=='{trial_metadata['trial_id']}' and upload_type=='olink'"
+            "one": {
+                "where": f"trial_id=='{trial_metadata['trial_id']}' and upload_type=='olink' and id==1"
             },
         },
         "additional_records": [
@@ -138,19 +147,25 @@ resource_requests = {
         "json": permission,
         "model": Permissions,
         "allowed_methods": {"POST", "PATCH", "GET", "DELETE"},
-        "setup": ["users", "trial_metadata"],
-        "update": {"upload_type": "fizzbuzz"},
+        "POST_setup": ["users", "trial_metadata"],
+        "PATCH_json": {"upload_type": "fizzbuzz"},
         "filters": {
             "empty": {"where": "granted_to_user==2"},
-            "full": {"where": "granted_to_user==1"},
+            "one": {"where": "granted_to_user==1"},
         },
     },
     "upload_jobs": {
         "json": upload_job,
         "model": UploadJobs,
         "allowed_methods": {"PATCH", "GET"},
-        "setup": ["users", "trial_metadata"],
-        "update": {"upload_type": "fizzbuzz"},
+        "POST_setup": ["users", "trial_metadata"],
+        "PATCH_json": {"upload_type": "fizzbuzz"},
+        "mocks": [
+            lambda monkeypatch: monkeypatch.setattr(
+                "cidc_api.services.ingestion.gcloud_client.revoke_upload_access",
+                MagicMock(),
+            )
+        ],
     },
 }
 
@@ -162,13 +177,19 @@ def assert_dict_contains(base, target):
         assert base[key] == value or isinstance(value, datetime)
 
 
+def setup_mocks(config, monkeypatch):
+    if "mocks" in config:
+        for mock in config["mocks"]:
+            mock(monkeypatch)
+
+
 @pytest.mark.parametrize("resource, config", resource_requests.items())
-def test_resource_post(resource, config, app_with_admin_user, db):
-    """Test resource creation via POST."""
+def test_resource_post(resource, config, app_with_admin_user, db, monkeypatch):
+    setup_mocks(config, monkeypatch)
     client = app_with_admin_user.test_client()
 
-    if "setup" in config:
-        for setup_resource in config["setup"]:
+    if "POST_setup" in config:
+        for setup_resource in config["POST_setup"]:
             client.post(setup_resource, json=resource_requests[setup_resource]["json"])
 
     # Try to create the item with POST
@@ -183,7 +204,10 @@ def test_resource_post(resource, config, app_with_admin_user, db):
 
 
 @pytest.mark.parametrize("resource, config", resource_requests.items())
-def test_resource_and_item_get(resource, config, app_with_admin_user, db_with_records):
+def test_resource_and_item_get(
+    resource, config, app_with_admin_user, db_with_records, monkeypatch
+):
+    setup_mocks(config, monkeypatch)
     client = app_with_admin_user.test_client()
 
     # resource-level GET
@@ -210,30 +234,34 @@ def test_resource_and_item_get(resource, config, app_with_admin_user, db_with_re
 
 
 @pytest.mark.parametrize("resource, config", resource_requests.items())
-def test_item_patch(resource, config, app_with_admin_user, db_with_records):
+def test_item_patch(
+    resource, config, app_with_admin_user, db_with_records, monkeypatch
+):
     client = app_with_admin_user.test_client()
+    setup_mocks(config, monkeypatch)
 
     # Try to update the resource
     lookup = config["json"].get(config.get("lookup_field") or "id")
-    response = client.patch(f"{resource}/{lookup}", json=config.get("update"))
+    response = client.patch(f"{resource}/{lookup}", json=config.get("PATCH_json"))
     if "PATCH" in config["allowed_methods"]:
         # Need to match etag
         assert response.status_code == 428
         response = client.patch(
             f"{resource}/{lookup}",
-            json=config.get("update"),
+            json=config.get("PATCH_json"),
             headers={"if-match": ETAG},
         )
         assert response.status_code == 200
         # Check that the record was updated
         item = db_with_records.query(config["model"]).one().__dict__
-        assert_dict_contains(item, config["update"])
+        assert_dict_contains(item, config["PATCH_json"])
     else:
         assert response.status_code in (404, 405)
 
 
 @pytest.mark.parametrize("resource, config", resource_requests.items())
-def test_item_put(resource, config, app_with_admin_user, db_with_records):
+def test_item_put(resource, config, app_with_admin_user, db_with_records, monkeypatch):
+    setup_mocks(config, monkeypatch)
     client = app_with_admin_user.test_client()
 
     # Try to PUT the resource - this is disallowed for all resources.
@@ -247,7 +275,10 @@ def test_item_put(resource, config, app_with_admin_user, db_with_records):
 
 
 @pytest.mark.parametrize("resource, config", resource_requests.items())
-def test_item_delete(resource, config, app_with_admin_user, db_with_records):
+def test_item_delete(
+    resource, config, app_with_admin_user, db_with_records, monkeypatch
+):
+    setup_mocks(config, monkeypatch)
     client = app_with_admin_user.test_client()
 
     # Try to DELETE the resource - this is disallowed for all resources.
@@ -260,15 +291,19 @@ def test_item_delete(resource, config, app_with_admin_user, db_with_records):
 
 
 @pytest.mark.parametrize("resource, config", resource_requests.items())
-def test_resource_filters(resource, config, app_with_admin_user, db_with_records):
+def test_resource_filters(
+    resource, config, app_with_admin_user, db_with_records, monkeypatch
+):
     if "filters" not in config:
         return
 
+    setup_mocks(config, monkeypatch)
     client = app_with_admin_user.test_client()
 
-    full_response = client.get(resource, query_string=config["filters"]["full"])
-    assert full_response.status_code == 200
-    item = full_response.json["_items"][0]
+    one_response = client.get(resource, query_string=config["filters"]["one"])
+    assert one_response.status_code == 200
+    assert len(one_response.json["_items"]) == 1
+    item = one_response.json["_items"][0]
     assert_dict_contains(item, config["json"])
 
     empty_response = client.get(resource, query_string=config["filters"]["empty"])
@@ -277,7 +312,9 @@ def test_resource_filters(resource, config, app_with_admin_user, db_with_records
 
 
 @pytest.mark.parametrize("resource, config", resource_requests.items())
-def test_resource_pagination(resource, config, app_with_admin_user, db_with_records):
+def test_resource_pagination(
+    resource, config, app_with_admin_user, db_with_records, monkeypatch
+):
     if "additional_records" not in config:
         return
 
@@ -286,6 +323,7 @@ def test_resource_pagination(resource, config, app_with_admin_user, db_with_reco
         db_with_records.add(config["model"](**record))
     db_with_records.commit()
 
+    setup_mocks(config, monkeypatch)
     client = app_with_admin_user.test_client()
 
     # Check that max_results = 1 returns only one result
