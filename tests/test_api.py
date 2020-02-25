@@ -21,46 +21,140 @@ from cidc_api.models import (
 )
 
 TEST_RECORD_ID = 1
-new_user = {"email": "test-admin@email.com"}
-user = {
-    **new_user,
-    "id": TEST_RECORD_ID,
-    "role": CIDCRole.ADMIN.value,
-    "approval_date": datetime.now(),
+
+# Configuration for resource tests below. For each resource, the following keywords are supported:
+#   `json` (required): a JSON instance of this resource.
+#   `model` (required): the SQLAlchemy model for this resource.
+#   `allowed_methods` (required): the HTTP methods this resource supports.
+#   `POST_setup`: a list of other resources to add to the database before POSTing this resource.
+#   `PATCH_json` (required if "PATCH" in `allowed_methods`): a JSON patch update for this resource.
+#   `lookup_field`: the field whose value identifies individual items of a certain resource.
+#   `filters`: a dictionary containing two entries representing possible filter queries:
+#       `empty`: a query filter that should return empty results.
+#       `one`: a query filter that should return exactly one result.
+#   `additional_records`: a list of JSON instances of this resource to insert before testing pagination.
+#   `mocks`: a list of functions that accept pytest's `monkeypatch` as their argument.
+new_users = {
+    "json": {"email": "test-admin@example.com"},
+    "model": Users,
+    "allowed_methods": {"POST"},
 }
-trial_metadata = {"id": TEST_RECORD_ID, "trial_id": "foo", "metadata_json": {}}
-downloadable_file = {
-    "id": TEST_RECORD_ID,
-    "trial_id": trial_metadata["trial_id"],
-    "file_name": "",
-    "upload_type": "olink",
-    "data_format": "",
-    "object_url": "",
-    "uploaded_timestamp": datetime.now(),
-    "file_size_bytes": 1,
+
+users = {
+    "json": {
+        **new_users["json"],
+        "id": TEST_RECORD_ID,
+        "role": CIDCRole.ADMIN.value,
+        "approval_date": datetime.now(),
+    },
+    "model": Users,
+    "allowed_methods": {"POST", "PATCH", "GET"},
+    "PATCH_json": {"role": CIDCRole.CIMAC_USER.value},
 }
-permission = {
-    "id": TEST_RECORD_ID,
-    "granted_to_user": TEST_RECORD_ID,
-    "trial_id": trial_metadata["trial_id"],
-    "upload_type": downloadable_file["upload_type"],
+users["additional_records"] = [
+    {**users["json"], "id": 2, "email": "foo@bar.com"},
+    {**users["json"], "id": 3, "email": "fizz@buzz.com"},
+]
+users["filters"] = {
+    "empty": {
+        "where": f"role=='{CIDCRole.CIMAC_USER.value}' and email=='{users['json']['email']}'"
+    },
+    "one": {
+        "where": f"role=='{CIDCRole.CIMAC_USER.value}' or email=='{users['json']['email']}'"
+    },
 }
-upload_job = {
-    "id": TEST_RECORD_ID,
-    "trial_id": trial_metadata["trial_id"],
-    "uploader_email": user["email"],
-    "upload_type": downloadable_file["upload_type"],
-    "metadata_patch": {},
-    "gcs_xlsx_uri": "",
-    "multifile": False,
-    "status": UploadJobStatus.STARTED.value,
+
+trial_metadata = {
+    "json": {"id": TEST_RECORD_ID, "trial_id": "foo", "metadata_json": {}},
+    "model": TrialMetadata,
+    "allowed_methods": {"POST", "PATCH", "GET"},
+    "lookup_field": "trial_id",
+    "PATCH_json": {"metadata_json": {"foo": "bar"}},
 }
+
+downloadable_files = {
+    "json": {
+        "id": TEST_RECORD_ID,
+        "trial_id": trial_metadata["json"]["trial_id"],
+        "file_name": "",
+        "upload_type": "olink",
+        "data_format": "",
+        "object_url": "",
+        "uploaded_timestamp": datetime.now(),
+        "file_size_bytes": 1,
+    },
+    "model": DownloadableFiles,
+    "allowed_methods": {"GET"},
+    "POST_setup": ["trial_metadata"],
+    "PATCH_json": {"upload_type": "fizzbuzz"},
+    "filters": {
+        "empty": {
+            "where": f"trial_id=='{trial_metadata['json']['trial_id']}' and upload_type=='not_olink'"
+        },
+        "one": {
+            "where": f"trial_id=='{trial_metadata['json']['trial_id']}' and upload_type=='olink' and id==1"
+        },
+    },
+}
+downloadable_files["additional_records"] = [
+    {**downloadable_files["json"], "id": 2, "object_url": "foo/bar"},
+    {**downloadable_files["json"], "id": 3, "object_url": "fizz/buzz"},
+]
+
+permissions = {
+    "json": {
+        "id": TEST_RECORD_ID,
+        "granted_to_user": TEST_RECORD_ID,
+        "trial_id": trial_metadata["json"]["trial_id"],
+        "upload_type": downloadable_files["json"]["upload_type"],
+    },
+    "model": Permissions,
+    "allowed_methods": {"POST", "PATCH", "GET", "DELETE"},
+    "POST_setup": ["users", "trial_metadata"],
+    "PATCH_json": {"upload_type": "fizzbuzz"},
+    "filters": {
+        "empty": {"where": "granted_to_user==2"},
+        "one": {"where": f"granted_to_user=={TEST_RECORD_ID}"},
+    },
+}
+
+upload_jobs = {
+    "json": {
+        "id": TEST_RECORD_ID,
+        "trial_id": trial_metadata["json"]["trial_id"],
+        "uploader_email": users["json"]["email"],
+        "upload_type": downloadable_files["json"]["upload_type"],
+        "metadata_patch": {},
+        "gcs_xlsx_uri": "",
+        "multifile": False,
+        "status": UploadJobStatus.STARTED.value,
+    },
+    "model": UploadJobs,
+    "allowed_methods": {"PATCH", "GET"},
+    "POST_setup": ["users", "trial_metadata"],
+    "PATCH_json": {"upload_type": "fizzbuzz"},
+    "mocks": [
+        lambda monkeypatch: monkeypatch.setattr(
+            "cidc_api.services.ingestion.gcloud_client.revoke_upload_access",
+            MagicMock(),
+        )
+    ],
+}
+
+resource_requests = dict(
+    new_users=new_users,
+    users=users,
+    trial_metadata=trial_metadata,
+    downloadable_files=downloadable_files,
+    permissions=permissions,
+    upload_jobs=upload_jobs,
+)
 
 
 @pytest.fixture
 def app_with_admin_user(app, monkeypatch):
     def fake_auth(*args):
-        _request_ctx_stack.top.current_user = Users(**user)
+        _request_ctx_stack.top.current_user = Users(**users["json"])
         return True
 
     monkeypatch.setattr(app.auth, "authorized", fake_auth)
@@ -74,100 +168,16 @@ ETAG = "test-etag"
 @pytest.fixture
 def db_with_records(db):
     extra = {"_etag": ETAG}
-    db.add(Users(**user, **extra))
-    db.add(TrialMetadata(**trial_metadata, **extra))
+    db.add(Users(**users["json"], **extra))
+    db.add(TrialMetadata(**trial_metadata["json"], **extra))
     db.commit()
 
-    db.add(DownloadableFiles(**downloadable_file, **extra))
-    db.add(Permissions(**permission, **extra))
-    db.add(UploadJobs(**upload_job, **extra))
+    db.add(DownloadableFiles(**downloadable_files["json"], **extra))
+    db.add(Permissions(**permissions["json"], **extra))
+    db.add(UploadJobs(**upload_jobs["json"], **extra))
     db.commit()
 
     return db
-
-
-# Configuration for resource tests below. For each resource, the following keywords are supported:
-#   `json` (required): a JSON instance of this resource.
-#   `model` (required): the SQLAlchemy model for this resource.
-#   `allowed_methods` (required): the HTTP methods this resource supports.
-#   `POST_setup`: a list of other resources to add to the database before POSTing this resource.
-#   `PATCH_json` (required if "PATCH" in `allowed_methods`): a JSON patch update for this resource.
-#   `filters`: a dictionary containing two entries representing possible filter queries:
-#       `empty`: a query filter that should return empty results.
-#       `one`: a query filter that should return exactly one result.
-#   `additional_records`: a list of JSON instances of this resource to insert before testing pagination.
-#   `mocks`: a list of functions that accept pytest's `monkeypatch` as their argument.
-resource_requests = {
-    "new_users": {"json": new_user, "model": Users, "allowed_methods": {"POST"}},
-    "users": {
-        "json": user,
-        "model": Users,
-        "allowed_methods": {"POST", "PATCH", "GET"},
-        "PATCH_json": {"role": CIDCRole.CIMAC_USER.value},
-        "filters": {
-            "empty": {
-                "where": f"role=='{CIDCRole.CIMAC_USER.value}' and email=='{user['email']}'"
-            },
-            "one": {
-                "where": f"role=='{CIDCRole.CIMAC_USER.value}' or email=='{user['email']}'"
-            },
-        },
-        "additional_records": [
-            {**user, "id": 2, "email": "foo@bar.com"},
-            {**user, "id": 3, "email": "fizz@buzz.com"},
-        ],
-    },
-    "trial_metadata": {
-        "json": trial_metadata,
-        "model": TrialMetadata,
-        "allowed_methods": {"POST", "PATCH", "GET"},
-        "lookup_field": "trial_id",
-        "PATCH_json": {"metadata_json": {"foo": "bar"}},
-    },
-    "downloadable_files": {
-        "json": downloadable_file,
-        "model": DownloadableFiles,
-        "allowed_methods": {"GET"},
-        "POST_setup": ["trial_metadata"],
-        "PATCH_json": {"upload_type": "fizzbuzz"},
-        "filters": {
-            "empty": {
-                "where": f"trial_id=='{trial_metadata['trial_id']}' and upload_type=='wes'"
-            },
-            "one": {
-                "where": f"trial_id=='{trial_metadata['trial_id']}' and upload_type=='olink' and id==1"
-            },
-        },
-        "additional_records": [
-            {**downloadable_file, "id": 2, "object_url": "foo/bar"},
-            {**downloadable_file, "id": 3, "object_url": "fizz/buzz"},
-        ],
-    },
-    "permissions": {
-        "json": permission,
-        "model": Permissions,
-        "allowed_methods": {"POST", "PATCH", "GET", "DELETE"},
-        "POST_setup": ["users", "trial_metadata"],
-        "PATCH_json": {"upload_type": "fizzbuzz"},
-        "filters": {
-            "empty": {"where": "granted_to_user==2"},
-            "one": {"where": "granted_to_user==1"},
-        },
-    },
-    "upload_jobs": {
-        "json": upload_job,
-        "model": UploadJobs,
-        "allowed_methods": {"PATCH", "GET"},
-        "POST_setup": ["users", "trial_metadata"],
-        "PATCH_json": {"upload_type": "fizzbuzz"},
-        "mocks": [
-            lambda monkeypatch: monkeypatch.setattr(
-                "cidc_api.services.ingestion.gcloud_client.revoke_upload_access",
-                MagicMock(),
-            )
-        ],
-    },
-}
 
 
 def assert_dict_contains(base, target):
@@ -181,6 +191,14 @@ def setup_mocks(config, monkeypatch):
     if "mocks" in config:
         for mock in config["mocks"]:
             mock(monkeypatch)
+
+
+def get_lookup_value(config):
+    return config["json"].get(config.get("lookup_field") or "id")
+
+
+def resource_requests_with_key(key):
+    return [rc for rc in resource_requests.items() if key in rc[1]]
 
 
 @pytest.mark.parametrize("resource, config", resource_requests.items())
@@ -224,7 +242,7 @@ def test_resource_and_item_get(
         assert response.status_code == 405
 
     # item-level GET
-    lookup = config["json"].get(config.get("lookup_field") or "id")
+    lookup = get_lookup_value(config)
     response = client.get(f"{resource}/{lookup}")
     if "GET" in config["allowed_methods"]:
         assert response.status_code == 200
@@ -241,7 +259,7 @@ def test_item_patch(
     setup_mocks(config, monkeypatch)
 
     # Try to update the resource
-    lookup = config["json"].get(config.get("lookup_field") or "id")
+    lookup = get_lookup_value(config)
     response = client.patch(f"{resource}/{lookup}", json=config.get("PATCH_json"))
     if "PATCH" in config["allowed_methods"]:
         # Need to match etag
@@ -265,7 +283,7 @@ def test_item_put(resource, config, app_with_admin_user, db_with_records, monkey
     client = app_with_admin_user.test_client()
 
     # Try to PUT the resource - this is disallowed for all resources.
-    lookup = config["json"].get(config.get("lookup_field") or "id")
+    lookup = get_lookup_value(config)
     response = client.put(f"{resource}/{lookup}", json=config["json"])
     if "PUT" in config["allowed_methods"]:
         assert response.status_code == 200
@@ -282,7 +300,7 @@ def test_item_delete(
     client = app_with_admin_user.test_client()
 
     # Try to DELETE the resource - this is disallowed for all resources.
-    lookup = config["json"].get(config.get("lookup_field") or "id")
+    lookup = get_lookup_value(config)
     response = client.delete(f"{resource}/{lookup}", headers={"if-match": ETAG})
     if "DELETE" in config["allowed_methods"]:
         assert response.status_code == 204
@@ -290,7 +308,7 @@ def test_item_delete(
         assert response.status_code in (404, 405)
 
 
-@pytest.mark.parametrize("resource, config", resource_requests.items())
+@pytest.mark.parametrize("resource, config", resource_requests_with_key("filters"))
 def test_resource_filters(
     resource, config, app_with_admin_user, db_with_records, monkeypatch
 ):
@@ -311,13 +329,12 @@ def test_resource_filters(
     assert empty_response.json["_items"] == []
 
 
-@pytest.mark.parametrize("resource, config", resource_requests.items())
+@pytest.mark.parametrize(
+    "resource, config", resource_requests_with_key("additional_records")
+)
 def test_resource_pagination(
     resource, config, app_with_admin_user, db_with_records, monkeypatch
 ):
-    if "additional_records" not in config:
-        return
-
     # Insert additional records for pagination testing
     for record in config["additional_records"]:
         db_with_records.add(config["model"](**record))
@@ -330,7 +347,7 @@ def test_resource_pagination(
     response = client.get(resource, query_string={"max_results": 1})
     assert response.status_code == 200
     assert len(response.json["_items"]) == 1
-    assert response.json["_items"][0]["id"] == 1
+    assert response.json["_items"][0]["id"] == TEST_RECORD_ID
 
     # Check that changing the sorting seems to work
     response = client.get(
