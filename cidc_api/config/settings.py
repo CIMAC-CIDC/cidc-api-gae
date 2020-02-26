@@ -4,9 +4,7 @@ from copy import deepcopy
 
 from dotenv import load_dotenv
 
-from cidc_api.config import db
 from cidc_api.config import get_secret_manager
-from cidc_api.models import get_DOMAIN
 
 load_dotenv()
 
@@ -21,7 +19,6 @@ assert ENV in (
 DEBUG = ENV == "dev" and environ.get("DEBUG")
 TESTING = environ.get("TESTING") == "True"
 MIN_CLI_VERSION = "0.8.1"
-TEMPLATES_DIR = path.join("/tmp", "templates")
 ## End application environment config
 
 ## Configure Dev CFn
@@ -61,18 +58,3 @@ if not environ.get("GOOGLE_APPLICATION_CREDENTIALS") and not TESTING:
     environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_file_name
 
 ## End GCP config
-
-## Configure database
-SQLALCHEMY_DATABASE_URI = db.get_sqlachemy_database_uri(TESTING)
-SQLALCHEMY_TRACK_MODIFICATIONS = False
-## End database config
-
-## Configure Eve REST API
-RESOURCE_METHODS = ["GET", "POST"]
-ITEM_METHODS = ["GET", "PATCH"]
-CACHE_CONTROL = "no-cache"
-DOMAIN = get_DOMAIN()
-PAGINATION_DEFAULT = 200
-PAGINATION_LIMIT = 200
-MEDIA_ENDPOINT = None
-## End Eve REST API config

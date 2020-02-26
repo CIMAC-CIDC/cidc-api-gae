@@ -282,7 +282,7 @@ def test_create_downloadable_file_from_metadata(db, monkeypatch):
 
     # Mock artifact upload publishing
     publisher = MagicMock()
-    monkeypatch.setattr("gcloud_client.publish_artifact_upload", publisher)
+    monkeypatch.setattr("cidc_api.models.publish_artifact_upload", publisher)
 
     # Create the trial (to avoid violating foreign-key constraint)
     TrialMetadata.create(TRIAL_ID, METADATA)
@@ -342,7 +342,7 @@ def test_create_downloadable_file_from_blob(db, monkeypatch):
 
     # Mock artifact upload publishing
     publisher = MagicMock()
-    monkeypatch.setattr("gcloud_client.publish_artifact_upload", publisher)
+    monkeypatch.setattr("cidc_api.models.publish_artifact_upload", publisher)
 
     # Check that the file was created
     assert 1 == db.query(DownloadableFiles).count()

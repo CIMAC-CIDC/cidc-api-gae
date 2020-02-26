@@ -29,6 +29,8 @@ from eve_sqlalchemy.config import DomainConfig, ResourceConfig
 
 from cidc_schemas import prism, unprism
 
+from cidc_api.gcloud_client import publish_artifact_upload, publish_upload_success
+
 ## Constants
 ORGS = ["CIDC", "DFCI", "ICAHN", "STANFORD", "ANDERSON"]
 
@@ -689,11 +691,6 @@ class DownloadableFiles(CommonColumns):
     clustergrammer = Column(JSONB, nullable=True)
     ihc_combined_plot = Column(JSONB, nullable=True)
 
-    def publish_artifact_upload(self):
-        from gcloud_client import publish_artifact_upload
-
-        publish_artifact_upload(self.object_url)
-
     @staticmethod
     @with_default_session
     def create_from_metadata(
@@ -723,9 +720,10 @@ class DownloadableFiles(CommonColumns):
 
         etag = make_etag(*(filtered_metadata.values()))
 
+        object_url = filtered_metadata["object_url"]
         df = (
             session.query(DownloadableFiles)
-            .filter_by(object_url=filtered_metadata["object_url"])
+            .filter_by(object_url=object_url)
             .with_for_update()
             .first()
         )
@@ -741,7 +739,7 @@ class DownloadableFiles(CommonColumns):
             session.commit()
 
         if alert_artifact_upload:
-            df.publish_artifact_upload()
+            publish_artifact_upload(object_url)
 
         return df
 
@@ -787,7 +785,7 @@ class DownloadableFiles(CommonColumns):
             session.commit()
 
         if alert_artifact_upload:
-            df.publish_artifact_upload()
+            publish_artifact_upload(blob.name)
 
         return df
 
