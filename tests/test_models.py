@@ -314,10 +314,6 @@ def test_create_downloadable_file_from_metadata(db, monkeypatch):
     # Check that no artifact upload event was published
     publisher.assert_not_called()
 
-    # Clear database
-    db.query(DownloadableFiles).delete()
-    db.commit()
-
     # Check that artifact upload publishes
     DownloadableFiles.create_from_metadata(
         TRIAL_ID,
@@ -372,10 +368,6 @@ def test_create_downloadable_file_from_blob(db, monkeypatch):
 
     # Check that no artifact upload event was published
     publisher.assert_not_called()
-
-    # Clear database
-    db.query(DownloadableFiles).delete()
-    db.commit()
 
     # Check that artifact upload publishes
     DownloadableFiles.create_from_blob(
