@@ -689,6 +689,11 @@ class DownloadableFiles(CommonColumns):
     clustergrammer = Column(JSONB, nullable=True)
     ihc_combined_plot = Column(JSONB, nullable=True)
 
+    def publish_artifact_upload(self):
+        from gcloud_client import publish_artifact_upload
+
+        publish_artifact_upload(self.object_url)
+
     @staticmethod
     @with_default_session
     def create_from_metadata(
@@ -698,6 +703,7 @@ class DownloadableFiles(CommonColumns):
         session: Session,
         additional_metadata: Optional[dict] = None,
         commit: bool = True,
+        alert_artifact_upload: bool = False,
     ):
         """
         Create a new DownloadableFiles record from artifact metadata.
@@ -734,6 +740,9 @@ class DownloadableFiles(CommonColumns):
         if commit:
             session.commit()
 
+        if alert_artifact_upload:
+            df.publish_artifact_upload()
+
         return df
 
     @staticmethod
@@ -745,6 +754,7 @@ class DownloadableFiles(CommonColumns):
         blob: Blob,
         session: Session,
         commit: bool = True,
+        alert_artifact_upload: bool = False,
     ):
         """
         Create a new DownloadableFiles record from from a GCS blob,
@@ -775,6 +785,9 @@ class DownloadableFiles(CommonColumns):
 
         if commit:
             session.commit()
+
+        if alert_artifact_upload:
+            df.publish_artifact_upload()
 
         return df
 
