@@ -31,7 +31,7 @@ MEDIA_ENDPOINT = None
 # fails with a credentials-related error unless this is explicitly
 # set.
 if not os.environ.get("GOOGLE_APPLICATION_CREDENTIALS") and not TESTING:
-    secret_manager = get_secret_manager(TESTING)
+    secret_manager = get_secret_manager()
     creds_file_name = tempfile.mktemp(".json")
     with open(creds_file_name, "w") as creds_file:
         creds_file.write(secret_manager.get("APP_ENGINE_CREDENTIALS"))
