@@ -240,10 +240,26 @@ def upload_handler(allowed_types: List[str]):
     "ingestion/validate", [CIDCRole.ADMIN.value, CIDCRole.NCI_BIOBANK_USER.value]
 )
 @upload_handler(prism.SUPPORTED_TEMPLATES)
-def validate_endpoint(*args, **kwargs):
+def validate_endpoint(
+    user: Users,
+    trial: TrialMetadata,
+    template_type: str,
+    xlsx_file: BinaryIO,
+    md_patch: dict,
+    file_infos: List[prism.LocalFileUploadEntry],
+):
     # Validation is done within `upload_handler`
     # so we just return ok here
-    return jsonify({"errors": []})
+    # and a patch feedback
+
+    return jsonify(
+        {
+            "errors": [],
+            "feedback": prism.patch_feedback(
+                template_type, md_patch, trial.metadata_json
+            ),
+        }
+    )
 
 
 @ingestion_api.route("/upload_manifest", methods=["POST"])
