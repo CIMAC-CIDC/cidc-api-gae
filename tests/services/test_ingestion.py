@@ -104,6 +104,7 @@ def test_validate_valid_template(
     res = client.post(VALIDATE, data=data)
     assert res.status_code == 200
     assert res.json["errors"] == []
+    assert res.json["feedback"] == ["Some feedback warnings on trial"]
     mocks.iter_errors.assert_called_once()
 
 
@@ -383,6 +384,10 @@ class UploadMocks:
             prismify_file_entries or [],
             prismify_errors or [],
         )
+
+        self.patch_feedback = MagicMock(name="patch_feedback")
+        monkeypatch.setattr("cidc_schemas.prism.patch_feedback", self.patch_feedback)
+        self.patch_feedback.return_value = ["Some feedback warnings on trial"]
 
     def make_all_assertions(self):
         self.upload_xlsx.assert_called_once()
