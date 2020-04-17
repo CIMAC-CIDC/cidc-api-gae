@@ -2,7 +2,13 @@ from flask import Blueprint
 from werkzeug.exceptions import BadRequest
 
 from ..shared.auth import requires_auth
-from ..models import CIDCRole, TrialMetadata, TrialMetadataSchema, UniqueViolation
+from ..models import (
+    CIDCRole,
+    TrialMetadata,
+    TrialMetadataSchema,
+    TrialMetadataListSchema,
+    UniqueViolation,
+)
 from ..shared.rest_utils import (
     lookup,
     marshal_response,
@@ -13,7 +19,7 @@ from ..shared.rest_utils import (
 trial_metadata_bp = Blueprint("trials", __name__)
 
 trial_metadata_schema = TrialMetadataSchema()
-trial_metadata_list_schema = TrialMetadataSchema(many=True)
+trial_metadata_list_schema = TrialMetadataListSchema()
 partial_trial_metadata_schema = TrialMetadataSchema(partial=True)
 
 
@@ -23,7 +29,10 @@ partial_trial_metadata_schema = TrialMetadataSchema(partial=True)
 @marshal_response(trial_metadata_list_schema)
 def list_trial_metadata(args, pagination_args):
     """List all trial metadata records."""
-    return TrialMetadata.list(**pagination_args)
+    trials = TrialMetadata.list(**pagination_args)
+    count = TrialMetadata.count()
+
+    return {"_items": trials, "_meta": {"total": count}}
 
 
 @trial_metadata_bp.route("/", methods=["POST"])

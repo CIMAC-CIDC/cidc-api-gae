@@ -68,7 +68,8 @@ def test_list_downloadable_files(cidc_api, clean_db, monkeypatch):
     # Non-admins can't get files they don't have permissions for
     res = client.get("/downloadable_files")
     assert res.status_code == 200
-    assert len(res.json) == 0
+    assert len(res.json["_items"]) == 0
+    assert res.json["_meta"]["total"] == 0
 
     # Give the user one permission
     with cidc_api.app_context():
@@ -80,15 +81,17 @@ def test_list_downloadable_files(cidc_api, clean_db, monkeypatch):
     # Non-admins can view files for which they have permission
     res = client.get("/downloadable_files")
     assert res.status_code == 200
-    assert len(res.json) == 1
-    assert res.json[0]["id"] == file_id_1
+    assert len(res.json["_items"]) == 1
+    assert res.json["_meta"]["total"] == 1
+    assert res.json["_items"][0]["id"] == file_id_1
 
     # Admins can view all files regardless of permissions
     make_admin(user_id, cidc_api)
     res = client.get("/downloadable_files")
     assert res.status_code == 200
-    assert len(res.json) == 2
-    assert set([f["id"] for f in res.json]) == set([file_id_1, file_id_2])
+    assert len(res.json["_items"]) == 2
+    assert res.json["_meta"]["total"] == 2
+    assert set([f["id"] for f in res.json["_items"]]) == set([file_id_1, file_id_2])
 
 
 def test_get_downloadable_file(cidc_api, clean_db, monkeypatch):

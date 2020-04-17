@@ -65,8 +65,9 @@ def test_list_permissions(cidc_api, clean_db, monkeypatch):
     # Check that user can get their own permissions
     res = client.get("permissions")
     assert res.status_code == 200
-    assert len(res.json) == 2
-    for perm in res.json:
+    assert len(res.json["_items"]) == 2
+    assert res.json["_meta"]["total"] == 2
+    for perm in res.json["_items"]:
         assert perm["granted_to_user"] == current_user_id
 
     # Check that a non-admin user can't get another user's permissions
@@ -78,7 +79,8 @@ def test_list_permissions(cidc_api, clean_db, monkeypatch):
     make_admin(current_user_id, cidc_api)
     res = client.get(f"permissions?user_id={other_user_id}")
     assert res.status_code == 200
-    assert len(res.json) == 1
+    assert len(res.json["_items"]) == 1
+    assert res.json["_meta"]["total"] == 1
 
 
 def test_get_permission(cidc_api, clean_db, monkeypatch):

@@ -2,7 +2,6 @@ import json
 from datetime import datetime
 
 from flask import Blueprint, jsonify, abort, Request, current_app as app
-from eve import Eve
 from werkzeug.exceptions import Unauthorized, BadRequest
 
 from ..shared import gcloud_client
@@ -14,12 +13,12 @@ from ..shared.rest_utils import (
     unmarshal_request,
     use_args_with_pagination,
 )
-from ..models import Users, UserSchema, CIDCRole
+from ..models import Users, UserSchema, UserListSchema, CIDCRole
 
 users_bp = Blueprint("users", __name__)
 
 user_schema = UserSchema()
-user_list_schema = UserSchema(many=True)
+user_list_schema = UserListSchema()
 new_user_schema = UserSchema(exclude=("approval_date", "role"))
 partial_user_schema = UserSchema(partial=True)
 
@@ -63,7 +62,9 @@ def list_users(args, pagination_args):
     """
     List all users. TODO: pagination support
     """
-    return Users.list(**pagination_args)
+    users = Users.list(**pagination_args)
+    count = Users.count()
+    return {"_items": users, "_meta": {"total": count}}
 
 
 @users_bp.route("/<int:user>", methods=["GET"])

@@ -18,6 +18,7 @@ from marshmallow.exceptions import ValidationError
 
 
 from ..models import CommonColumns, BaseModel, BaseSchema
+from ..config.settings import ENV
 
 
 def unmarshal_request(schema: BaseSchema, kwarg_name: str):
@@ -60,24 +61,10 @@ def marshal_response(schema: BaseSchema, status_code: int = 200):
         def wrapped(*args, **kwargs):
             model_instance = endpoint(*args, **kwargs)
 
-            # Check endpoint return-type invariants
-            if schema.many:
-                if model_instance != []:
-                    is_sqla_list = isinstance(model_instance, list) and isinstance(
-                        model_instance[0], BaseModel
-                    )
-                    assert (
-                        is_sqla_list
-                    ), f"marshal_response expected {endpoint.__name__} to return a list of SQLAlchemy model instances"
-            else:
-                assert isinstance(
-                    model_instance, BaseModel
-                ), f"marshal_response expected {endpoint.__name__} to return a SQLAlchemy model instance"
+            # Dump the model to JSON
+            json_result = schema.dump(model_instance)
 
-            # Dump the models to JSON
-            jsonified_instance = schema.dump(model_instance)
-
-            res = jsonify(jsonified_instance)
+            res = jsonify(json_result)
             res.status_code = status_code
             return res
 

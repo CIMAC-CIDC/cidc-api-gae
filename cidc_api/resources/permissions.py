@@ -5,21 +5,27 @@ from webargs.flaskparser import use_args
 from flask import Blueprint
 from werkzeug.exceptions import Unauthorized, NotFound, BadRequest
 
-from ..models import Permissions, PermissionSchema, CIDCRole, UniqueViolation
+from ..models import (
+    Permissions,
+    PermissionSchema,
+    PermissionListSchema,
+    CIDCRole,
+    UniqueViolation,
+)
 from ..shared.auth import get_current_user, requires_auth
 from ..shared.rest_utils import lookup, marshal_response, unmarshal_request
 
 permissions_bp = Blueprint("permissions", __name__)
 
 permission_schema = PermissionSchema()
-permission_list_schema = PermissionSchema(many=True)
+permission_list_schema = PermissionListSchema()
 
 
 @permissions_bp.route("/", methods=["GET"])
 @requires_auth("permissions")
 @use_args({"user_id": fields.Str()}, location="query")
 @marshal_response(permission_list_schema)
-def list_permissions(args: dict) -> List[Permissions]:
+def list_permissions(args: dict):
     """
     List all permissions for the current user, unless the `user_id` query param is provided.
     If the `user_id` query param is provided and the current user is an admin, then list
@@ -37,7 +43,10 @@ def list_permissions(args: dict) -> List[Permissions]:
             f"{current_user.email} cannot view permissions for other users"
         )
 
-    return permissions
+    # Since we aren't paginating, `permissions` is a list of all requested permissions
+    total = len(permissions)
+
+    return {"_items": permissions, "_meta": {"total": total}}
 
 
 @permissions_bp.route("/<int:permission>", methods=["GET"])

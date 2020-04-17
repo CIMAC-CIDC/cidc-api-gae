@@ -6,7 +6,13 @@ from webargs.flaskparser import use_args
 from werkzeug.exceptions import NotFound
 
 
-from ..models import CIDCRole, DownloadableFiles, DownloadableFileSchema, Permissions
+from ..models import (
+    CIDCRole,
+    DownloadableFiles,
+    DownloadableFileSchema,
+    DownloadableFileListSchema,
+    Permissions,
+)
 from ..shared import gcloud_client
 from ..shared.auth import get_current_user, requires_auth
 from ..shared.rest_utils import (
@@ -19,7 +25,7 @@ from ..shared.rest_utils import (
 downloadable_files_bp = Blueprint("downloadable_files", __name__)
 
 downloadable_files_schema = DownloadableFileSchema()
-downloadable_files_list_schema = DownloadableFileSchema(many=True)
+downloadable_files_list_schema = DownloadableFileListSchema()
 
 
 file_filter_params = {
@@ -32,15 +38,19 @@ file_filter_params = {
 @requires_auth("downloadable_files")
 @use_args_with_pagination(file_filter_params, downloadable_files_schema)
 @marshal_response(downloadable_files_list_schema)
-def list_downloadable_files(args, pagination_args) -> List[DownloadableFiles]:
+def list_downloadable_files(args, pagination_args):
     """List downloadable files that the current user is allowed to view."""
     user = get_current_user()
 
     # Admins can view all files
     if user.is_admin():
-        return DownloadableFiles.list(**args, **pagination_args)
+        files = DownloadableFiles.list(**args, **pagination_args)
+        count = DownloadableFiles.count()
+    else:
+        files = DownloadableFiles.list_for_user(user.id, **args, **pagination_args)
+        count = DownloadableFiles.count_for_user(user.id)
 
-    return DownloadableFiles.list_for_user(user.id, **args, **pagination_args)
+    return {"_items": files, "_meta": {"total": count}}
 
 
 @downloadable_files_bp.route("/<int:downloadable_file>", methods=["GET"])

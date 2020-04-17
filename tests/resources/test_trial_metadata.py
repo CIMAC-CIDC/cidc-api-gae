@@ -49,8 +49,9 @@ def test_list_trials(cidc_api, clean_db, monkeypatch):
     make_admin(user_id, cidc_api)
     res = client.get("/trial_metadata")
     assert res.status_code == 200
-    assert len(res.json) == 2
-    assert set([t["id"] for t in res.json]) == trial_ids
+    assert len(res.json["_items"]) == 2
+    assert res.json["_meta"]["total"] == 2
+    assert set([t["id"] for t in res.json["_items"]]) == trial_ids
 
 
 def test_get_trial(cidc_api, clean_db, monkeypatch):

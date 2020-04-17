@@ -86,8 +86,9 @@ def test_list_users(cidc_api, clean_db, monkeypatch):
     make_admin(user_id, cidc_api)
     res = client.get("/users")
     assert res.status_code == 200
-    assert len(res.json) == 2
-    assert set([u["id"] for u in res.json]) == set([user_id, other_user_id])
+    assert len(res.json["_items"]) == 2
+    assert res.json["_meta"]["total"] == 2
+    assert set([u["id"] for u in res.json["_items"]]) == set([user_id, other_user_id])
 
 
 def test_get_user(cidc_api, clean_db, monkeypatch):

@@ -150,6 +150,13 @@ class CommonColumns(BaseModel):  # type: ignore
 
     @classmethod
     @with_default_session
+    def count(cls, session: Session, filter_: Callable[[Query], Query] = lambda q: q):
+        """Return the total number of records in this table."""
+        filtered_query = filter_(session.query(cls.id))
+        return filtered_query.count()
+
+    @classmethod
+    @with_default_session
     def find_by_id(cls, id: int, session: Session):
         """Find the record with this id"""
         return session.query(cls).get(id)
@@ -724,12 +731,7 @@ class DownloadableFiles(CommonColumns):
         return super().list(session=session, filter_=filter_files, **pagination_args)
 
     @staticmethod
-    @with_default_session
-    def list_for_user(user_id: int, session: Session, **pagination_args):
-        """
-        List all downloadable files the given user is allowed to view
-        based on the contents of the `permissions` table.
-        """
+    def _filter_for_user(user_id: int) -> Callable[[Query], Query]:
         permissions = Permissions.find_for_user(user_id)
         perm_set = [(p.trial_id, p.upload_type) for p in permissions]
         file_tuples = tuple_(DownloadableFiles.trial_id, DownloadableFiles.upload_type)
@@ -737,9 +739,27 @@ class DownloadableFiles(CommonColumns):
         def permissions_filter(query: Query) -> Query:
             return query.filter(file_tuples.in_(perm_set))
 
+        return permissions_filter
+
+    @staticmethod
+    @with_default_session
+    def list_for_user(user_id: int, session: Session, **pagination_args):
+        """
+        List all downloadable files the given user is allowed to view
+        based on the contents of the `permissions` table.
+        """
+        filter_ = DownloadableFiles._filter_for_user(user_id)
+
         return DownloadableFiles.list(
-            session=session, filter_=permissions_filter, **pagination_args
+            session=session, filter_=filter_, **pagination_args
         )
+
+    @staticmethod
+    @with_default_session
+    def count_for_user(user_id: int, session: Session):
+        """Get a count of all records available for the given user"""
+        filter_ = DownloadableFiles._filter_for_user(user_id)
+        return DownloadableFiles.count(session=session, filter_=filter_)
 
     @staticmethod
     @with_default_session

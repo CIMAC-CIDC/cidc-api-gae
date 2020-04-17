@@ -3,7 +3,7 @@ from flask import Flask
 from werkzeug.exceptions import BadRequest, UnprocessableEntity
 
 from cidc_api.shared.rest_utils import unmarshal_request, marshal_response
-from cidc_api.models import PermissionSchema, Permissions
+from cidc_api.models import PermissionSchema, PermissionListSchema, Permissions
 
 
 def assert_sqla_matching_fields(rec1, rec2):
@@ -15,6 +15,9 @@ def assert_sqla_matching_fields(rec1, rec2):
 
 
 perm_json = {
+    "_created": None,
+    "_etag": None,
+    "_updated": None,
     "upload_type": "olink",
     "granted_by_user": 1,
     "granted_to_user": 2,
@@ -50,27 +53,9 @@ def test_unmarshal_request(empty_app: Flask):
 
 
 def test_marshal_response(empty_app):
-    """Check that marshal_response validates and loads response JSON as expected."""
+    """Check that marshal_response loads response JSON as expected."""
     marshal_permission = marshal_response(PermissionSchema())
-    marshal_permissions = marshal_response(PermissionSchema(many=True))
-
-    # Test a single-item endpoint that produces the wrong return type
-    @marshal_permission
-    def bad_return_type_endpoint():
-        return "whoopsies"
-
-    with pytest.raises(AssertionError, match="return a SQLAlchemy model instance"):
-        bad_return_type_endpoint()
-
-    # Test a multi-item endpoint that produces the wrong return type
-    @marshal_permissions
-    def bad_return_type_endpoint():
-        return ["whoopsies"]
-
-    with pytest.raises(
-        AssertionError, match="return a list of SQLAlchemy model instances"
-    ):
-        bad_return_type_endpoint()
+    marshal_permissions = marshal_response(PermissionListSchema())
 
     s, p, a = 1, 2, 3
 
@@ -88,8 +73,9 @@ def test_marshal_response(empty_app):
     @marshal_permissions
     def endpoint(some, positional, args):
         assert some == s and positional == p and args == a
-        return [perm_record, perm_record]
+        return {"_items": [perm_record, perm_record], "_meta": {"total": 2}}
 
     with empty_app.test_request_context():
         res = endpoint(s, p, a)
-        assert res.json == [perm_json, perm_json]
+        assert res.json["_items"] == [perm_json, perm_json]
+        assert res.json["_meta"]["total"] == 2
