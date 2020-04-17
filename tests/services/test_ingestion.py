@@ -385,9 +385,9 @@ class UploadMocks:
             prismify_errors or [],
         )
 
-        self.patch_feedback = MagicMock(name="patch_feedback")
-        monkeypatch.setattr("cidc_schemas.prism.patch_feedback", self.patch_feedback)
-        self.patch_feedback.return_value = ["Some feedback warnings on trial"]
+        self.manifest_feedback = MagicMock(name="manifest_feedback")
+        monkeypatch.setattr("cidc_schemas.prism.manifest_feedback", self.manifest_feedback)
+        self.manifest_feedback.return_value = ["Some feedback warnings on trial"]
 
     def make_all_assertions(self):
         self.upload_xlsx.assert_called_once()

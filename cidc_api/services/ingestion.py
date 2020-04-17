@@ -255,7 +255,7 @@ def validate_endpoint(
     return jsonify(
         {
             "errors": [],
-            "feedback": prism.patch_feedback(
+            "feedback": prism.manifest_feedback(
                 template_type, md_patch, trial.metadata_json
             ),
         }
