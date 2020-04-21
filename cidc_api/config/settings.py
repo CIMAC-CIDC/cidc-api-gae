@@ -29,6 +29,7 @@ TESTING = environ.get("TESTING") == "True"
 ### Configure miscellaneous constants ###
 TEMPLATES_DIR = path.join("/tmp", "templates")
 MIN_CLI_VERSION = "0.8.4"
+PAGINATION_PAGE_SIZE = 25
 
 ### Configure Flask-SQLAlchemy ###
 SQLALCHEMY_DATABASE_URI = get_sqlachemy_database_uri(TESTING)

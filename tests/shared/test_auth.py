@@ -51,22 +51,32 @@ def make_raiser(exception):
 throw_auth_error = make_raiser(Unauthorized("foo"))
 
 
-def test_requires_auth_no_auth_headers(empty_app, monkeypatch):
+def test_requires_auth(empty_app, monkeypatch):
     """
-    Check that the requires_auth decorator throws 401 when 
-    no authorization header is provided.
+    Check that the requires_auth decorator behaves as expected
     """
 
     @empty_app.route("/test")
     @auth.requires_auth("test")
     def test_endpoint():
-        user = auth.get_current_user()
+        return "ok!"
 
     client = empty_app.test_client()
 
     # 401 when no auth headers provided
     response = client.get("/test")
     assert response.status_code == 401
+
+    # 401 when user is unauth'd
+    monkeypatch.setattr("cidc_api.shared.auth.check_auth", lambda *args: False)
+    response = client.get("/test")
+    assert response.status_code == 401
+
+    # 200 when user is auth'd
+    monkeypatch.setattr("cidc_api.shared.auth.check_auth", lambda *args: True)
+    response = client.get("/test")
+    assert response.status_code == 200
+    assert response.data == b"ok!"
 
 
 def test_check_auth_smoketest(monkeypatch, cidc_api):
@@ -181,6 +191,14 @@ def test_authenticate(empty_app, monkeypatch):
 
 def test_get_issuer_public_key(monkeypatch):
     """Test that public key-finding logic works"""
+    error_str = "uh oh!"
+
+    def get_unverified_header_error(token):
+        raise jwt.JWTError(error_str)
+
+    monkeypatch.setattr("jose.jwt.get_unverified_header", get_unverified_header_error)
+    with pytest.raises(Unauthorized, match=error_str):
+        auth._get_issuer_public_key(TOKEN)
 
     def get_unverified_header(token):
         return HEADER

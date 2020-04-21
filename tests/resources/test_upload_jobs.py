@@ -148,6 +148,95 @@ def test_get_upload_job(cidc_api, clean_db, monkeypatch):
 
 def test_update_upload_job(cidc_api, clean_db, monkeypatch):
     """Check that getting a updating an upload job by ID works as expected."""
+    user_id = setup_trial_and_user(cidc_api, monkeypatch)
+    user_job, other_job = setup_upload_jobs(cidc_api)
+    with cidc_api.app_context():
+        user_job_record = UploadJobs.find_by_id(user_job)
+        other_job_record = UploadJobs.find_by_id(other_job)
+
+    publish_success = MagicMock()
+    monkeypatch.setattr(
+        "cidc_api.shared.gcloud_client.publish_upload_success", publish_success
+    )
+    revoke_upload_access = MagicMock()
+    monkeypatch.setattr(
+        "cidc_api.shared.gcloud_client.revoke_upload_access", revoke_upload_access
+    )
+
+    client = cidc_api.test_client()
+
+    # Possible patches
+    upload_success = {"status": UploadJobStatus.UPLOAD_COMPLETED.value}
+    upload_failure = {"status": UploadJobStatus.UPLOAD_FAILED.value}
+    invalid_update = {"status": UploadJobStatus.MERGE_COMPLETED.value}
+
+    # A cimac user doesn't have permissions to PATCH against this endpoint
+    res = client.patch(f"/upload_jobs/{other_job}", json=upload_success)
+    assert res.status_code == 401
+    publish_success.assert_not_called()
+    revoke_upload_access.assert_not_called()
+
+    # A biofx user can't find upload jobs that they don't own
+    make_cimac_biofx_user(user_id, cidc_api)
+    res = client.patch(
+        f"/upload_jobs/{other_job}",
+        headers={"if-match": other_job_record._etag},
+        json=upload_success,
+    )
+    assert res.status_code == 404
+    publish_success.assert_not_called()
+    revoke_upload_access.assert_not_called()
+
+    # A biofx user can update their own job to be a failure
+    res = client.patch(
+        f"/upload_jobs/{user_job}",
+        headers={"if-match": user_job_record._etag},
+        json=upload_failure,
+    )
+    assert res.status_code == 200
+    publish_success.assert_not_called()
+    revoke_upload_access.assert_called_once()
+    revoke_upload_access.reset_mock()
+
+    with cidc_api.app_context():
+        user_job_record.status = UploadJobStatus.STARTED.value
+        user_job_record.update()
+
+    # A biofx user can update their own job to be a success
+    res = client.patch(
+        f"/upload_jobs/{user_job}",
+        headers={"if-match": user_job_record._etag},
+        json=upload_success,
+    )
+    assert res.status_code == 200
+    publish_success.assert_called_once_with(user_job)
+    revoke_upload_access.assert_called_once()
+    publish_success.reset_mock()
+    revoke_upload_access.reset_mock()
+
+    # An admin can update another user's job
+    make_admin(user_id, cidc_api)
+    res = client.patch(
+        f"/upload_jobs/{other_job}",
+        headers={"if-match": other_job_record._etag},
+        json=upload_success,
+    )
+    assert res.status_code == 200
+    publish_success.assert_called_once_with(other_job)
+    revoke_upload_access.assert_called_once()
+    publish_success.reset_mock()
+    revoke_upload_access.reset_mock()
+
+    with cidc_api.app_context():
+        user_job_record.update()
+
+    # No user (admins included) can make an illegal state transition
+    res = client.patch(
+        f"/upload_jobs/{user_job}",
+        headers={"if-match": user_job_record._etag},
+        json=invalid_update,
+    )
+    assert res.status_code == 400
 
 
 ### Ingestion tests ###

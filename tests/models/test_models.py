@@ -1,11 +1,12 @@
 import io
 import sys
+from copy import deepcopy
 from functools import wraps
 from datetime import datetime
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, InvalidRequestError
 from sqlalchemy.orm.exc import NoResultFound
 
 from cidc_api.app import app
@@ -17,7 +18,9 @@ from cidc_api.models import (
     DownloadableFiles,
     with_default_session,
     UploadJobStatus,
+    NoResultFound,
 )
+from cidc_api.config.settings import PAGINATION_PAGE_SIZE
 from cidc_schemas.prism import PROTOCOL_ID_FIELD_NAME
 from cidc_schemas import prism
 
@@ -37,6 +40,139 @@ def db_test(test):
 
 EMAIL = "test@email.com"
 PROFILE = {"email": EMAIL}
+
+
+@db_test
+def test_common_insert(clean_db):
+    """Test insert, inherited from CommonColumns"""
+    # Check disabling committing
+    u1 = Users(email="a")
+    u1.insert(commit=False)
+    assert not u1.id
+
+    # Insert a new record without disabling committing
+    u2 = Users(email="b")
+    u2.insert()
+    assert u1.id
+    assert u2.id
+
+    assert Users.find_by_id(u1.id)
+    assert Users.find_by_id(u2.id)
+
+
+@db_test
+def test_common_update(clean_db):
+    """Test update, inherited from CommonColumns"""
+    email = "foo"
+    user = Users(id=1, email=email)
+
+    # Record not found
+    with pytest.raises(NoResultFound):
+        user.update()
+
+    user.insert()
+
+    # Update via setattr and changes
+    first_n = "hello"
+    last_n = "goodbye"
+    user.last_n = last_n
+    user.update(changes=Users(first_n=first_n))
+    user = Users.find_by_id(user.id)
+    assert user.first_n == first_n
+    assert user.last_n == last_n
+
+
+@db_test
+def test_common_delete(clean_db):
+    """Test delete, inherited from CommonColumns"""
+    user1 = Users(email="foo")
+    user2 = Users(email="bar")
+
+    # Try to delete an uninserted record
+    with pytest.raises(InvalidRequestError):
+        user1.delete()
+
+    user1.insert()
+    user2.insert()
+
+    # Defer a deletion with commit=False
+    user1.delete(commit=False)
+    assert Users.find_by_id(user1.id)
+
+    # Delete with auto-commit
+    user2.delete()
+    assert not Users.find_by_id(user1.id)
+    assert not Users.find_by_id(user2.id)
+
+
+@db_test
+def test_common_list(clean_db):
+    """Test listing behavior, inherited from CommonColumns"""
+    for i in range(105):
+        name = f"user_{i}"
+        Users(email=f"{name}@example.com", first_n=name).insert()
+
+    # List with defaults
+    user_list = Users.list()
+    assert len(user_list) == PAGINATION_PAGE_SIZE
+
+    # List with different pagination size
+    short_list = Users.list(page_size=5)
+    assert len(short_list) == 5
+
+    # List with sorting
+    sorted_list = Users.list(sort_field="id")
+    assert sorted_list[0].first_n == "user_104"
+    first_page = Users.list(sort_field="id", sort_direction="asc")
+    assert first_page[0].first_n == "user_0"
+    sorted_list = Users.list(sort_field="first_n", sort_direction="asc")
+    assert sorted_list[0].first_n == "user_0"
+
+    # Get the second page
+    second_page = Users.list(page_num=1, sort_field="id", sort_direction="asc")
+    assert second_page[0].first_n == "user_25"
+    assert second_page[-1].first_n == "user_49"
+
+    # Get the last page
+    last_page = Users.list(page_num=4, sort_field="id", sort_direction="asc")
+    assert len(last_page) == 5
+
+    # Get a negative page
+    negative_page = Users.list(page_num=-1, sort_field="id", sort_direction="asc")
+    assert set(n.id for n in negative_page) == set(f.id for f in first_page)
+
+    # Get a too-high page
+    too_high_page = Users.list(page_num=100, sort_field="id", sort_direction="asc")
+    assert len(too_high_page) == 0
+
+    # Add a filter
+    def f(q):
+        return q.filter(Users.first_n.like("%9%"))
+
+    all_expected_values = set(f"user_{i}" for i in range(100) if "9" in str(i))
+    filtered_page = Users.list(
+        filter_=f, page_num=0, sort_field="id", sort_direction="asc"
+    )
+    assert all_expected_values == set(f.first_n for f in filtered_page)
+
+
+@db_test
+def test_common_count(clean_db):
+    """Test counting behavior, inherited from CommonColumns"""
+    num = 105
+    for i in range(num):
+        name = f"user_{i}"
+        Users(email=f"{name}@example.com", first_n=name).insert()
+
+    # Count without filter
+    assert Users.count() == num
+
+    # Count with filter
+    def f(q):
+        return q.filter(Users.first_n.like("%9%"))
+
+    num_expected = len(list(f"user_{i}" for i in range(100) if "9" in str(i)))
+    assert Users.count(filter_=f) == num_expected
 
 
 @db_test

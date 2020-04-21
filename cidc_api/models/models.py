@@ -37,6 +37,7 @@ from psycopg2.errors import UniqueViolation
 from cidc_schemas import prism, unprism
 
 from ..config.db import BaseModel
+from ..config.settings import PAGINATION_PAGE_SIZE
 from ..shared.gcloud_client import publish_artifact_upload, publish_upload_success
 
 
@@ -124,12 +125,15 @@ class CommonColumns(BaseModel):  # type: ignore
         cls,
         session: Session,
         page_num: int = 0,
-        page_size: int = 25,
+        page_size: int = PAGINATION_PAGE_SIZE,
         sort_field: Optional[str] = None,
         sort_direction: Optional[str] = None,
         filter_: Callable[[Query], Query] = lambda q: q,
     ):
         """List records in this table, with pagination support."""
+        # Enforce positive page numbers
+        page_num = 0 if page_num < 0 else page_num
+
         query = session.query(cls)
 
         # Handle sorting

@@ -500,30 +500,6 @@ def poll_upload_merge_status():
     return jsonify({"retry_in": 5})
 
 
-def validate_upload_status_update(request: Request, _: dict):
-    """Event hook ensuring a user is requesting a valid upload job status transition"""
-    # Extract the target status
-    upload_patch = request.json
-    target_status = upload_patch.get("status")
-    if not target_status:
-        # Let Eve's input validation handle this
-        return
-
-    # Look up the current status
-    user = get_current_user()
-    upload_id = request.view_args["id"]
-    upload = UploadJobs.find_by_id_and_email(upload_id, user.email)
-    if not upload:
-        raise NotFound(f"Could not find assay upload job with id {upload_id}")
-
-    # Check that the requested status update is valid
-    if not UploadJobStatus.is_valid_transition(upload.status, target_status):
-        raise BadRequest(
-            f"Cannot set assay upload status to '{target_status}': "
-            f"current status is '{upload.status}'"
-        )
-
-
 @ingestion_bp.route("/extra-assay-metadata", methods=["POST"])
 @requires_auth("extra_assay_metadata")
 def extra_assay_metadata():
