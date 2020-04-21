@@ -10,7 +10,7 @@ from os import environ, path
 
 from dotenv import load_dotenv
 
-from .db import get_sqlachemy_database_uri
+from .db import get_sqlalchemy_database_uri
 from .secrets import get_secrets_manager
 
 load_dotenv()
@@ -32,7 +32,7 @@ MIN_CLI_VERSION = "0.8.4"
 PAGINATION_PAGE_SIZE = 25
 
 ### Configure Flask-SQLAlchemy ###
-SQLALCHEMY_DATABASE_URI = get_sqlachemy_database_uri(TESTING)
+SQLALCHEMY_DATABASE_URI = get_sqlalchemy_database_uri(TESTING)
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 ### Configure Dev CFn ###
@@ -66,6 +66,7 @@ MIGRATIONS_PATH = path.join(this_directory, "..", "..", "migrations")
 # fails with a credentials-related error unless this is explicitly
 # set.
 if not environ.get("GOOGLE_APPLICATION_CREDENTIALS") and not TESTING:
+    print(get_secrets_manager)
     secret_manager = get_secrets_manager()
     creds_file_name = tempfile.mktemp(".json")
     with open(creds_file_name, "w") as creds_file:

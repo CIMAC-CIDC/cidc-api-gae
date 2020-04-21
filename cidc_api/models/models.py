@@ -32,7 +32,6 @@ from sqlalchemy.orm.query import Query
 from sqlalchemy.sql import expression
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.engine.interfaces import ExecutionContext
-from psycopg2.errors import UniqueViolation
 
 from cidc_schemas import prism, unprism
 
@@ -269,17 +268,6 @@ class Permissions(CommonColumns):
     trial_id = Column(String, nullable=False, index=True)
     upload_type = Column(String, nullable=False)
 
-    @with_default_session
-    def insert(self, session, commit=True):
-        try:
-            super().insert(session=session, commit=commit)
-        except IntegrityError as e:
-            if isinstance(e.orig, UniqueViolation):
-                raise UniqueViolation(
-                    "A record for this user, trial, and upload type already exists."
-                )
-            raise e
-
     @staticmethod
     @with_default_session
     def find_for_user(user_id: int, session: Session) -> List:
@@ -313,15 +301,6 @@ class TrialMetadata(CommonColumns):
 
     # Create a GIN index on the metadata JSON blobs
     _metadata_idx = Index("metadata_idx", metadata_json, postgresql_using="gin")
-
-    @with_default_session
-    def insert(self, session, commit=True):
-        try:
-            super().insert(session=session, commit=commit)
-        except IntegrityError as e:
-            if isinstance(e.orig, UniqueViolation):
-                raise UniqueViolation("A record for this trial_id already exists.")
-            raise e
 
     @staticmethod
     @with_default_session

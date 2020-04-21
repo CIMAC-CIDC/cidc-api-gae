@@ -7,7 +7,7 @@ from ..models import (
     TrialMetadata,
     TrialMetadataSchema,
     TrialMetadataListSchema,
-    UniqueViolation,
+    IntegrityError,
 )
 from ..shared.rest_utils import (
     lookup,
@@ -43,8 +43,8 @@ def create_trial_metadata(trial):
     """Create a new trial metadata record."""
     try:
         trial.insert()
-    except UniqueViolation as e:
-        raise BadRequest(str(e))
+    except IntegrityError as e:
+        raise BadRequest(str(e.orig))
 
     return trial
 

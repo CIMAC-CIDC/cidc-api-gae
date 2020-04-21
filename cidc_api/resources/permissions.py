@@ -10,7 +10,7 @@ from ..models import (
     PermissionSchema,
     PermissionListSchema,
     CIDCRole,
-    UniqueViolation,
+    IntegrityError,
 )
 from ..shared.auth import get_current_user, requires_auth
 from ..shared.rest_utils import lookup, marshal_response, unmarshal_request
@@ -74,8 +74,8 @@ def create_permission(permission: Permissions) -> Permissions:
     permission.granted_by_user = granter.id
     try:
         permission.insert()
-    except UniqueViolation as e:
-        raise BadRequest(str(e))
+    except IntegrityError as e:
+        raise BadRequest(str(e.orig))
 
     return permission
 

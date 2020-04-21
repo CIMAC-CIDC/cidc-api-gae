@@ -13,7 +13,7 @@ from ..shared.rest_utils import (
     unmarshal_request,
     use_args_with_pagination,
 )
-from ..models import Users, UserSchema, UserListSchema, CIDCRole
+from ..models import Users, UserSchema, UserListSchema, CIDCRole, IntegrityError
 
 users_bp = Blueprint("users", __name__)
 
@@ -47,7 +47,10 @@ def create_self(user):
             f"{current_user.email} can't create a user with email {user.email}"
         )
 
-    user.insert()
+    try:
+        user.insert()
+    except IntegrityError as e:
+        raise BadRequest(str(e.orig))
 
     new_user_registration(user.email, send_email=True)
 

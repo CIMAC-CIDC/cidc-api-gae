@@ -69,6 +69,11 @@ def test_create_self(cidc_api, clean_db, monkeypatch):
     assert "id" in res.json
     assert res.json["email"] == new_user.email
 
+    # A user can't create themselves twice
+    register_user(res.json["id"], cidc_api)
+    res = client.post("/users/self", json=new_user_json)
+    assert res.status_code == 400
+
 
 def test_list_users(cidc_api, clean_db, monkeypatch):
     """Check that listing users works as expected."""

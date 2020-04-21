@@ -3,7 +3,9 @@ from os import environ
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate, upgrade
+from sqlalchemy.engine.url import URL
 from sqlalchemy.ext.declarative import declarative_base
+
 
 from .secrets import get_secrets_manager
 
@@ -21,16 +23,15 @@ def init_db(app: Flask):
         upgrade(app.config["MIGRATIONS_PATH"])
 
 
-def get_sqlachemy_database_uri(testing: bool = False) -> str:
+def get_sqlalchemy_database_uri(testing: bool = False) -> str:
     """Get the PostgreSQL DB URI from environment variables"""
 
     db_uri = environ.get("POSTGRES_URI")
-    secrets = get_secrets_manager(testing)
     if testing:
         # Connect to the test database
         db_uri = environ.get("TEST_POSTGRES_URI", "fake-conn-string")
     elif not db_uri:
-        from sqlalchemy.engine.url import URL
+        secrets = get_secrets_manager(testing)
 
         # If POSTGRES_URI env variable is not set,
         # we're connecting to a Cloud SQL instance.

@@ -144,7 +144,7 @@ def test_create_permission(cidc_api, clean_db, monkeypatch):
     # Re-insertion is not allowed
     res = client.post("permissions", json=perm)
     assert res.status_code == 400
-    assert "user, trial, and upload type already exists." in res.json["message"]
+    assert "unique constraint" in res.json["message"]
 
 
 def test_delete_permission(cidc_api, clean_db, monkeypatch):
