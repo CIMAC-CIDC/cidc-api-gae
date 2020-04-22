@@ -342,7 +342,6 @@ def test_resource_pagination(resource, config, cidc_api, clean_db, monkeypatch):
     response = client.get(resource, query_string={"page_size": 1})
     assert response.status_code == 200
     assert len(response.json["_items"]) == 1
-    assert response.json["_items"][0]["id"] == TEST_RECORD_ID
 
     # Check that changing the sorting seems to work
     response = client.get(
