@@ -1,8 +1,8 @@
 """Shared utility functions for building CIDC API resource endpoints."""
 from functools import wraps
-from typing import Optional
+from typing import Optional, List, Callable
 
-from flask import current_app as app, request, Response, jsonify
+from flask import Flask, current_app as app, request, Response, jsonify
 from webargs import fields
 from webargs.flaskparser import use_args
 from marshmallow import validate
@@ -19,6 +19,11 @@ from marshmallow.exceptions import ValidationError
 
 from ..models import CommonColumns, BaseModel, BaseSchema
 from ..config.settings import ENV
+
+
+def delete_response():
+    """Produce a Flask-friendly response for deletion requests."""
+    return "deleted", 204
 
 
 def unmarshal_request(schema: BaseSchema, kwarg_name: str):
@@ -73,7 +78,12 @@ def marshal_response(schema: BaseSchema, status_code: int = 200):
     return decorator
 
 
-def lookup(model: CommonColumns, url_param: str, check_etag: bool = False):
+def lookup(
+    model: CommonColumns,
+    url_param: str,
+    check_etag: bool = False,
+    find_func: Optional[Callable[[str], BaseModel]] = None,
+):
     """
     Given an route with a URL parameter (`url_param_name`) that will contain an id,
     search the `model` relation in the database for a record with that id. If `check_etag`
@@ -91,6 +101,9 @@ def lookup(model: CommonColumns, url_param: str, check_etag: bool = False):
     """
     ETAG_HEADER = "if-match"
 
+    if not find_func:
+        find_func = model.find_by_id
+
     def decorator(endpoint):
         @wraps(endpoint)
         def wrapped(*args, **kwargs):
@@ -101,7 +114,7 @@ def lookup(model: CommonColumns, url_param: str, check_etag: bool = False):
                         "request must provide an If-Match header"
                     )
 
-            record = model.find_by_id(kwargs[url_param])
+            record = find_func(kwargs[url_param])
             if not record:
                 raise NotFound()
 

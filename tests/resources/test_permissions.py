@@ -180,6 +180,6 @@ def test_delete_permission(cidc_api, clean_db, monkeypatch):
     # A matching ETag leads to a successful deletion
     headers["If-Match"] = perm._etag
     res = client.delete(f"permissions/{perm.id}", headers=headers)
-    assert res.status_code == 200
+    assert res.status_code == 204
     with cidc_api.app_context():
         assert Permissions.find_by_id(perm.id) is None

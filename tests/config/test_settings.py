@@ -29,6 +29,5 @@ def test_google_app_credentials(monkeypatch):
     importlib.reload(settings)
 
     assert os.environ["GOOGLE_APPLICATION_CREDENTIALS"].endswith(".json")
-    print(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
 
     os.environ["TESTING"] = "True"

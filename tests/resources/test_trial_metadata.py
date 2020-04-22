@@ -78,6 +78,30 @@ def test_get_trial(cidc_api, clean_db, monkeypatch):
     assert res.status_code == 404
 
 
+def test_get_trial_by_trial_id(cidc_api, clean_db, monkeypatch):
+    """Check that getting a single trial by trial id works as expected"""
+    user_id = setup_user(cidc_api, monkeypatch)
+    trial_id, _ = set(setup_trial_metadata(cidc_api))
+    with cidc_api.app_context():
+        trial = TrialMetadata.find_by_id(trial_id)
+
+    client = cidc_api.test_client()
+
+    # Non-admins can't get single trials
+    res = client.get(f"/trial_metadata/{trial.trial_id}")
+    assert res.status_code == 401
+
+    # Admins can get single trials
+    make_admin(user_id, cidc_api)
+    res = client.get(f"/trial_metadata/{trial.trial_id}")
+    assert res.status_code == 200
+    assert res.json == TrialMetadataSchema().dump(trial)
+
+    # Getting non-existent trials yields 404
+    res = client.get(f"/trial_metadata/foobar")
+    assert res.status_code == 404
+
+
 def test_create_trial(cidc_api, clean_db, monkeypatch):
     """Check that creating a new trial works as expected"""
     user_id = setup_user(cidc_api, monkeypatch)

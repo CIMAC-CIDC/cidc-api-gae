@@ -13,7 +13,12 @@ from ..models import (
     IntegrityError,
 )
 from ..shared.auth import get_current_user, requires_auth
-from ..shared.rest_utils import lookup, marshal_response, unmarshal_request
+from ..shared.rest_utils import (
+    lookup,
+    marshal_response,
+    unmarshal_request,
+    delete_response,
+)
 
 permissions_bp = Blueprint("permissions", __name__)
 
@@ -32,16 +37,21 @@ def list_permissions(args: dict):
     all of the permissions granted for the user with id `user_id`.
     """
     current_user = get_current_user()
-    user_id = args.get("user_id", current_user.id)
+    user_id = args.get("user_id")
 
     # Admins can look up permissions for any user, but
     # non-admins can only look up their own permissions
-    if current_user.is_admin() or current_user.id == user_id:
-        permissions = Permissions.find_for_user(user_id)
+    if current_user.is_admin():
+        if user_id:
+            permissions = Permissions.find_for_user(user_id)
+        else:
+            permissions = Permissions.list()
     else:
-        raise Unauthorized(
-            f"{current_user.email} cannot view permissions for other users"
-        )
+        if user_id and current_user.id != user_id:
+            raise Unauthorized(
+                f"{current_user.email} cannot view permissions for other users"
+            )
+        permissions = Permissions.find_for_user(current_user.id)
 
     # Since we aren't paginating, `permissions` is a list of all requested permissions
     total = len(permissions)
@@ -87,4 +97,4 @@ def delete_permission(permission: Permissions):
     """Delete a permission record."""
     permission.delete()
 
-    return "ok", 200
+    return delete_response()

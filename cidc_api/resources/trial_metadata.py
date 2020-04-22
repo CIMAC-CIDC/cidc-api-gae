@@ -1,5 +1,5 @@
 from flask import Blueprint
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import BadRequest, NotFound
 
 from ..shared.auth import requires_auth
 from ..models import (
@@ -58,6 +58,15 @@ def get_trial_metadata(trial):
     return trial
 
 
+@trial_metadata_bp.route("/<string:trial>", methods=["GET"])
+@requires_auth("trial_metadata_item", [CIDCRole.ADMIN.value])
+@lookup(TrialMetadata, "trial", find_func=TrialMetadata.find_by_trial_id)
+@marshal_response(trial_metadata_schema)
+def get_trial_metadata_by_trial_id(trial):
+    """Get one trial metadata record by trial identifier."""
+    return trial
+
+
 @trial_metadata_bp.route("/<int:trial>", methods=["PATCH"])
 @requires_auth("trial_metadata_item", [CIDCRole.ADMIN.value])
 @lookup(TrialMetadata, "trial", check_etag=True)
@@ -65,6 +74,20 @@ def get_trial_metadata(trial):
 @marshal_response(trial_metadata_schema, 200)
 def update_trial_metadata(trial, trial_updates):
     """Update an existing trial metadata record."""
+    trial.update(changes=trial_updates)
+
+    return trial
+
+
+@trial_metadata_bp.route("/<string:trial>", methods=["PATCH"])
+@requires_auth("trial_metadata_item", [CIDCRole.ADMIN.value])
+@lookup(
+    TrialMetadata, "trial", check_etag=True, find_func=TrialMetadata.find_by_trial_id
+)
+@unmarshal_request(partial_trial_metadata_schema, "trial_updates")
+@marshal_response(trial_metadata_schema, 200)
+def update_trial_metadata_by_trial_id(trial, trial_updates):
+    """Update an existing trial metadata record by trial_id."""
     trial.update(changes=trial_updates)
 
     return trial

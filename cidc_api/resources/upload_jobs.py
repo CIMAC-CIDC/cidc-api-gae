@@ -10,18 +10,23 @@ from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.exc import NoResultFound
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound, Unauthorized
 
-
 from cidc_schemas import constants, prism
 from cidc_schemas.template import Template
 from cidc_schemas.template_reader import XlTemplateReader
 
 from ..shared import gcloud_client
 from ..shared.auth import requires_auth, get_current_user
-from ..shared.rest_utils import lookup, marshal_response, unmarshal_request
+from ..shared.rest_utils import (
+    lookup,
+    marshal_response,
+    unmarshal_request,
+    use_args_with_pagination,
+)
 from ..config.settings import GOOGLE_UPLOAD_BUCKET
 from ..models import (
     UploadJobs,
     UploadJobSchema,
+    UploadJobListSchema,
     UploadJobStatus,
     TrialMetadata,
     DownloadableFiles,
@@ -36,6 +41,7 @@ ingestion_bp = Blueprint("ingestion", __name__)
 upload_jobs_bp = Blueprint("upload_jobs", __name__)
 
 upload_job_schema = UploadJobSchema()
+upload_job_list_schema = UploadJobListSchema()
 partial_upload_job_schema = UploadJobSchema(partial=True)
 
 
@@ -46,6 +52,25 @@ upload_job_roles = [
     CIDCRole.NCI_BIOBANK_USER.value,
     CIDCRole.CIDC_BIOFX_USER.value,
 ]
+
+
+@upload_jobs_bp.route("/", methods=["GET"])
+@requires_auth("upload_jobs", upload_job_roles)
+@use_args_with_pagination({}, upload_job_schema)
+@marshal_response(upload_job_list_schema)
+def list_upload_jobs(args, pagination_args):
+    """List visible upload_job records."""
+    user = get_current_user()
+
+    def filter_jobs(q):
+        if not user.is_admin():
+            return q.filter(UploadJobs.uploader_email == user.email)
+        return q
+
+    jobs = UploadJobs.list(filter_=filter_jobs, **pagination_args)
+    count = UploadJobs.count(filter_=filter_jobs)
+
+    return {"_items": jobs, "_meta": {"total": count}}
 
 
 @upload_jobs_bp.route("/<int:upload_job>", methods=["GET"])

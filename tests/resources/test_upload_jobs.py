@@ -113,6 +113,32 @@ def make_cimac_biofx_user(user_id, cidc_api):
 ### UploadJobs REST endpoints ###
 
 
+def test_list_upload_jobs(cidc_api, clean_db, monkeypatch):
+    """Check that listing upload jobs works as expected."""
+    user_id = setup_trial_and_user(cidc_api, monkeypatch)
+    user_job, other_job = setup_upload_jobs(cidc_api)
+
+    client = cidc_api.test_client()
+
+    # Regular CIMAC users aren't allowed to list upload jobs
+    res = client.get("upload_jobs")
+    assert res.status_code == 401
+
+    # Biofx users can only view their own upload jobs by default
+    make_cimac_biofx_user(user_id, cidc_api)
+    res = client.get("upload_jobs")
+    assert res.status_code == 200
+    assert res.json["_meta"]["total"] == 1
+    assert res.json["_items"][0]["id"] == user_job
+
+    # Admin users can view all upload jobs
+    make_admin(user_id, cidc_api)
+    res = client.get("upload_jobs")
+    assert res.status_code == 200
+    assert res.json["_meta"]["total"] == 2
+    assert set(i["id"] for i in res.json["_items"]) == set([user_job, other_job])
+
+
 def test_get_upload_job(cidc_api, clean_db, monkeypatch):
     """Check that getting a single upload job by ID works as expected."""
     user_id = setup_trial_and_user(cidc_api, monkeypatch)

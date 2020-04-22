@@ -57,6 +57,22 @@ def create_self(user):
     return user
 
 
+@users_bp.route("/", methods=["POST"])
+@requires_auth("users", [CIDCRole.ADMIN.value])
+@unmarshal_request(user_schema, "user")
+@marshal_response(user_schema, 201)
+def create_user(user):
+    """
+    Allow admins to create user records.
+    """
+    try:
+        user.insert()
+    except IntegrityError as e:
+        raise BadRequest(str(e.orig))
+
+    return user
+
+
 @users_bp.route("/", methods=["GET"])
 @requires_auth("users", [CIDCRole.ADMIN.value])
 @use_args_with_pagination({}, user_schema)

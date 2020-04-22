@@ -75,6 +75,31 @@ def test_create_self(cidc_api, clean_db, monkeypatch):
     assert res.status_code == 400
 
 
+def test_create_user(cidc_api, clean_db, monkeypatch):
+    """Check that only admins can create arbitrary users."""
+    user_id, other_user_id = setup_users(cidc_api, monkeypatch)
+    with cidc_api.app_context():
+        dup_email = Users.find_by_id(other_user_id).email
+
+    client = cidc_api.test_client()
+
+    dup_user_json = {"email": dup_email}
+    new_user_json = {"email": "some-new-email@test.com"}
+
+    # Registered users who aren't admins can't create arbitrary users
+    res = client.post("users", json=new_user_json)
+    assert res.status_code == 401
+
+    # Users who are admins can create arbitrary users
+    make_admin(user_id, cidc_api)
+    res = client.post("users", json=new_user_json)
+    assert res.status_code == 201
+
+    # Even admins can't create users with duplicate emails
+    res = client.post("users", json=dup_user_json)
+    assert res.status_code == 400
+
+
 def test_list_users(cidc_api, clean_db, monkeypatch):
     """Check that listing users works as expected."""
     user_id, other_user_id = setup_users(cidc_api, monkeypatch, registered=True)
