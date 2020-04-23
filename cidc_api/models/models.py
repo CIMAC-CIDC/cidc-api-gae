@@ -691,58 +691,32 @@ class DownloadableFiles(CommonColumns):
     clustergrammer = Column(JSONB, nullable=True)
     ihc_combined_plot = Column(JSONB, nullable=True)
 
-    @classmethod
-    @with_default_session
-    def list(
-        cls,
-        session,
+    @staticmethod
+    def build_file_filter(
         trial_ids: List[str] = None,
         upload_types: List[str] = None,
-        filter_: Callable[[Query], Query] = lambda q: q,
-        **pagination_args,
+        analysis_friendly: bool = False,
+        non_admin_user_id: int = None,
     ):
         file_filters = []
         if trial_ids:
             file_filters.append(DownloadableFiles.trial_id.in_(trial_ids))
         if upload_types:
             file_filters.append(DownloadableFiles.upload_type.in_(upload_types))
+        if analysis_friendly:
+            file_filters.append(DownloadableFiles.analysis_friendly == True)
+        if non_admin_user_id:
+            permissions = Permissions.find_for_user(non_admin_user_id)
+            perm_set = [(p.trial_id, p.upload_type) for p in permissions]
+            file_tuples = tuple_(
+                DownloadableFiles.trial_id, DownloadableFiles.upload_type
+            )
+            file_filters.append(file_tuples.in_(perm_set))
 
         def filter_files(query: Query) -> Query:
-            query = filter_(query)
             return query.filter(*file_filters)
 
-        return super().list(session=session, filter_=filter_files, **pagination_args)
-
-    @staticmethod
-    def _filter_for_user(user_id: int) -> Callable[[Query], Query]:
-        permissions = Permissions.find_for_user(user_id)
-        perm_set = [(p.trial_id, p.upload_type) for p in permissions]
-        file_tuples = tuple_(DownloadableFiles.trial_id, DownloadableFiles.upload_type)
-
-        def permissions_filter(query: Query) -> Query:
-            return query.filter(file_tuples.in_(perm_set))
-
-        return permissions_filter
-
-    @staticmethod
-    @with_default_session
-    def list_for_user(user_id: int, session: Session, **pagination_args):
-        """
-        List all downloadable files the given user is allowed to view
-        based on the contents of the `permissions` table.
-        """
-        filter_ = DownloadableFiles._filter_for_user(user_id)
-
-        return DownloadableFiles.list(
-            session=session, filter_=filter_, **pagination_args
-        )
-
-    @staticmethod
-    @with_default_session
-    def count_for_user(user_id: int, session: Session):
-        """Get a count of all records available for the given user"""
-        filter_ = DownloadableFiles._filter_for_user(user_id)
-        return DownloadableFiles.count(session=session, filter_=filter_)
+        return filter_files
 
     @staticmethod
     @with_default_session

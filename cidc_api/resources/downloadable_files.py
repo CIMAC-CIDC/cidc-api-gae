@@ -31,6 +31,7 @@ downloadable_files_list_schema = DownloadableFileListSchema()
 file_filter_params = {
     "trial_ids": fields.DelimitedList(fields.Str(), default=[]),
     "upload_types": fields.DelimitedList(fields.Str(), default=[]),
+    "analysis_friendly": fields.Bool(default=False),
 }
 
 
@@ -41,14 +42,14 @@ file_filter_params = {
 def list_downloadable_files(args, pagination_args):
     """List downloadable files that the current user is allowed to view."""
     user = get_current_user()
+    non_admin_user_id = user.id if not user.is_admin() else None
 
-    # Admins can view all files
-    if user.is_admin():
-        files = DownloadableFiles.list(**args, **pagination_args)
-        count = DownloadableFiles.count()
-    else:
-        files = DownloadableFiles.list_for_user(user.id, **args, **pagination_args)
-        count = DownloadableFiles.count_for_user(user.id)
+    filter_ = DownloadableFiles.build_file_filter(
+        **args, non_admin_user_id=non_admin_user_id
+    )
+
+    files = DownloadableFiles.list(filter_=filter_, **pagination_args)
+    count = DownloadableFiles.count(filter_=filter_)
 
     return {"_items": files, "_meta": {"total": count}}
 
