@@ -37,7 +37,7 @@ def setup_downloadable_files(cidc_api) -> Tuple[int, int]:
     metadata_json = {PROTOCOL_ID_FIELD_NAME: trial_id, "participants": []}
     trial = TrialMetadata(trial_id=trial_id, metadata_json=metadata_json)
 
-    def make_file(object_url, upload_type) -> DownloadableFiles:
+    def make_file(object_url, upload_type, analysis_friendly) -> DownloadableFiles:
         return DownloadableFiles(
             trial_id=trial_id,
             upload_type=upload_type,
@@ -46,9 +46,10 @@ def setup_downloadable_files(cidc_api) -> Tuple[int, int]:
             uploaded_timestamp=datetime.now(),
             file_size_bytes=0,
             file_name="",
+            analysis_friendly=analysis_friendly,
         )
 
-    file1, file2 = [make_file(i, t) for i, t in enumerate(upload_types)]
+    file1, file2 = [make_file(i, t, i == 1) for i, t in enumerate(upload_types)]
 
     with cidc_api.app_context():
         trial.insert()
@@ -85,6 +86,14 @@ def test_list_downloadable_files(cidc_api, clean_db, monkeypatch):
     assert res.json["_meta"]["total"] == 1
     assert res.json["_items"][0]["id"] == file_id_1
 
+    # Non-admin filter queries exclude files they aren't allowed to view
+    res = client.get(
+        f"/downloadable_files?upload_types={upload_types[1]}&analysis_friendly=true"
+    )
+    assert res.status_code == 200
+    assert len(res.json["_items"]) == 0
+    assert res.json["_meta"]["total"] == 0
+
     # Admins can view all files regardless of permissions
     make_admin(user_id, cidc_api)
     res = client.get("/downloadable_files")
@@ -92,6 +101,15 @@ def test_list_downloadable_files(cidc_api, clean_db, monkeypatch):
     assert len(res.json["_items"]) == 2
     assert res.json["_meta"]["total"] == 2
     assert set([f["id"] for f in res.json["_items"]]) == set([file_id_1, file_id_2])
+
+    # Admin filter queries include any files that fit the criteria
+    res = client.get(
+        f"/downloadable_files?upload_types={upload_types[1]}&analysis_friendly=false"
+    )
+    assert res.status_code == 200
+    assert len(res.json["_items"]) == 1
+    assert res.json["_meta"]["total"] == 1
+    assert res.json["_items"][0]["id"] == file_id_2
 
 
 def test_get_downloadable_file(cidc_api, clean_db, monkeypatch):

@@ -697,7 +697,21 @@ class DownloadableFiles(CommonColumns):
         upload_types: List[str] = None,
         analysis_friendly: bool = False,
         non_admin_user_id: int = None,
-    ):
+    ) -> Callable[[Query], Query]:
+        """
+        Build a file filter function based on the provided parameters. The resultant
+        filter can then be passed as the `filter_` argument of `DownloadableFiles.list`
+        or `DownloadableFiles.count`.
+        
+        Args:
+            trial_ids: if provided, the filter will include only files with these trial IDs.
+            upload_types: if provided, the filter will include only files with these upload types.
+            analysis_friendly: if True, the filter will include only files that are "analysis-friendly".
+            non_admin_user_id: if provided, the filter will include only files that satisfy 
+                this user's data access permissions.
+        Returns:
+            A function that adds filters to a query against the DownloadableFiles table.
+        """
         file_filters = []
         if trial_ids:
             file_filters.append(DownloadableFiles.trial_id.in_(trial_ids))
