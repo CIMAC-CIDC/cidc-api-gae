@@ -7,22 +7,27 @@ from werkzeug.exceptions import NotFound, BadRequest
 
 from cidc_schemas import prism
 
+from ..shared.auth import public
+
 info_bp = Blueprint("info", __name__)
 
 
 @info_bp.route("assays", methods=["GET"])
+@public
 def assays():
     """List all supported assays"""
     return jsonify(prism.SUPPORTED_ASSAYS)
 
 
 @info_bp.route("analyses", methods=["GET"])
+@public
 def analyses():
     """List all supported analyses"""
     return jsonify(prism.SUPPORTED_ANALYSES)
 
 
 @info_bp.route("manifests", methods=["GET"])
+@public
 def manifests():
     """List all supported manifests"""
     return jsonify(prism.SUPPORTED_MANIFESTS)
@@ -32,6 +37,7 @@ EXTRA_DATA_TYPES = ["participants info", "samples info"]
 
 
 @info_bp.route("extra_data_types", methods=["GET"])
+@public
 def extra_data_types():
     """List all extra data types on which permissions can be granted"""
     return jsonify(EXTRA_DATA_TYPES)
@@ -41,6 +47,7 @@ _al_under = re.compile("^\w+$")  # alpha or underscore
 
 
 @info_bp.route("templates/<template_family>/<template_type>", methods=["GET"])
+@public
 def templates(template_family, template_type):
     """
     Return the empty Excel template file for the given 

@@ -11,6 +11,7 @@ from cidc_schemas.template import generate_all_templates
 
 from .config.db import init_db
 from .config.settings import SETTINGS
+from .shared.auth import validate_api_auth
 from .resources import register_resources
 
 app = Flask(__name__, static_folder=None)
@@ -27,6 +28,9 @@ init_db(app)
 
 # Wire up the API
 register_resources(app)
+
+# Check that its auth configuration is validate
+validate_api_auth(app)
 
 # JSON-ify HTTP errors
 @app.errorhandler(HTTPException)

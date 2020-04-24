@@ -4,13 +4,30 @@ from typing import List
 
 import requests
 from jose import jwt
-from flask import g, request, current_app as app
+from flask import g, request, current_app as app, Flask
 from werkzeug.exceptions import Unauthorized, BadRequest, PreconditionFailed
 
 from ..models import Users, UserSchema
 from ..config.settings import AUTH0_DOMAIN, ALGORITHMS, AUTH0_CLIENT_ID, TESTING
 
 ### Main auth utility functions ###
+def validate_api_auth(app: Flask):
+    """
+    Assert that all URLs in `app`'s API are explicitly marked with either
+    `requires_auth` or `public`.
+    """
+    unmarked_endpoints = []
+    for label, endpoint in app.view_functions.items():
+        if not hasattr(endpoint, "is_protected"):
+            unmarked_endpoints.append(label)
+
+    assert len(unmarked_endpoints) == 0, (
+        "All endpoints must use either the `requires_auth` or `public` decorator "
+        "to explicitly specify their auth configuration. Missing from the following "
+        "endpoints: " + ", ".join(unmarked_endpoints)
+    )
+
+
 def requires_auth(resource: str, allowed_roles: list = []):
     """
     A decorator that adds authentication and basic access to an endpoint.
@@ -20,6 +37,9 @@ def requires_auth(resource: str, allowed_roles: list = []):
     """
 
     def decorator(endpoint):
+        # Store metadata on this function stating that it is protected by authentication
+        endpoint.is_protected = True
+
         @wraps(endpoint)
         def wrapped(*args, **kwargs):
             is_authorized = check_auth(allowed_roles, resource, request.method)
@@ -30,6 +50,14 @@ def requires_auth(resource: str, allowed_roles: list = []):
         return wrapped
 
     return decorator
+
+
+def public(endpoint):
+    """Declare an endpoint to be public, i.e., not requiring auth."""
+    # Store metadata on this function stating that it is unprotected
+    endpoint.is_protected = False
+
+    return endpoint
 
 
 def check_auth(allowed_roles: List[str], resource: str, method: str) -> bool:

@@ -51,6 +51,34 @@ def make_raiser(exception):
 throw_auth_error = make_raiser(Unauthorized("foo"))
 
 
+def test_validate_api_auth():
+    """Check that validate_api_auth catches endpoints that don't have auth configured."""
+    test_app = Flask("foo")
+
+    @test_app.route("/public")
+    @auth.public
+    def public_endpoint():
+        pass
+
+    @test_app.route("/private")
+    @auth.requires_auth("private_endpoint")
+    def private_endpoint():
+        pass
+
+    @test_app.route("/unprotected_1")
+    def unprotected_endpoint_1():
+        pass
+
+    @test_app.route("/unprotected_2")
+    def unprotected_endpoint_2():
+        pass
+
+    with pytest.raises(
+        AssertionError, match="unprotected_endpoint_1, unprotected_endpoint_2"
+    ):
+        auth.validate_api_auth(test_app)
+
+
 def test_requires_auth(empty_app, monkeypatch):
     """
     Check that the requires_auth decorator behaves as expected
