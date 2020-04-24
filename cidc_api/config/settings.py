@@ -25,11 +25,13 @@ assert ENV in (
 DEBUG = environ.get("DEBUG") == "True"
 assert ENV == "dev" if DEBUG else True, "DEBUG mode is only allowed when ENV='dev'"
 TESTING = environ.get("TESTING") == "True"
+ALLOWED_CLIENT_URL = environ.get("ALLOWED_CLIENT_URL")
 
 ### Configure miscellaneous constants ###
 TEMPLATES_DIR = path.join("/tmp", "templates")
 MIN_CLI_VERSION = "0.8.4"
 PAGINATION_PAGE_SIZE = 25
+MAX_PAGINATION_PAGE_SIZE = 200
 
 ### Configure Flask-SQLAlchemy ###
 SQLALCHEMY_DATABASE_URI = get_sqlalchemy_database_uri(TESTING)

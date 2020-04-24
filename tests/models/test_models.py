@@ -20,7 +20,7 @@ from cidc_api.models import (
     UploadJobStatus,
     NoResultFound,
 )
-from cidc_api.config.settings import PAGINATION_PAGE_SIZE
+from cidc_api.config.settings import PAGINATION_PAGE_SIZE, MAX_PAGINATION_PAGE_SIZE
 from cidc_schemas.prism import PROTOCOL_ID_FIELD_NAME
 from cidc_schemas import prism
 
@@ -154,6 +154,13 @@ def test_common_list(clean_db):
         filter_=f, page_num=0, sort_field="id", sort_direction="asc"
     )
     assert all_expected_values == set(f.first_n for f in filtered_page)
+
+    # Get a too-large page
+    for i in range(106, 300):
+        name = f"user_{i}"
+        Users(email=f"{name}@example.com", first_n=name).insert()
+    big_page = Users.list(page_size=1e10)
+    assert len(big_page) == MAX_PAGINATION_PAGE_SIZE
 
 
 @db_test

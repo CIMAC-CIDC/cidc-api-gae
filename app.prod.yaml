@@ -14,6 +14,7 @@ handlers:
 
 env_variables:
   ENV: "prod"
+  ALLOWED_CLIENT_URL: "https://portal.cimac-network.org"
   AUTH0_DOMAIN: "cidc.auth0.com"
   AUTH0_CLIENT_ID: "nI74q5VDJ2w2OaKgoK3lAkuxWvCkKP30"
   CLOUD_SQL_INSTANCE_NAME: "cidc-dfci:us-east1:cidc-postgresql-prod"

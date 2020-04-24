@@ -18,7 +18,7 @@ app = Flask(__name__, static_folder=None)
 app.config.update(SETTINGS)
 
 # Enable CORS
-CORS(app, resources={r"*": {"origins": "*"}})
+CORS(app, resources={r"*": {"origins": app.config["ALLOWED_CLIENT_URL"]}})
 
 # Generate empty Excel templates
 generate_all_templates(app.config["TEMPLATES_DIR"])

@@ -36,7 +36,7 @@ from sqlalchemy.engine.interfaces import ExecutionContext
 from cidc_schemas import prism, unprism
 
 from ..config.db import BaseModel
-from ..config.settings import PAGINATION_PAGE_SIZE
+from ..config.settings import PAGINATION_PAGE_SIZE, MAX_PAGINATION_PAGE_SIZE
 from ..shared.gcloud_client import publish_artifact_upload, publish_upload_success
 
 
@@ -59,7 +59,7 @@ def with_default_session(f):
 
 
 def make_etag(args: Union[dict, list]):
-    """Make an etag by hashing the JSON representation of the provided `args` dict"""
+    """Make an etag by hashing the representation of the provided `args` dict"""
     argbytes = bytes(repr(args), "utf-8")
     return hashlib.md5(argbytes).hexdigest()
 
@@ -132,6 +132,9 @@ class CommonColumns(BaseModel):  # type: ignore
         """List records in this table, with pagination support."""
         # Enforce positive page numbers
         page_num = 0 if page_num < 0 else page_num
+
+        # Enforce maximum page size
+        page_size = min(page_size, MAX_PAGINATION_PAGE_SIZE)
 
         query = session.query(cls)
 
