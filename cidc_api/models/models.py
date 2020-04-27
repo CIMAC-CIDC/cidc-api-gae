@@ -165,13 +165,22 @@ class CommonColumns(BaseModel):  # type: ignore
 
     @classmethod
     @with_default_session
-    def get_distinct(cls, column_name: str, session: Session):
+    def get_distinct(
+        cls,
+        column_name: str,
+        session: Session,
+        filter_: Callable[[Query], Query] = lambda q: q,
+    ):
         """Get a list of distinct values for the given column."""
         assert (
             column_name in cls.__table__.columns.keys()
         ), f"{cls.__tablename__} has no column {column_name}"
 
-        return list(v[0] for v in session.query(getattr(cls, column_name)).distinct())
+        base_query = session.query(getattr(cls, column_name))
+        filtered_query = filter_(base_query)
+        distinct_query = filtered_query.distinct()
+
+        return list(v[0] for v in distinct_query)
 
 
 class CIDCRole(EnumBaseClass):

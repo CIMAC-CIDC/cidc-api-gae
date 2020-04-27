@@ -127,8 +127,8 @@ def get_filter_facets():
         upload_types = DownloadableFiles.get_distinct("upload_type")
     else:
         # Non-admins can only facet on what they have permission to view
-        perms = Permissions.find_for_user(user.id)
-        trial_ids = list({perm.trial_id for perm in perms})
-        upload_types = list({perm.upload_type for perm in perms})
+        user_filter = lambda q: q.filter(Permissions.granted_to_user == user.id)
+        trial_ids = Permissions.get_distinct("trial_id", filter_=user_filter)
+        upload_types = Permissions.get_distinct("upload_type", filter_=user_filter)
 
     return jsonify({"trial_id": trial_ids, "upload_type": upload_types})
