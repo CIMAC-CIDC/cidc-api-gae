@@ -89,7 +89,7 @@ def get_upload_job(upload_job: UploadJobs):
 @upload_jobs_bp.route("/<int:upload_job>", methods=["PATCH"])
 @requires_auth("upload_jobs", upload_job_roles)
 @lookup(UploadJobs, "upload_job", check_etag=True)
-@unmarshal_request(partial_upload_job_schema, "upload_job_updates")
+@unmarshal_request(partial_upload_job_schema, "upload_job_updates", load_sqla=False)
 @marshal_response(upload_job_schema, 200)
 def update_upload_job(upload_job: UploadJobs, upload_job_updates: UploadJobs):
     """Update an upload_job. Non-admins can only update their own upload_jobs."""

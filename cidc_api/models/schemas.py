@@ -2,10 +2,11 @@ from functools import wraps
 from typing import Optional
 
 from marshmallow import fields
-from marshmallow_sqlalchemy import SQLAlchemyAutoSchema
+from marshmallow_sqlalchemy import SQLAlchemyAutoSchema, auto_field
 
 from ..config.db import db
 from .models import (
+    CommonColumns,
     BaseModel,
     UploadJobs,
     Users,
@@ -20,6 +21,11 @@ class BaseSchema(SQLAlchemyAutoSchema):
         sqla_session = db.session
         include_fk = True
         load_instance = True
+
+    # Read-only fields common across all schemas
+    _created = fields.DateTime(dump_only=True)
+    _updated = fields.DateTime(dump_only=True)
+    _etag = fields.Str(dump_only=True)
 
 
 class _ListMetadata(BaseSchema):
@@ -40,6 +46,9 @@ def _make_list_schema(schema: BaseSchema):
 class UploadJobSchema(BaseSchema):
     class Meta(BaseSchema.Meta):
         model = UploadJobs
+        exclude = ["_status"]
+
+    status = auto_field(column_name="_status")
 
 
 UploadJobListSchema = _make_list_schema(UploadJobSchema())

@@ -15,9 +15,6 @@ def assert_sqla_matching_fields(rec1, rec2):
 
 
 perm_json = {
-    "_created": None,
-    "_etag": None,
-    "_updated": None,
     "upload_type": "olink",
     "granted_by_user": 1,
     "granted_to_user": 2,

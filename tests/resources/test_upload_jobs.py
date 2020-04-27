@@ -225,7 +225,7 @@ def test_update_upload_job(cidc_api, clean_db, monkeypatch):
     revoke_upload_access.reset_mock()
 
     with cidc_api.app_context():
-        user_job_record.status = UploadJobStatus.STARTED.value
+        user_job_record._set_status_no_validation(UploadJobStatus.STARTED.value)
         user_job_record.update()
 
     # A biofx user can update their own job to be a success
@@ -706,7 +706,7 @@ def test_upload_wes(cidc_api, clean_db, monkeypatch):
     # Reset the upload status and try the request again
     with cidc_api.app_context():
         job = UploadJobs.find_by_id_and_email(job_id, user.email)
-        job.status = UploadJobStatus.STARTED.value
+        job._set_status_no_validation(UploadJobStatus.STARTED.value)
         job.update()
         _etag = job._etag
 
@@ -822,7 +822,7 @@ def test_upload_olink(cidc_api, clean_db, monkeypatch):
     # Reset the upload status and try the request again
     with cidc_api.app_context():
         job = UploadJobs.find_by_id_and_email(job_id, user.email)
-        job.status = UploadJobStatus.STARTED.value
+        job._set_status_no_validation(UploadJobStatus.STARTED.value)
         job.update()
         _etag = job._etag
 
@@ -896,7 +896,7 @@ def test_poll_upload_merge_status(cidc_api, clean_db, monkeypatch):
         # Simulate cloud function merge status update
         with cidc_api.app_context():
             upload = UploadJobs.find_by_id_and_email(user_created, user.email)
-            upload.status = status
+            upload._set_status_no_validation(status)
             upload.status_details = test_details
             upload.update()
 

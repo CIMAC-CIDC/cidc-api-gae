@@ -25,6 +25,7 @@ from sqlalchemy import (
     desc,
 )
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.session import Session
@@ -36,7 +37,7 @@ from sqlalchemy.engine.interfaces import ExecutionContext
 from cidc_schemas import prism, unprism
 
 from ..config.db import BaseModel
-from ..config.settings import PAGINATION_PAGE_SIZE, MAX_PAGINATION_PAGE_SIZE
+from ..config.settings import PAGINATION_PAGE_SIZE, MAX_PAGINATION_PAGE_SIZE, TESTING
 from ..shared.gcloud_client import publish_artifact_upload, publish_upload_success
 
 
@@ -87,11 +88,10 @@ class CommonColumns(BaseModel):  # type: ignore
             session.commit()
 
     @with_default_session
-    def update(self, session: Session, changes=None, commit: bool = True):
+    def update(self, session: Session, changes: dict = None, commit: bool = True):
         """
         Update the current instance if it exists in the session.
-        `changes` should be a partial instance of the same type as this instance,
-        containing column updates to apply to this instance.
+        `changes` should be a dictionary mapping column names to updated values.
         """
         # Ensure the record exists in the database
         if not self.find_by_id(self.id):
@@ -99,13 +99,9 @@ class CommonColumns(BaseModel):  # type: ignore
 
         # Update this record's fields if changes were provided
         if changes:
-            assert isinstance(
-                changes, self.__class__
-            ), f"`changes` must be an instance of {self.__class__}"
             for column in self.__table__.columns.keys():
-                updated_value = getattr(changes, column)
-                if updated_value:
-                    setattr(self, column, updated_value)
+                if column in changes:
+                    setattr(self, column, changes[column])
 
         session.merge(self)
         if commit:
@@ -498,7 +494,9 @@ class UploadJobs(CommonColumns):
     )
 
     # The current status of the upload job
-    status = Column(Enum(*UPLOAD_STATUSES, name="upload_job_status"), nullable=False)
+    _status = Column(
+        "status", Enum(*UPLOAD_STATUSES, name="upload_job_status"), nullable=False
+    )
     # Text containing feedback on why the upload status is what it is
     status_details = Column(String, nullable=True)
     # Whether the upload contains multiple files
@@ -522,18 +520,29 @@ class UploadJobs(CommonColumns):
         "upload_jobs_gcs_gcs_file_map_idx", gcs_file_map, postgresql_using="gin"
     )
 
-    @with_default_session
-    def update(self, session, changes=None, commit=True):
-        # If changes includes a status update, make sure that transition is valid
-        if (
-            changes
-            and changes.status
-            and not UploadJobStatus.is_valid_transition(self.status, changes.status)
-        ):
+    @hybrid_property
+    def status(self):
+        return self._status
+
+    @status.setter
+    def status(self, status: str):
+        """Set the status if given value is valid."""
+        # If old status isn't set on this instance, then this instance hasn't
+        # yet been saved to the db, so default to the old status to STARTED.
+        old_status = (
+            UploadJobStatus.STARTED.value if self.status is None else self.status
+        )
+        is_manifest = self.upload_type in prism.SUPPORTED_MANIFESTS
+        if not UploadJobStatus.is_valid_transition(old_status, status, is_manifest):
             raise ValueError(
-                f"Upload job with status {self.status} can't transition to status {changes.status}"
+                f"Upload job with status {self.status} can't transition to status {status}"
             )
-        return super().update(session=session, changes=changes, commit=commit)
+        self._status = status
+
+    def _set_status_no_validation(self, status: str):
+        """Set the status without performing validations."""
+        assert TESTING, "status_no_validation should only be used in tests"
+        self._status = status
 
     def alert_upload_success(self, trial: TrialMetadata):
         """Send an email notification that an upload has succeeded."""
@@ -585,15 +594,6 @@ class UploadJobs(CommonColumns):
             uploader_email=uploader_email,
             gcs_xlsx_uri=gcs_xlsx_uri,
             status=status,
-            _etag=make_etag(
-                [
-                    upload_type,
-                    gcs_file_map,
-                    metadata,
-                    uploader_email,
-                    UploadJobStatus.STARTED.value,
-                ]
-            ),
         )
         session.add(job)
         if commit:
@@ -655,6 +655,11 @@ class UploadJobs(CommonColumns):
 
         if send_email:
             self.alert_upload_success(trial)
+
+
+# UploadJobs.__mapper__.columns["status"] = UploadJobs.__mapper__.columns["_status"]
+# del UploadJobs.__mapper__.columns["_status"]
+# print(UploadJobs.__mapper__.get_property("status"))
 
 
 class DownloadableFiles(CommonColumns):

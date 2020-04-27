@@ -76,7 +76,7 @@ def test_common_update(clean_db):
     first_n = "hello"
     last_n = "goodbye"
     user.last_n = last_n
-    user.update(changes=Users(first_n=first_n))
+    user.update(changes={"first_n": first_n})
     user = Users.find_by_id(user.id)
     assert user.first_n == first_n
     assert user.last_n == last_n

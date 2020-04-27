@@ -26,12 +26,14 @@ def delete_response():
     return "deleted", 204
 
 
-def unmarshal_request(schema: BaseSchema, kwarg_name: str):
+def unmarshal_request(schema: BaseSchema, kwarg_name: str, load_sqla: bool = True):
     """
     Generate a decorator that will load and validate the JSON body of 
     the current request object as an instance of `schema` and pass
     the loaded instance to the decorated function as a keyword argument
-    with name `kwarg_name`.
+    with name `kwarg_name`. If `load_sqla` is False, then only validate the JSON
+    body of the request, and pass it on to `kwarg_name` as a dictionary,
+    not a SQLAlchemy model instance.
     """
 
     def decorator(endpoint):
@@ -40,12 +42,18 @@ def unmarshal_request(schema: BaseSchema, kwarg_name: str):
             if not request.json:
                 raise BadRequest("expected JSON data in request body")
 
-            try:
-                deserialized_body = schema.load(request.json)
-            except ValidationError as e:
-                raise UnprocessableEntity(e.messages)
+            if load_sqla:
+                try:
+                    body = schema.load(request.json)
+                except ValidationError as e:
+                    raise UnprocessableEntity(e.messages)
+            else:
+                body = request.json
+                errors = schema.validate(body)
+                if errors:
+                    raise UnprocessableEntity(errors)
 
-            kwargs[kwarg_name] = deserialized_body
+            kwargs[kwarg_name] = body
 
             return endpoint(*args, **kwargs)
 

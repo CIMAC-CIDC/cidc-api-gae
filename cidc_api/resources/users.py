@@ -98,13 +98,13 @@ def get_user(user: Users):
 @users_bp.route("/<int:user>", methods=["PATCH"])
 @requires_auth("users_item", [CIDCRole.ADMIN.value])
 @lookup(Users, "user", check_etag=True)
-@unmarshal_request(partial_user_schema, "user_updates")
+@unmarshal_request(partial_user_schema, "user_updates", load_sqla=False)
 @marshal_response(user_schema)
 def update_user(user: Users, user_updates: Users):
     """Update a single user's information."""
     # If a user is being awarded their first role, add an approval date
-    if not user.role and user_updates.role:
-        user_updates.approval_date = datetime.now()
+    if not user.role and "role" in user_updates:
+        user_updates["approval_date"] = datetime.now()
 
     user.update(changes=user_updates)
 

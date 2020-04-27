@@ -70,7 +70,7 @@ def get_trial_metadata_by_trial_id(trial):
 @trial_metadata_bp.route("/<int:trial>", methods=["PATCH"])
 @requires_auth("trial_metadata_item", [CIDCRole.ADMIN.value])
 @lookup(TrialMetadata, "trial", check_etag=True)
-@unmarshal_request(partial_trial_metadata_schema, "trial_updates")
+@unmarshal_request(partial_trial_metadata_schema, "trial_updates", load_sqla=False)
 @marshal_response(trial_metadata_schema, 200)
 def update_trial_metadata(trial, trial_updates):
     """Update an existing trial metadata record."""
@@ -84,7 +84,7 @@ def update_trial_metadata(trial, trial_updates):
 @lookup(
     TrialMetadata, "trial", check_etag=True, find_func=TrialMetadata.find_by_trial_id
 )
-@unmarshal_request(partial_trial_metadata_schema, "trial_updates")
+@unmarshal_request(partial_trial_metadata_schema, "trial_updates", load_sqla=False)
 @marshal_response(trial_metadata_schema, 200)
 def update_trial_metadata_by_trial_id(trial, trial_updates):
     """Update an existing trial metadata record by trial_id."""
