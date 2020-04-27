@@ -95,14 +95,11 @@ def get_download_url(args):
     user = get_current_user()
 
     # Ensure user has permission to access this file
-    perms = Permissions.find_for_user(user.id)
     if user.role != CIDCRole.ADMIN.value:
-        # Check for a permission matching this file's trial and assay
-        if not any(
-            perm.upload_type == file_record.upload_type
-            and perm.trial_id == file_record.trial_id
-            for perm in perms
-        ):
+        perm = Permissions.find_for_user_trial_type(
+            user.id, file_record.trial_id, file_record.upload_type
+        )
+        if not perm:
             raise NotFound(f"No file with id {file_id}.")
 
     # Generate the signed URL and return it.
