@@ -81,6 +81,11 @@ def test_common_update(clean_db):
     assert user.first_n == first_n
     assert user.last_n == last_n
 
+    # Make sure you can clear a field to null
+    user.update(changes={"first_n": None})
+    user = Users.find_by_id(user.id)
+    assert user.first_n is None
+
 
 @db_test
 def test_common_delete(clean_db):
