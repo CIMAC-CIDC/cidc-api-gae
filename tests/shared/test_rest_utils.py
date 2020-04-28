@@ -27,26 +27,40 @@ def test_unmarshal_request(empty_app: Flask):
     """Check that unmarshal_request validates and loads request JSON as expected."""
     s, p, a = 1, 2, 3
 
-    @unmarshal_request(PermissionSchema(), "permission_record")
-    def endpoint(some, positional, args, permission_record):
+    @unmarshal_request(PermissionSchema(), "permission_record", load_sqla=True)
+    def endpoint_sqla(some, positional, args, permission_record):
+        assert some == s and positional == p and args == a
+        return permission_record
+
+    @unmarshal_request(PermissionSchema(), "permission_record", load_sqla=False)
+    def endpoint_json(some, positional, args, permission_record):
         assert some == s and positional == p and args == a
         return permission_record
 
     # A request with no JSON body should raise 400
     with empty_app.test_request_context():
         with pytest.raises(BadRequest, match="expected JSON data"):
-            endpoint(s, p, a)
+            endpoint_sqla(s, p, a)
+
+        with pytest.raises(BadRequest, match="expected JSON data"):
+            endpoint_json(s, p, a)
 
     # Invalid JSON should raise 422
     with empty_app.test_request_context(json={"granted_to_user": 1}):
         with pytest.raises(
             UnprocessableEntity, match="Missing data for required field"
         ):
-            endpoint(s, p, a)
+            endpoint_sqla(s, p, a)
 
-    # Valid JSON should be hempty_appily accepted
+        with pytest.raises(
+            UnprocessableEntity, match="Missing data for required field"
+        ):
+            endpoint_json(s, p, a)
+
+    # Valid JSON should be happily accepted
     with empty_app.test_request_context(json=perm_json):
-        assert_sqla_matching_fields(endpoint(s, p, a), perm_record)
+        assert_sqla_matching_fields(endpoint_sqla(s, p, a), perm_record)
+        assert endpoint_json(s, p, a) == perm_json
 
 
 def test_marshal_response(empty_app):
