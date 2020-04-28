@@ -1,6 +1,7 @@
 import os
 import json
 import hashlib
+from datetime import datetime
 from enum import Enum as EnumBaseClass
 from functools import wraps
 from typing import Optional, List, Union, Callable
@@ -102,6 +103,9 @@ class CommonColumns(BaseModel):  # type: ignore
             for column in self.__table__.columns.keys():
                 if column in changes:
                     setattr(self, column, changes[column])
+
+        # Set the _updated field to now
+        self._updated = datetime.now()
 
         session.merge(self)
         if commit:

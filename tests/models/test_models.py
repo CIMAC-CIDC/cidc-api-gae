@@ -72,18 +72,24 @@ def test_common_update(clean_db):
 
     user.insert()
 
+    _updated = user._updated
+
     # Update via setattr and changes
     first_n = "hello"
     last_n = "goodbye"
     user.last_n = last_n
     user.update(changes={"first_n": first_n})
     user = Users.find_by_id(user.id)
+    assert user._updated > _updated
     assert user.first_n == first_n
     assert user.last_n == last_n
+
+    _updated = user._updated
 
     # Make sure you can clear a field to null
     user.update(changes={"first_n": None})
     user = Users.find_by_id(user.id)
+    assert user._updated > _updated
     assert user.first_n is None
 
 
