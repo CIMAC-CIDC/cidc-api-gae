@@ -7,7 +7,6 @@ from werkzeug.exceptions import NotFound
 
 
 from ..models import (
-    CIDCRole,
     DownloadableFiles,
     DownloadableFileSchema,
     DownloadableFileListSchema,
@@ -42,11 +41,8 @@ file_filter_params = {
 def list_downloadable_files(args, pagination_args):
     """List downloadable files that the current user is allowed to view."""
     user = get_current_user()
-    non_admin_user_id = user.id if not user.is_admin() else None
 
-    filter_ = DownloadableFiles.build_file_filter(
-        **args, non_admin_user_id=non_admin_user_id
-    )
+    filter_ = DownloadableFiles.build_file_filter(**args, user=user)
 
     files = DownloadableFiles.list(filter_=filter_, **pagination_args)
     count = DownloadableFiles.count(filter_=filter_)
@@ -95,7 +91,7 @@ def get_download_url(args):
     user = get_current_user()
 
     # Ensure user has permission to access this file
-    if user.role != CIDCRole.ADMIN.value:
+    if not user.is_admin():
         perm = Permissions.find_for_user_trial_type(
             user.id, file_record.trial_id, file_record.upload_type
         )
@@ -121,7 +117,7 @@ def get_filter_facets():
     """
     user = get_current_user()
 
-    if user.role == CIDCRole.ADMIN.value:
+    if user.is_admin():
         # Admins can facet on every trial or upload type
         trial_ids = DownloadableFiles.get_distinct("trial_id")
         upload_types = DownloadableFiles.get_distinct("upload_type")

@@ -6,7 +6,6 @@ from typing import Union
 from cidc_schemas.prism import generate_analysis_configs_from_upload_patch
 
 from . import gcloud_client
-from ..models import Users, UploadJobs
 from ..config.settings import ENV, GOOGLE_DATA_BUCKET
 
 CIDC_MAILING_LIST = "cidc@jimmy.harvard.edu"
@@ -29,7 +28,7 @@ def sendable(email_template):
 
 
 @sendable
-def confirm_account_approval(user: Users) -> dict:
+def confirm_account_approval(user) -> dict:
     """Send a message to the user confirming that they are approved to use the CIDC."""
 
     subject = "CIDC Registration Approval"
@@ -74,7 +73,7 @@ def new_user_registration(email: str) -> dict:
 
 
 @sendable
-def new_upload_alert(upload: Union[UploadJobs], full_metadata: dict) -> dict:
+def new_upload_alert(upload, full_metadata) -> dict:
     """Alert the CIDC administrators that an upload succeeded."""
     patch = upload.metadata_patch
     upload_type = upload.upload_type

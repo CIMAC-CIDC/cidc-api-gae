@@ -123,14 +123,14 @@ def authenticate() -> Users:
 
 def _extract_token() -> str:
     """Extract an identity token from the current request's authorization header."""
-    auth_header = request.headers.get("Authorization")
-
-    if not auth_header or not auth_header.lower().startswith("bearer"):
+    try:
+        auth_header = request.headers.get("Authorization").lower()
+        bearer, id_token = auth_header.split(" ")
+        assert bearer == "bearer"
+    except:
         raise Unauthorized(
             "Authorization header must be set with structure 'Authorization: Bearer <id token>'"
         )
-
-    id_token = auth_header.split(" ")[1]
 
     return id_token
 
@@ -192,7 +192,6 @@ def _decode_id_token(token: str, public_key: dict) -> dict:
             token,
             public_key,
             algorithms=ALGORITHMS,
-            # TODO: is this what we want?
             audience=AUTH0_CLIENT_ID,
             issuer=f"https://{AUTH0_DOMAIN}/",
             options={"verify_at_hash": False},

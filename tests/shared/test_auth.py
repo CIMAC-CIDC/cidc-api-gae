@@ -217,6 +217,34 @@ def test_authenticate(empty_app, monkeypatch):
             auth.authenticate()
 
 
+def test_extract_token(empty_app):
+    """Test that _extract_token handles edge cases"""
+    # No auth header
+    with empty_app.test_request_context("/"):
+        with pytest.raises(Unauthorized):
+            auth._extract_token()
+
+    # Non-bearer auth headers
+    with empty_app.test_request_context("/", headers={"authorization": ""}):
+        with pytest.raises(Unauthorized):
+            auth._extract_token()
+    with empty_app.test_request_context("/", headers={"authorization": "Basic foo"}):
+        with pytest.raises(Unauthorized):
+            auth._extract_token()
+
+    # Bearer missing token
+    with empty_app.test_request_context("/", headers={"authorization": "Bearer"}):
+        with pytest.raises(Unauthorized):
+            auth._extract_token()
+
+    # Well-formed auth header
+    token = "test-token"
+    with empty_app.test_request_context(
+        "/", headers={"authorization": f"Bearer {token}"}
+    ):
+        assert auth._extract_token() == token
+
+
 def test_get_issuer_public_key(monkeypatch):
     """Test that public key-finding logic works"""
     error_str = "uh oh!"

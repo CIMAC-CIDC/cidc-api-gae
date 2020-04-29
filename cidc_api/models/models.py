@@ -39,6 +39,7 @@ from cidc_schemas import prism, unprism
 
 from ..config.db import BaseModel
 from ..config.settings import PAGINATION_PAGE_SIZE, MAX_PAGINATION_PAGE_SIZE, TESTING
+from ..shared import emails
 from ..shared.gcloud_client import publish_artifact_upload, publish_upload_success
 
 
@@ -542,9 +543,7 @@ class UploadJobs(CommonColumns):
         """Set the status if given value is valid."""
         # If old status isn't set on this instance, then this instance hasn't
         # yet been saved to the db, so default to the old status to STARTED.
-        old_status = (
-            UploadJobStatus.STARTED.value if self.status is None else self.status
-        )
+        old_status = self.status or UploadJobStatus.STARTED.value
         is_manifest = self.upload_type in prism.SUPPORTED_MANIFESTS
         if not UploadJobStatus.is_valid_transition(old_status, status, is_manifest):
             raise ValueError(
@@ -559,9 +558,6 @@ class UploadJobs(CommonColumns):
 
     def alert_upload_success(self, trial: TrialMetadata):
         """Send an email notification that an upload has succeeded."""
-        # (import these here to avoid a circular import error)
-        from cidc_api.shared import emails
-
         # Send admin notification email
         emails.new_upload_alert(self, trial.metadata_json, send_email=True)
 
@@ -670,11 +666,6 @@ class UploadJobs(CommonColumns):
             self.alert_upload_success(trial)
 
 
-# UploadJobs.__mapper__.columns["status"] = UploadJobs.__mapper__.columns["_status"]
-# del UploadJobs.__mapper__.columns["_status"]
-# print(UploadJobs.__mapper__.get_property("status"))
-
-
 class DownloadableFiles(CommonColumns):
     """
     Store required fields from: 
@@ -717,7 +708,7 @@ class DownloadableFiles(CommonColumns):
         trial_ids: List[str] = None,
         upload_types: List[str] = None,
         analysis_friendly: bool = False,
-        non_admin_user_id: int = None,
+        user: Users = None,
     ) -> Callable[[Query], Query]:
         """
         Build a file filter function based on the provided parameters. The resultant
@@ -740,8 +731,8 @@ class DownloadableFiles(CommonColumns):
             file_filters.append(DownloadableFiles.upload_type.in_(upload_types))
         if analysis_friendly:
             file_filters.append(DownloadableFiles.analysis_friendly == True)
-        if non_admin_user_id:
-            permissions = Permissions.find_for_user(non_admin_user_id)
+        if user and not user.is_admin():
+            permissions = Permissions.find_for_user(user.id)
             perm_set = [(p.trial_id, p.upload_type) for p in permissions]
             file_tuples = tuple_(
                 DownloadableFiles.trial_id, DownloadableFiles.upload_type
