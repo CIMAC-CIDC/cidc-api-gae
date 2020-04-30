@@ -24,6 +24,7 @@ from sqlalchemy import (
     tuple_,
     asc,
     desc,
+    event,
 )
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -84,7 +85,7 @@ class CommonColumns(BaseModel):  # type: ignore
         return make_etag(etag_fields)
 
     @with_default_session
-    def insert(self, session: Session, commit: bool = True):
+    def insert(self, session: Session, commit: bool = True, compute_etag: bool = True):
         """Add the current instance to the session."""
         # Compute an _etag if none was provided
         self._etag = self._etag or self.compute_etag()
@@ -195,6 +196,11 @@ class CommonColumns(BaseModel):  # type: ignore
         return list(v[0] for v in distinct_query)
 
 
+@event.listens_for(CommonColumns, "before_insert")
+def f(mapper, conn, target):
+    print(mapper)
+
+
 class CIDCRole(EnumBaseClass):
     ADMIN = "cidc-admin"
     CIDC_BIOFX_USER = "cidc-biofx-user"
@@ -212,6 +218,7 @@ ORGS = ["CIDC", "DFCI", "ICAHN", "STANFORD", "ANDERSON"]
 class Users(CommonColumns):
     __tablename__ = "users"
 
+    _accessed = Column(DateTime, default=func.now(), nullable=False)
     email = Column(String, unique=True, nullable=False, index=True)
     first_n = Column(String)
     last_n = Column(String)
@@ -223,6 +230,16 @@ class Users(CommonColumns):
     def is_admin(self) -> bool:
         """Returns true if this user is a CIDC admin."""
         return self.role == CIDCRole.ADMIN.value
+
+    @with_default_session
+    def update_accessed(self, session: Session, commit: bool = True):
+        """Set this user's last system access to now."""
+        today = datetime.today()
+        if self._accessed < today:
+            self._accessed = today
+            session.merge(self)
+            if commit:
+                session.commit()
 
     @staticmethod
     @with_default_session

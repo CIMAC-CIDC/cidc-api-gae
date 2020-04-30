@@ -57,6 +57,9 @@ UploadJobListSchema = _make_list_schema(UploadJobSchema())
 class UserSchema(BaseSchema):
     class Meta(BaseSchema.Meta):
         model = Users
+        exclude = ["_accessed", "disabled"]
+
+    _accessed = auto_field(column_name="_accessed", dump_only=True)
 
 
 UserListSchema = _make_list_schema(UserSchema())

@@ -19,7 +19,7 @@ users_bp = Blueprint("users", __name__)
 
 user_schema = UserSchema()
 user_list_schema = UserListSchema()
-new_user_schema = UserSchema(exclude=("approval_date", "role"))
+new_user_schema = UserSchema(exclude=("approval_date", "role", "disabled"))
 partial_user_schema = UserSchema(partial=True)
 
 
