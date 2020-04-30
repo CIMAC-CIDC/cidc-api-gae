@@ -11,7 +11,6 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from cidc_api.app import app
 from cidc_api.models import (
-    CommonColumns,
     Users,
     TrialMetadata,
     UploadJobs,
