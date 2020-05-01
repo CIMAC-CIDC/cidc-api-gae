@@ -74,7 +74,7 @@ class CommonColumns(BaseModel):  # type: ignore
     __abstract__ = True  # Indicate that this isn't a Table schema
 
     _created = Column(DateTime, default=func.now())
-    _updated = Column(DateTime, default=func.now(), onupdate=func.now())
+    _updated = Column(DateTime, default=func.now())
     _etag = Column(String(40))
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
 
