@@ -59,6 +59,9 @@ def test_common_compute_etag():
     u.first_n = "buzz"
     assert u.compute_etag() != new_etag
 
+    # Compute etag returns the same result if `u` doesn't change
+    assert u.compute_etag() == u.compute_etag()
+
 
 @db_test
 def test_common_insert(clean_db):
