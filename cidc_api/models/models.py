@@ -234,8 +234,8 @@ class Users(CommonColumns):
     @with_default_session
     def update_accessed(self, session: Session, commit: bool = True):
         """Set this user's last system access to now."""
-        today = datetime.today()
-        if self._accessed < today:
+        today = datetime.now()
+        if not self._accessed or (today - self._accessed).days > 1:
             self._accessed = today
             session.merge(self)
             if commit:
