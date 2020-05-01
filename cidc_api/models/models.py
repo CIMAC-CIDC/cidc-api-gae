@@ -1,7 +1,7 @@
 import os
 import json
 import hashlib
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum as EnumBaseClass
 from functools import wraps
 from typing import Optional, List, Union, Callable
@@ -24,7 +24,7 @@ from sqlalchemy import (
     tuple_,
     asc,
     desc,
-    event,
+    update,
 )
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -39,7 +39,12 @@ from sqlalchemy.engine.interfaces import ExecutionContext
 from cidc_schemas import prism, unprism
 
 from ..config.db import BaseModel
-from ..config.settings import PAGINATION_PAGE_SIZE, MAX_PAGINATION_PAGE_SIZE, TESTING
+from ..config.settings import (
+    PAGINATION_PAGE_SIZE,
+    MAX_PAGINATION_PAGE_SIZE,
+    TESTING,
+    INACTIVE_USER_DAYS,
+)
 from ..shared import emails
 from ..shared.gcloud_client import publish_artifact_upload, publish_upload_success
 
@@ -196,11 +201,6 @@ class CommonColumns(BaseModel):  # type: ignore
         return list(v[0] for v in distinct_query)
 
 
-@event.listens_for(CommonColumns, "before_insert")
-def f(mapper, conn, target):
-    print(mapper)
-
-
 class CIDCRole(EnumBaseClass):
     ADMIN = "cidc-admin"
     CIDC_BIOFX_USER = "cidc-biofx-user"
@@ -269,6 +269,22 @@ class Users(CommonColumns):
             user = Users(email=email)
             user.insert(session=session)
         return user
+
+    @staticmethod
+    @with_default_session
+    def disable_inactive_users(session: Session, commit: bool = True):
+        """
+        Disable any users who haven't accessed the API in more than `settings.INACTIVE_USER_DAYS`.
+        """
+        user_inactivity_cutoff = datetime.today() - timedelta(days=INACTIVE_USER_DAYS)
+        update_query = (
+            update(Users)
+            .where(Users._accessed < user_inactivity_cutoff)
+            .values(disabled=True)
+        )
+        session.execute(update_query)
+        if commit:
+            session.commit()
 
 
 class Permissions(CommonColumns):
