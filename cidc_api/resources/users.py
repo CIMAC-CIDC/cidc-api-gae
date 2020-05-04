@@ -106,6 +106,11 @@ def update_user(user: Users, user_updates: Users):
     if not user.role and "role" in user_updates:
         user_updates["approval_date"] = datetime.now()
 
+    # If a user is being reenabled after being disabled, update their last
+    # access date to now so that they aren't disabled again tomorrow.
+    if user.disabled and user_updates.get("disabled") == False:
+        user_updates["_accessed"] = datetime.now()
+
     user.update(changes=user_updates)
 
     return user
