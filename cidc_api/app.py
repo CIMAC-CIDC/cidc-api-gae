@@ -37,21 +37,24 @@ validate_api_auth(app)
 def handle_errors(e: Exception):
     """Format exceptions as JSON, with status code and error message info."""
     if isinstance(e, HTTPException):
-        data = {"code": e.code}
+        status_code = e.code
+        _error = {}
         if hasattr(e, "exc") and isinstance(e.exc, ValidationError):
-            data["message"] = e.data["messages"]
+            _error["message"] = e.data["messages"]
         else:
-            data["message"] = e.description
+            _error["message"] = e.description
     else:
+        status_code = 500
         # This is an internal server error, so log the traceback for debugging purposes.
         traceback.print_exception(type(e), e, e.__traceback__)
-        data = {
-            "code": 500,
-            "message": "The server encountered an internal error and was unable to complete your request.",
+        _error = {
+            "message": "The server encountered an internal error and was unable to complete your request."
         }
 
-    response = jsonify(data)
-    response.status_code = data["code"]
+    # Format errors to be backwards-compatible with Eve-style errors
+    eve_style_error_json = {"_status": "ERR", "_error": _error}
+    response = jsonify(eve_style_error_json)
+    response.status_code = status_code
     return response
 
 

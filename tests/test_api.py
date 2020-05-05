@@ -420,9 +420,9 @@ def test_exception_handler(clean_cidc_api):
 
     res = client.get("/bad_request")
     assert res.status_code == 400
-    assert res.json == {"code": 400, "message": message}
+    assert res.json == {"_status": "ERR", "_error": {"message": message}}
 
     res = client.get("/key_error")
     assert res.status_code == 500
-    assert res.json["code"] == 500
-    assert "internal error" in res.json["message"]
+    assert res.json["_status"] == "ERR"
+    assert "internal error" in res.json["_error"]["message"]
