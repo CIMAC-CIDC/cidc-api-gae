@@ -4,7 +4,7 @@ from os.path import dirname, abspath, join
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_migrate import Migrate, upgrade
-from werkzeug.exceptions import HTTPException, InternalServerError
+from werkzeug.exceptions import HTTPException
 from marshmallow.exceptions import ValidationError
 
 from cidc_schemas.template import generate_all_templates
