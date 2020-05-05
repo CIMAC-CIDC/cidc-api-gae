@@ -35,7 +35,7 @@ validate_api_auth(app)
 
 @app.errorhandler(Exception)
 def handle_errors(e: Exception):
-    """Return JSON instead of default HTML for HTTP errors."""
+    """Format exceptions as JSON, with status code and error message info."""
     if isinstance(e, HTTPException):
         data = {"code": e.code}
         if hasattr(e, "exc") and isinstance(e.exc, ValidationError):
