@@ -414,7 +414,7 @@ def test_exception_handler(clean_cidc_api):
 
     @clean_cidc_api.route("/key_error")
     def raise_key_error():
-        raise KeyError
+        raise KeyError(message)
 
     client = clean_cidc_api.test_client()
 
@@ -424,3 +424,5 @@ def test_exception_handler(clean_cidc_api):
 
     res = client.get("/key_error")
     assert res.status_code == 500
+    assert res.json["code"] == 500
+    assert "internal error" in res.json["message"]
