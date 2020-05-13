@@ -111,6 +111,18 @@ def test_get_trial_by_trial_id(cidc_api, clean_db, monkeypatch):
         assert res.status_code == 404
 
 
+bad_trial_json = {"trial_id": "foo", "metadata_json": {"foo": "bar"}}
+bad_trial_error_message = {
+    "errors": [
+        "'metadata_json': Additional properties are not allowed ('foo' was unexpected)",
+        "'metadata_json': 'protocol_identifier' is a required property",
+        "'metadata_json': 'participants' is a required property",
+        "'metadata_json': 'allowed_cohort_names' is a required property",
+        "'metadata_json': 'allowed_collection_event_names' is a required property",
+    ]
+}
+
+
 def test_create_trial(cidc_api, clean_db, monkeypatch):
     """Check that creating a new trial works as expected"""
     user_id = setup_user(cidc_api, monkeypatch)
@@ -142,6 +154,13 @@ def test_create_trial(cidc_api, clean_db, monkeypatch):
         res = client.post("/trial_metadata", json=trial_json)
         assert res.status_code == 400
 
+        # No trial can be created with invalid metadata
+        bad_trial_json = {"trial_id": "foo", "metadata_json": {"foo": "bar"}}
+        res = client.post("/trial_metadata", json=bad_trial_json)
+        assert res.status_code == 422
+        assert res.json["_error"]["message"] == bad_trial_error_message
+
+        # Clear created trial
         with cidc_api.app_context():
             trial = TrialMetadata.find_by_trial_id(trial_id)
             trial.delete()
@@ -170,6 +189,15 @@ def test_update_trial(cidc_api, clean_db, monkeypatch):
         # An incorrect ETag blocks an update
         res = client.patch(f"/trial_metadata/{trial_id}", headers={"If-Match": "foo"})
         assert res.status_code == 412
+
+        # No trial can be updated to have invalid metadata
+        res = client.patch(
+            f"/trial_metadata/{trial_id}",
+            headers={"If-Match": trial._etag},
+            json={"metadata_json": bad_trial_json["metadata_json"]},
+        )
+        assert res.status_code == 422
+        assert res.json["_error"]["message"] == bad_trial_error_message
 
         # An admin can successfully update a trial
         new_metadata_json = {

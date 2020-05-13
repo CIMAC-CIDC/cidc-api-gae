@@ -362,7 +362,10 @@ class TrialMetadata(CommonColumns):
 
     @validates("metadata_json")
     def validate_metadata_json(self, key, metadata_json):
-        trial_metadata_validator.validate(metadata_json)
+        errs = trial_metadata_validator.iter_errors(metadata_json)
+        messages = list(f"'metadata_json': {err.message}" for err in errs)
+        if messages:
+            raise ValidationMultiError(messages)
         return metadata_json
 
     @staticmethod

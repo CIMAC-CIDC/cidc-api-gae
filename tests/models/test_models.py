@@ -19,6 +19,7 @@ from cidc_api.models import (
     with_default_session,
     UploadJobStatus,
     NoResultFound,
+    ValidationMultiError,
 )
 from cidc_api.config.settings import (
     PAGINATION_PAGE_SIZE,
@@ -285,11 +286,11 @@ def test_create_trial_metadata(clean_db):
     assert trial.metadata_json == METADATA
 
     # Check that you can't insert a trial with invalid metadata
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationMultiError, match="'buzz' was unexpected"):
         TrialMetadata.create("foo", {"buzz": "bazz"})
 
-    with pytest.raises(Exception):
-        TrialMetadata("foo", {"buzz": "bazz"}).insert()
+    with pytest.raises(ValidationMultiError, match="'buzz' was unexpected"):
+        TrialMetadata(trial_id="foo", metadata_json={"buzz": "bazz"}).insert()
 
 
 @db_test
