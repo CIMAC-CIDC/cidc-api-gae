@@ -67,18 +67,17 @@ def test_get_trial(cidc_api, clean_db, monkeypatch):
     trial_record_id, _ = set(setup_trial_metadata(cidc_api))
     with cidc_api.app_context():
         trial = TrialMetadata.find_by_id(trial_record_id)
-        trial_id = trial.trial_id
 
     client = cidc_api.test_client()
 
     # Non-admins can't get single trials
-    res = client.get(f"/trial_metadata/{trial_id}")
+    res = client.get(f"/trial_metadata/{trial.trial_id}")
     assert res.status_code == 401
 
     # Allowed users can get single trials
     for role in trial_modifier_roles:
         make_role(user_id, role, cidc_api)
-        res = client.get(f"/trial_metadata/{trial_id}")
+        res = client.get(f"/trial_metadata/{trial.trial_id}")
         assert res.status_code == 200
         assert res.json == TrialMetadataSchema().dump(trial)
 
@@ -194,7 +193,6 @@ def test_update_trial(cidc_api, clean_db, monkeypatch):
         assert res.status_code == 412
 
         # No trial can be updated to have invalid metadata
-        print(trial._etag)
         res = client.patch(
             f"/trial_metadata/{trial.trial_id}",
             headers={"If-Match": trial._etag},
