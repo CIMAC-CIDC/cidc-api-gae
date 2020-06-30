@@ -26,6 +26,7 @@ from sqlalchemy import (
     desc,
     update,
 )
+from sqlalchemy.sql import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import validates
@@ -720,6 +721,9 @@ class DownloadableFiles(CommonColumns):
     https://github.com/CIMAC-CIDC/cidc-schemas/blob/master/cidc_schemas/schemas/artifacts/artifact_core.json
     """
 
+    assay_regex = "[^/]+/([^/]+)/.*"
+    filetype_regex = "[^/]+/[^/]+/([^/]+)/.*"
+
     __tablename__ = "downloadable_files"
     __table_args__ = (
         ForeignKeyConstraint(
@@ -893,3 +897,28 @@ class DownloadableFiles(CommonColumns):
         the given GCS object url.
         """
         return session.query(DownloadableFiles).filter_by(object_url=object_url).one()
+
+    @staticmethod
+    @with_default_session
+    def get_filter_facets(
+        session: Session, filter_: Callable[[Query], Query] = lambda q: q
+    ) -> dict:
+        query = session.query(
+            func.substring(DownloadableFiles.object_url, DownloadableFiles.assay_regex),
+            func.substring(
+                DownloadableFiles.object_url, DownloadableFiles.filetype_regex
+            ),
+        ).distinct()
+
+        query = filter_(query)
+
+        results = query.all()
+
+        facets = {}
+        for assay, filetype in results:
+            if assay in facets:
+                facets[assay].append(filetype)
+            else:
+                facets[assay] = [filetype]
+
+        return facets
