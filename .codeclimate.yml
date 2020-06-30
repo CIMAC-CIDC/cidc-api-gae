@@ -2,3 +2,13 @@ version: "2"
 exclude_patterns:
   - "migrations/"
   - "tests/"
+  
+plugins:
+  bandit:
+    enabled: true
+  sonar-python:
+    enabled: true
+    config:
+      tests_patterns:
+        - tests/**
+    
