@@ -4,7 +4,7 @@ import hashlib
 from datetime import datetime, timedelta
 from enum import Enum as EnumBaseClass
 from functools import wraps
-from typing import Optional, List, Union, Callable
+from typing import Optional, List, Union, Callable, Dict
 
 from flask import current_app as app, Flask
 from google.cloud.storage import Blob
@@ -25,6 +25,7 @@ from sqlalchemy import (
     asc,
     desc,
     update,
+    or_,
 )
 from sqlalchemy.sql import func
 from sqlalchemy.exc import IntegrityError
@@ -715,14 +716,14 @@ class UploadJobs(CommonColumns):
             self.alert_upload_success(trial)
 
 
+assays_and_analyses = [*prism.SUPPORTED_ASSAYS, *prism.SUPPORTED_ANALYSES]
+
+
 class DownloadableFiles(CommonColumns):
     """
     Store required fields from: 
     https://github.com/CIMAC-CIDC/cidc-schemas/blob/master/cidc_schemas/schemas/artifacts/artifact_core.json
     """
-
-    assay_regex = "[^/]+/([^/]+)/.*"
-    filetype_regex = "[^/]+/[^/]+/([^/]+)/.*"
 
     __tablename__ = "downloadable_files"
     __table_args__ = (
@@ -756,12 +757,7 @@ class DownloadableFiles(CommonColumns):
     ihc_combined_plot = Column(JSONB, nullable=True)
 
     @staticmethod
-    def build_file_filter(
-        trial_ids: List[str] = None,
-        upload_types: List[str] = None,
-        analysis_friendly: bool = False,
-        user: Users = None,
-    ) -> Callable[[Query], Query]:
+    def build_file_filter(facets: dict, user: Users = None) -> Callable[[Query], Query]:
         """
         Build a file filter function based on the provided parameters. The resultant
         filter can then be passed as the `filter_` argument of `DownloadableFiles.list`
@@ -776,20 +772,38 @@ class DownloadableFiles(CommonColumns):
         Returns:
             A function that adds filters to a query against the DownloadableFiles table.
         """
-        file_filters = []
-        if trial_ids:
-            file_filters.append(DownloadableFiles.trial_id.in_(trial_ids))
-        if upload_types:
-            file_filters.append(DownloadableFiles.upload_type.in_(upload_types))
-        if analysis_friendly:
-            file_filters.append(DownloadableFiles.analysis_friendly == True)
+        and_filters = []
+        or_filters = []
+        if "trial_ids" in facets:
+            trial_filter = DownloadableFiles.trial_id.in_(facets["trial_ids"])
+            and_filters.append(trial_filter)
+        if "assay_types" in facets:
+            assay_filters = []
+            for assay_type, file_types in facets["assay_types"].items():
+                for file_type in file_types:
+                    like_string = f"%/{assay_type}/{file_type}/%"
+                    assay_filters.append(DownloadableFiles.object_url.like(like_string))
+            or_filters.append(or_(*assay_filters))
+        if "sample_types" in facets:
+            sample_types_filter = DownloadableFiles.upload_type.in_(
+                facets["sample_types"]
+            )
+            or_filters.append(sample_types_filter)
+        if "clinical_types" in facets:
+            clinical_types_filter = DownloadableFiles.upload_type.in_(
+                facets["clinical_types"]
+            )
+            or_filters.append(clinical_types_filter)
         if user and not user.is_admin():
             permissions = Permissions.find_for_user(user.id)
             perm_set = [(p.trial_id, p.upload_type) for p in permissions]
             file_tuples = tuple_(
                 DownloadableFiles.trial_id, DownloadableFiles.upload_type
             )
-            file_filters.append(file_tuples.in_(perm_set))
+            permissions_filter = file_tuples.in_(perm_set)
+            and_filters.append(permissions_filter)
+
+        file_filters = [*and_filters, or_(*or_filters)]
 
         def filter_files(query: Query) -> Query:
             return query.filter(*file_filters)
@@ -900,21 +914,42 @@ class DownloadableFiles(CommonColumns):
 
     @staticmethod
     @with_default_session
-    def get_filter_facets(
-        session: Session, filter_: Callable[[Query], Query] = lambda q: q
-    ) -> dict:
-        query = session.query(
-            func.substring(DownloadableFiles.object_url, DownloadableFiles.assay_regex),
-            func.substring(
-                DownloadableFiles.object_url, DownloadableFiles.filetype_regex
-            ),
-        ).distinct()
+    def get_sample_facets(session: Session) -> List[str]:
+        """Return available sample type filter facets for files currently in the database."""
+        filter_ = lambda q: q.filter(
+            DownloadableFiles.upload_type.in_(prism.SUPPORTED_MANIFESTS)
+        )
 
-        query = filter_(query)
+        return DownloadableFiles.get_distinct(
+            "upload_type", session=session, filter_=filter_
+        )
 
+    @staticmethod
+    @with_default_session
+    def get_assay_facets(session: Session) -> Dict[str, List[str]]:
+        """
+        Extract nested assay type filter facets from the GCS URIs of files currently
+        in the database. Assumes GCS URIs with structure like:
+            {trial id}/{assay type}/{file type}/...
+        """
+        # Build the query
+        object_url = DownloadableFiles.object_url
+        upload_type = DownloadableFiles.upload_type
+        query = (
+            session.query(
+                # Extract assay type from object URL
+                func.substring(object_url, "[^/]+/([^/]+)/.*"),
+                # Extract file type from object URL
+                func.substring(object_url, "[^/]+/[^/]+/([^/]+)/.*"),
+            )
+            .filter(upload_type.in_(assays_and_analyses))
+            .distinct()
+        )
+        # Results will be a list of (assay type, file type) pairs
         results = query.all()
 
-        facets = {}
+        # Build the facets from query results
+        facets: Dict[str, List[str]] = {}
         for assay, filetype in results:
             if assay in facets:
                 facets[assay].append(filetype)

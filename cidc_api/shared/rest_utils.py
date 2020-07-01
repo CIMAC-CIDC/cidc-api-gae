@@ -1,10 +1,11 @@
 """Shared utility functions for building CIDC API resource endpoints."""
+import json
 from functools import wraps
 from typing import Optional, List, Callable
 
 from flask import Flask, current_app as app, request, Response, jsonify
 from webargs import fields
-from webargs.flaskparser import use_args
+from webargs.flaskparser import FlaskParser
 from marshmallow import validate
 from werkzeug.exceptions import (
     PreconditionRequired,
@@ -139,6 +140,23 @@ def lookup(
     return decorator
 
 
+class QueryJSONParser(FlaskParser):
+    """Extend webargs' FlaskParser to parse JSON from query parameter values."""
+
+    def load_querystring(self, req, schema):
+        parsed_args = {}
+        for key, value in req.args.items():
+            try:
+                parsed_value = json.loads(value)
+            except:
+                parsed_value = value
+            parsed_args[key] = parsed_value
+        return parsed_args
+
+
+query_json_parser = QueryJSONParser()
+
+
 def use_args_with_pagination(argmap: dict, model_schema: BaseSchema):
     """
     Validate and parse query string arguments related to pagination and
@@ -174,7 +192,7 @@ def use_args_with_pagination(argmap: dict, model_schema: BaseSchema):
 
     def decorator(endpoint):
         @wraps(endpoint)
-        @use_args(full_argmap, location="query")
+        @query_json_parser.use_args(full_argmap, location="query")
         def wrapped(args, *posargs, **kwargs):
             kwargs["args"] = get_user_args(args)
             kwargs["pagination_args"] = get_pagination_args(args)

@@ -3,6 +3,7 @@
 This file doesn't contain tests for methods that don't directly correspond
 to data resources, like endpoints that handle upload-related functionality.
 """
+import json
 from unittest.mock import MagicMock
 from datetime import datetime
 from dateutil.parser import parse as parse_date
@@ -84,7 +85,7 @@ downloadable_files = {
         "file_name": "",
         "upload_type": "olink",
         "data_format": "",
-        "object_url": "",
+        "object_url": f'{trial_metadata["json"]["trial_id"]}/olink/source/sample.npx',
         "uploaded_timestamp": datetime.now(),
         "file_size_bytes": 1,
     },
@@ -94,12 +95,12 @@ downloadable_files = {
     "PATCH_json": {"upload_type": "fizzbuzz"},
     "filters": {
         "empty": {
-            "trial_ids": [trial_metadata["json"]["trial_id"]],
-            "upload_types": ["not_olink"],
+            "trial_ids": json.dumps([trial_metadata["json"]["trial_id"]]),
+            "assay_types": json.dumps({"wes": ["source"]}),
         },
         "one": {
-            "trial_ids": [trial_metadata["json"]["trial_id"]],
-            "upload_types": ["olink"],
+            "trial_ids": json.dumps([trial_metadata["json"]["trial_id"]]),
+            "assay_types": json.dumps({"olink": ["source"]}),
         },
     },
 }

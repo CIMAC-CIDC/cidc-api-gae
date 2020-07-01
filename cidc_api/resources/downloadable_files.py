@@ -4,6 +4,7 @@ from flask import Blueprint, jsonify
 from webargs import fields
 from webargs.flaskparser import use_args
 from werkzeug.exceptions import NotFound
+from marshmallow import validate
 
 
 from ..models import (
@@ -26,23 +27,23 @@ downloadable_files_bp = Blueprint("downloadable_files", __name__)
 downloadable_files_schema = DownloadableFileSchema()
 downloadable_files_list_schema = DownloadableFileListSchema()
 
-
-file_filter_params = {
-    "trial_ids": fields.DelimitedList(fields.Str(), default=[]),
-    "upload_types": fields.DelimitedList(fields.Str(), default=[]),
-    "analysis_friendly": fields.Bool(default=False),
+file_filter_facets_schema = {
+    "trial_ids": fields.List(fields.Str),
+    "assay_types": fields.Dict(keys=fields.Str, values=fields.List(fields.Str)),
+    "sample_types": fields.List(fields.Str),
+    "clinical_types": fields.List(fields.Str),
 }
 
 
 @downloadable_files_bp.route("/", methods=["GET"])
 @requires_auth("downloadable_files")
-@use_args_with_pagination(file_filter_params, downloadable_files_schema)
+@use_args_with_pagination(file_filter_facets_schema, downloadable_files_schema)
 @marshal_response(downloadable_files_list_schema)
 def list_downloadable_files(args, pagination_args):
     """List downloadable files that the current user is allowed to view."""
     user = get_current_user()
 
-    filter_ = DownloadableFiles.build_file_filter(**args, user=user)
+    filter_ = DownloadableFiles.build_file_filter(args, user=user)
 
     files = DownloadableFiles.list(filter_=filter_, **pagination_args)
     count = DownloadableFiles.count(filter_=filter_)
@@ -107,24 +108,29 @@ def get_download_url(args):
 @requires_auth("filter_facets")
 def get_filter_facets():
     """
-    Return a list of allowed filter facet values for a user.
+    Return an object providing valid downloadable file filter facets.
     Response will have structure:
     {
-        <facet 1>: [<value 1>, <value 2>,...],
-        <facet 2>: [...],
+        <facet 1>: [<value 1>, <value 2>,...] or {<top level>: [<second level 1>, <second level 2>]},
+        <facet 2>: [...] or {...},
         ...
     }
+    NOTE: the returned facets will not be restricted based on a user's permissions. That is,
+    searching by some of the facets provided here may return empty if the user doesn't have
+    permission to view files of the relevant type. It's up to the client to determine which 
+    facets should be enabled for the requesting user.
     """
     user = get_current_user()
 
-    if user.is_admin():
-        # Admins can facet on every trial or upload type
-        trial_ids = DownloadableFiles.get_distinct("trial_id")
-        upload_types = DownloadableFiles.get_distinct("upload_type")
-    else:
-        # Non-admins can only facet on what they have permission to view
-        user_filter = lambda q: q.filter(Permissions.granted_to_user == user.id)
-        trial_ids = Permissions.get_distinct("trial_id", filter_=user_filter)
-        upload_types = Permissions.get_distinct("upload_type", filter_=user_filter)
+    trial_facets = DownloadableFiles.get_distinct("trial_id")
+    assay_facets = DownloadableFiles.get_assay_facets()
+    sample_facets = DownloadableFiles.get_sample_facets()
+    # TODO: this ought not be hardcoded
+    clinical_facets = ["participants info", "sample info"]
 
-    return jsonify({"trial_id": trial_ids, "upload_type": upload_types})
+    return {
+        "trial_ids": trial_facets,
+        "assay_types": assay_facets,
+        "sample_types": sample_facets,
+        "clinical_types": clinical_facets,
+    }

@@ -1,7 +1,7 @@
 from functools import wraps
 from typing import Optional
 
-from marshmallow import fields
+from marshmallow import fields, Schema
 from marshmallow_sqlalchemy import SQLAlchemyAutoSchema, auto_field
 
 from ..config.db import db
