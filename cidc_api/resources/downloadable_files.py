@@ -125,8 +125,7 @@ def get_filter_facets():
     trial_facets = DownloadableFiles.get_distinct("trial_id")
     assay_facets = DownloadableFiles.get_assay_facets()
     sample_facets = DownloadableFiles.get_sample_facets()
-    # TODO: this ought not be hardcoded
-    clinical_facets = ["participants info", "sample info"]
+    clinical_facets = DownloadableFiles.get_clinical_facets()
 
     return {
         "trial_ids": trial_facets,

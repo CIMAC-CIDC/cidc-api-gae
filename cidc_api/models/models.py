@@ -926,6 +926,18 @@ class DownloadableFiles(CommonColumns):
 
     @staticmethod
     @with_default_session
+    def get_clinical_facets(session: Session) -> List[str]:
+        """Return available clinical type filter facets for files currently in the database."""
+        filter_ = lambda q: q.filter(
+            DownloadableFiles.upload_type.in_(["participants info", "samples info"])
+        )
+
+        return DownloadableFiles.get_distinct(
+            "upload_type", session=session, filter_=filter_
+        )
+
+    @staticmethod
+    @with_default_session
     def get_assay_facets(session: Session) -> Dict[str, List[str]]:
         """
         Extract nested assay type filter facets from the GCS URIs of files currently

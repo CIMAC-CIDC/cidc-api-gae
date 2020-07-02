@@ -83,12 +83,12 @@ def setup_faceted_search_files(cidc_api):
         make_file(f"{tid1}/tnp/manifest.xlsx", "tumor_normal_pairing", False, tid1),
         make_file(f"{tid1}/wes/source/foo.bam", "wes", False, tid1),
         make_file(f"{tid1}/wes/report/foo.ext", "wes_analysis", True, tid1),
-        make_file(f"{tid1}/samples.csv", "sample info", True, tid1),
+        make_file(f"{tid1}/samples.csv", "samples info", True, tid1),
         make_file(f"{tid1}/participants.csv", "participants info", True, tid1),
         make_file(f"{tid2}/plasma/manifest.xlsx", "plasma", False, tid2),
         make_file(f"{tid2}/cytof/source/source.fcs", "cytof", False, tid2),
         make_file(f"{tid2}/cytof/cell_counts/counts.csv", "cytof_analysis", True, tid2),
-        make_file(f"{tid2}/samples.csv", "sample info", True, tid2),
+        make_file(f"{tid2}/samples.csv", "samples info", True, tid2),
         make_file(f"{tid2}/participants.csv", "participants info", True, tid2),
     ]
     with cidc_api.app_context():
@@ -101,7 +101,7 @@ def setup_faceted_search_files(cidc_api):
 # Possible facets we expect for data added by `setup_faceted_search_files`
 expected_facets = {
     "assay_types": {"cytof": ["cell_counts", "source"], "wes": ["report"]},
-    "clinical_types": ["participants info", "sample info"],
+    "clinical_types": ["participants info", "samples info"],
     "sample_types": ["plasma", "tumor_normal_pairing"],
     "trial_ids": ["t2", "t1"],
 }
@@ -166,12 +166,12 @@ def test_list_downloadable_files(cidc_api, clean_db, monkeypatch):
             "assay_types": json.dumps(
                 {"cytof": ["source", "cell_counts"], "olink": ["0"]}
             ),
-            "clinical_types": json.dumps(["sample info"]),
+            "clinical_types": json.dumps(["samples info"]),
         },
     )
     assert res.status_code == 200
     assert len(res.json["_items"]) == 4
-    assert sorted(["cytof", "cytof_analysis", "olink", "sample info"]) == sorted(
+    assert sorted(["cytof", "cytof_analysis", "olink", "samples info"]) == sorted(
         [f["upload_type"] for f in res.json["_items"]]
     )
 
