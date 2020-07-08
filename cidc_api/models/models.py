@@ -1,4 +1,5 @@
 import os
+import uuid
 import json
 import hashlib
 from datetime import datetime, timedelta
@@ -561,6 +562,8 @@ class UploadJobs(CommonColumns):
     _status = Column(
         "status", Enum(*UPLOAD_STATUSES, name="upload_job_status"), nullable=False
     )
+    # A long, random identifier for this upload job
+    token = Column(String, default=uuid.uuid4)
     # Text containing feedback on why the upload status is what it is
     status_details = Column(String, nullable=True)
     # Whether the upload contains multiple files

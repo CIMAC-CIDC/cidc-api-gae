@@ -1,9 +1,12 @@
 import os, sys
 import json
 import datetime
-from typing import BinaryIO, Tuple, List, NamedTuple
+from typing import BinaryIO, Tuple, List, NamedTuple, Callable
 from functools import wraps
 
+from marshmallow import Schema, INCLUDE
+from webargs import fields
+from webargs.flaskparser import use_args
 from flask import Blueprint, request, Request, Response, jsonify
 from jsonschema.exceptions import ValidationError
 from sqlalchemy.orm.session import Session
@@ -15,7 +18,7 @@ from cidc_schemas.template import Template
 from cidc_schemas.template_reader import XlTemplateReader
 
 from ..shared import gcloud_client
-from ..shared.auth import requires_auth, get_current_user
+from ..shared.auth import public, requires_auth, get_current_user
 from ..shared.rest_utils import (
     lookup,
     marshal_response,
@@ -42,8 +45,6 @@ upload_jobs_bp = Blueprint("upload_jobs", __name__)
 
 upload_job_schema = UploadJobSchema()
 upload_job_list_schema = UploadJobListSchema()
-partial_upload_job_schema = UploadJobSchema(partial=True)
-
 
 ### UploadJobs REST methods ###
 upload_job_roles = [
@@ -86,18 +87,67 @@ def get_upload_job(upload_job: UploadJobs):
     return upload_job
 
 
+def requires_upload_token_auth(get_upload_id):
+    """
+    Decorator factory that adds "upload token" authentication to an endpoint. 
+    `get_upload_id` takes the arguments passed to the decorated endpoint
+    and extracts the ID of the upload job to authenticate against.
+    If the requesting user provided the correct upload token for the upload job, 
+    then consider them authenticated.
+
+    The upload token must be provided as a field `token` on the JSON request body.
+    """
+
+    check_id_token = requires_auth("[upload token auth - no RBAC possible]")(
+        lambda: None
+    )
+    token_schema = Schema.from_dict({"token": fields.Str(required=True)})(
+        unknown=INCLUDE
+    )
+
+    def decorator(endpoint):
+        # Flag this endpoint as authenticated
+        endpoint.is_protected = True
+
+        @wraps(endpoint)
+        @use_args(token_schema, location="json")
+        def wrapped(args, *pos_args, **kwargs):
+            # Try to get the user associated with this request
+            try:
+                check_id_token()
+                user = get_current_user()
+            except:
+                user = None
+
+            token = args["token"]
+            upload_id = get_upload_id(*pos_args, **kwargs)
+            upload_job = UploadJobs.find_by_id(upload_id)
+
+            if not upload_job:
+                if user:
+                    raise NotFound(f"No upload_job with id {upload_id}")
+                else:
+                    raise Unauthorized("upload_job token authentication failed")
+
+            if token != upload_job.token:
+                raise Unauthorized("upload_job token authentication failed")
+
+            return endpoint(*pos_args, **kwargs)
+
+        return wrapped
+
+    return decorator
+
+
 @upload_jobs_bp.route("/<int:upload_job>", methods=["PATCH"])
-@requires_auth("upload_jobs", upload_job_roles)
+@requires_upload_token_auth(get_upload_id=lambda *a, **kw: kw["upload_job"])
 @lookup(UploadJobs, "upload_job", check_etag=True)
-@unmarshal_request(partial_upload_job_schema, "upload_job_updates", load_sqla=False)
+@unmarshal_request(
+    UploadJobSchema(only=["status", "token"]), "upload_job_updates", load_sqla=False
+)
 @marshal_response(upload_job_schema, 200)
 def update_upload_job(upload_job: UploadJobs, upload_job_updates: UploadJobs):
-    """Update an upload_job. Non-admins can only update their own upload_jobs."""
-    user = get_current_user()
-
-    if not user.is_admin() and upload_job.uploader_email != user.email:
-        raise NotFound()
-
+    """Update an upload_job."""
     try:
         upload_job.update(changes=upload_job_updates)
     except ValueError as e:
@@ -107,9 +157,9 @@ def update_upload_job(upload_job: UploadJobs, upload_job_updates: UploadJobs):
     if upload_job.status == UploadJobStatus.UPLOAD_COMPLETED.value:
         gcloud_client.publish_upload_success(upload_job.id)
 
-    # Revoke the user's upload bucket access, since their querying this endpoint
-    # likely indicates a completed / failed upload attempt.
-    gcloud_client.revoke_upload_access(user.email)
+    # Revoke the uploading user's bucket access, since their querying
+    # this endpoint indicates a completed / failed upload attempt.
+    gcloud_client.revoke_upload_access(upload_job.uploader_email)
 
     return upload_job
 
@@ -428,6 +478,8 @@ def upload_data_files(
         job_id: the unique identifier for this upload job in the database
         job_etag: the job record's etag, required by Eve for safe updates
         extra_metadata: files with extra metadata information (only applicable to few assays), else None
+        token: the unique token identifier for this upload job - possession of this token
+            gives a user the right to update the corresponding upload job (no other authentication required).
     
     # TODO: refactor this to be a pre-GET hook on the upload-jobs resource.
     """
@@ -473,6 +525,7 @@ def upload_data_files(
         "url_mapping": url_mapping,
         "gcs_bucket": GOOGLE_UPLOAD_BUCKET,
         "extra_metadata": None,
+        "token": job.token,
     }
     if bool(files_with_extra_md):
         response["extra_metadata"] = files_with_extra_md
@@ -481,14 +534,7 @@ def upload_data_files(
 
 
 @ingestion_bp.route("/poll_upload_merge_status", methods=["GET"])
-@requires_auth(
-    "ingestion/poll_upload_merge_status",
-    [
-        CIDCRole.ADMIN.value,
-        CIDCRole.CIMAC_BIOFX_USER.value,
-        CIDCRole.CIDC_BIOFX_USER.value,
-    ],
-)
+@requires_upload_token_auth(get_upload_id=lambda *a, **kw: request.args.get("id"))
 def poll_upload_merge_status():
     """
     Check an assay upload's status, and supply the client with directions on when to retry the check.
@@ -508,10 +554,7 @@ def poll_upload_merge_status():
     if not upload_id:
         raise BadRequest("Missing expected query parameter 'id'")
 
-    user = get_current_user()
-    upload = UploadJobs.find_by_id_and_email(upload_id, user.email)
-    if not upload:
-        raise NotFound(f"Could not find assay upload job with id {upload_id}")
+    upload = UploadJobs.find_by_id(upload_id)
 
     if upload.status in [
         UploadJobStatus.MERGE_COMPLETED.value,

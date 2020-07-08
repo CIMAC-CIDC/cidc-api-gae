@@ -19,6 +19,7 @@ from cidc_api.models import (
     UploadJobs,
     UploadJobStatus,
     CIDCRole,
+    BaseModel,
 )
 
 from .utils import mock_current_user
@@ -122,6 +123,7 @@ permissions = {
     "filters": {"empty": {"user_id": 2}, "one": {"user_id": TEST_RECORD_ID}},
 }
 
+upload_token = "53b455a5-d25b-428b-8c83-86a3120188da"
 upload_jobs = {
     "json": {
         "id": TEST_RECORD_ID,
@@ -132,11 +134,15 @@ upload_jobs = {
         "gcs_xlsx_uri": "",
         "multifile": False,
         "status": UploadJobStatus.STARTED.value,
+        "token": upload_token,
     },
     "model": UploadJobs,
     "allowed_methods": {"PATCH", "GET"},
     "POST_setup": ["users", "trial_metadata"],
-    "PATCH_json": {"upload_type": "fizzbuzz"},
+    "PATCH_json": {
+        "status": UploadJobStatus.UPLOAD_COMPLETED.value,
+        "token": upload_token,
+    },
     "mocks": [
         lambda monkeypatch: monkeypatch.setattr(
             "cidc_api.shared.gcloud_client.revoke_upload_access", MagicMock()
@@ -178,7 +184,7 @@ def setup_db_records(cidc_api):
 
 
 def assert_dict_contains(base, target):
-    assert isinstance(target, dict) and isinstance(base, dict)
+    assert isinstance(target, dict) and isinstance(base, (dict, BaseModel))
 
     def equal_dates(d1, d2):
         if isinstance(d1, str):
@@ -188,8 +194,12 @@ def assert_dict_contains(base, target):
         return d1 == d2
 
     for key, value in target.items():
-        assert key in base
-        assert base[key] == value or equal_dates(base[key], value)
+        if hasattr(base, key):
+            base_val = getattr(base, key)
+        else:
+            assert key in base
+            base_val = base[key]
+        assert base_val == value or equal_dates(base_val, value)
 
 
 def setup_mocks(config, monkeypatch):
@@ -286,7 +296,7 @@ def test_item_patch(resource, config, cidc_api, clean_db, monkeypatch):
         assert response.status_code == 200
         # Check that the record was updated
         with cidc_api.app_context():
-            item = config["model"].find_by_id(response.json["id"]).__dict__
+            item = config["model"].find_by_id(response.json["id"])
             assert_dict_contains(item, config["PATCH_json"])
     else:
         assert response.status_code in (404, 405)

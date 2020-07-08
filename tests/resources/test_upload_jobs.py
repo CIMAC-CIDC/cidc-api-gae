@@ -196,28 +196,39 @@ def test_update_upload_job(cidc_api, clean_db, monkeypatch):
     upload_failure = {"status": UploadJobStatus.UPLOAD_FAILED.value}
     invalid_update = {"status": UploadJobStatus.MERGE_COMPLETED.value}
 
-    # A cimac user doesn't have permissions to PATCH against this endpoint
+    # A user gets error if they fail to provide an upload token
     res = client.patch(f"/upload_jobs/{other_job}", json=upload_success)
-    assert res.status_code == 401
+    assert res.status_code == 422
     publish_success.assert_not_called()
     revoke_upload_access.assert_not_called()
 
-    # A biofx user can't find upload jobs that they don't own
-    make_cimac_biofx_user(user_id, cidc_api)
+    # A user gets an authentication error if they provide an incorrect upload token
+    res = client.patch(
+        f"/upload_jobs/{other_job}", json={**upload_success, "token": "nope"}
+    )
+    assert res.status_code == 401
+    assert res.json["_error"]["message"] == "upload_job token authentication failed"
+    publish_success.assert_not_called()
+    revoke_upload_access.assert_not_called()
+
+    # A user gets an error if they try to update something besides the job's status
     res = client.patch(
         f"/upload_jobs/{other_job}",
         headers={"if-match": other_job_record._etag},
-        json=upload_success,
+        json={
+            "uploader_email": "foo@bar.com",
+            "status": "",
+            "token": other_job_record.token,
+        },
     )
-    assert res.status_code == 404
-    publish_success.assert_not_called()
-    revoke_upload_access.assert_not_called()
+    assert res.status_code == 422
+    assert res.json["_error"]["message"]["uploader_email"][0] == "Unknown field."
 
-    # A biofx user can update their own job to be a failure
+    # A user providing a correct token can update their job's status to be a failure
     res = client.patch(
-        f"/upload_jobs/{user_job}",
-        headers={"if-match": user_job_record._etag},
-        json=upload_failure,
+        f"/upload_jobs/{other_job}",
+        headers={"if-match": other_job_record._etag},
+        json={**upload_failure, "token": other_job_record.token},
     )
     assert res.status_code == 200
     publish_success.assert_not_called()
@@ -228,11 +239,11 @@ def test_update_upload_job(cidc_api, clean_db, monkeypatch):
         user_job_record._set_status_no_validation(UploadJobStatus.STARTED.value)
         user_job_record.update()
 
-    # A biofx user can update their own job to be a success
+    # A user can update a job to be a success
     res = client.patch(
         f"/upload_jobs/{user_job}",
         headers={"if-match": user_job_record._etag},
-        json=upload_success,
+        json={**upload_success, "token": user_job_record.token},
     )
     assert res.status_code == 200
     publish_success.assert_called_once_with(user_job)
@@ -240,27 +251,15 @@ def test_update_upload_job(cidc_api, clean_db, monkeypatch):
     publish_success.reset_mock()
     revoke_upload_access.reset_mock()
 
-    # An admin can update another user's job
-    make_admin(user_id, cidc_api)
-    res = client.patch(
-        f"/upload_jobs/{other_job}",
-        headers={"if-match": other_job_record._etag},
-        json=upload_success,
-    )
-    assert res.status_code == 200
-    publish_success.assert_called_once_with(other_job)
-    revoke_upload_access.assert_called_once()
-    publish_success.reset_mock()
-    revoke_upload_access.reset_mock()
-
     with cidc_api.app_context():
+        user_job_record._set_status_no_validation(UploadJobStatus.STARTED.value)
         user_job_record.update()
 
-    # No user (admins included) can make an illegal state transition
+    # Users can't make an illegal state transition
     res = client.patch(
         f"/upload_jobs/{user_job}",
         headers={"if-match": user_job_record._etag},
-        json=invalid_update,
+        json={**invalid_update, "token": user_job_record.token},
     )
     assert res.status_code == 400
 
@@ -700,7 +699,10 @@ def test_upload_wes(cidc_api, clean_db, monkeypatch):
     # Report an upload failure
     res = client.patch(
         update_url,
-        json={"status": UploadJobStatus.UPLOAD_FAILED.value},
+        json={
+            "status": UploadJobStatus.UPLOAD_FAILED.value,
+            "token": res.json["token"],
+        },
         headers={"If-Match": res.json["job_etag"]},
     )
     assert res.status_code == 200
@@ -718,7 +720,10 @@ def test_upload_wes(cidc_api, clean_db, monkeypatch):
     # Report an upload success
     res = client.patch(
         update_url,
-        json={"status": UploadJobStatus.UPLOAD_COMPLETED.value},
+        json={
+            "status": UploadJobStatus.UPLOAD_COMPLETED.value,
+            "token": res.json["token"],
+        },
         headers={"If-Match": _etag},
     )
     assert res.status_code == 200
@@ -802,7 +807,10 @@ def test_upload_olink(cidc_api, clean_db, monkeypatch):
     # Report an upload failure
     res = client.patch(
         update_url,
-        json={"status": UploadJobStatus.UPLOAD_FAILED.value},
+        json={
+            "status": UploadJobStatus.UPLOAD_FAILED.value,
+            "token": res.json["token"],
+        },
         headers={"If-Match": res.json["job_etag"]},
     )
     assert res.status_code == 200
@@ -815,7 +823,10 @@ def test_upload_olink(cidc_api, clean_db, monkeypatch):
     # UPLOAD_COMPLETED.
     bad_res = client.patch(
         update_url,
-        json={"status": UploadJobStatus.UPLOAD_COMPLETED.value},
+        json={
+            "status": UploadJobStatus.UPLOAD_COMPLETED.value,
+            "token": res.json["token"],
+        },
         headers={"If-Match": res.json["_etag"]},
     )
     assert bad_res.status_code == 400
@@ -833,7 +844,10 @@ def test_upload_olink(cidc_api, clean_db, monkeypatch):
 
     res = client.patch(
         update_url,
-        json={"status": UploadJobStatus.UPLOAD_COMPLETED.value},
+        json={
+            "status": UploadJobStatus.UPLOAD_COMPLETED.value,
+            "token": res.json["token"],
+        },
         headers={"If-Match": _etag},
     )
     assert res.status_code == 200
@@ -854,41 +868,28 @@ def test_poll_upload_merge_status(cidc_api, clean_db, monkeypatch):
     with cidc_api.app_context():
         other_user = Users(email="other@email.com")
         other_user.insert()
-        upload_1 = UploadJobs.create(
+        upload_job = UploadJobs.create(
             upload_type="wes",
             uploader_email=user.email,
             gcs_file_map={},
             metadata=metadata,
             gcs_xlsx_uri="",
         )
-        upload_1.insert()
-
-        upload_2 = UploadJobs.create(
-            upload_type="wes",
-            uploader_email=other_user.email,
-            gcs_file_map={},
-            metadata=metadata,
-            gcs_xlsx_uri="",
-        )
-        upload_2.insert()
-
-        user_created = upload_1.id
-        not_user_created = upload_2.id
+        upload_job.insert()
+        upload_job_id = upload_job.id
 
     client = cidc_api.test_client()
 
     # Upload not found
-    res = client.get("/ingestion/poll_upload_merge_status?id=12345")
+    res = client.get(
+        "/ingestion/poll_upload_merge_status?id=12345", json={"token": upload_job.token}
+    )
     assert res.status_code == 404
 
-    # Upload not created by user
-    res = client.get(f"/ingestion/poll_upload_merge_status?id={not_user_created}")
-    assert res.status_code == 404
-
-    user_created_url = f"/ingestion/poll_upload_merge_status?id={user_created}"
+    upload_job_url = f"/ingestion/poll_upload_merge_status?id={upload_job_id}"
 
     # Upload not-yet-ready
-    res = client.get(user_created_url)
+    res = client.get(upload_job_url, json={"token": upload_job.token})
     assert res.status_code == 200
     assert "retry_in" in res.json and res.json["retry_in"] == 5
     assert "status" not in res.json
@@ -900,13 +901,12 @@ def test_poll_upload_merge_status(cidc_api, clean_db, monkeypatch):
     ]:
         # Simulate cloud function merge status update
         with cidc_api.app_context():
-            upload = UploadJobs.find_by_id_and_email(user_created, user.email)
-            upload._set_status_no_validation(status)
-            upload.status_details = test_details
-            upload.update()
+            upload_job._set_status_no_validation(status)
+            upload_job.status_details = test_details
+            upload_job.update()
 
         # Upload ready
-        res = client.get(user_created_url)
+        res = client.get(upload_job_url, json={"token": upload_job.token})
         assert res.status_code == 200
         assert "retry_in" not in res.json
         assert "status" in res.json and res.json["status"] == status

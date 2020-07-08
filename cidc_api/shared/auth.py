@@ -198,7 +198,7 @@ def _decode_id_token(token: str, public_key: dict) -> dict:
         )
     except jwt.ExpiredSignatureError as e:
         raise Unauthorized(
-            f"{e} Obtain a new login token from the CIDC Portal, then try logging in again."
+            f"{e} Token expired. Obtain a new login token from the CIDC Portal, then try logging in again."
         )
     except jwt.JWTClaimsError as e:
         raise Unauthorized(str(e))
