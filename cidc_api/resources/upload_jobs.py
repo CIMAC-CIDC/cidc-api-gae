@@ -110,7 +110,7 @@ def requires_upload_token_auth(get_upload_id):
         endpoint.is_protected = True
 
         @wraps(endpoint)
-        @use_args(token_schema, location="json")
+        @use_args(token_schema, location="query")
         def wrapped(args, *pos_args, **kwargs):
             # Try to get the user associated with this request
             try:

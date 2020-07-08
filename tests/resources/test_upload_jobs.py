@@ -20,7 +20,10 @@ from cidc_schemas.prism import (
 )
 
 from cidc_api.config.settings import GOOGLE_UPLOAD_BUCKET
-from cidc_api.resources.upload_jobs import extract_schema_and_xlsx
+from cidc_api.resources.upload_jobs import (
+    extract_schema_and_xlsx,
+    requires_upload_token_auth,
+)
 from cidc_api.models import (
     TrialMetadata,
     Users,
@@ -170,6 +173,56 @@ def test_get_upload_job(cidc_api, clean_db, monkeypatch):
     res = client.get(f"upload_jobs/{other_job}")
     assert res.status_code == 200
     assert res.json["id"] == other_job
+
+
+def test_requires_upload_token_auth(cidc_api, clean_db, monkeypatch):
+    """Check that the requires_upload_token_auth decorator works as expected"""
+    user_id = setup_trial_and_user(cidc_api, monkeypatch)
+    job_id = setup_upload_jobs(cidc_api)[0]
+    with cidc_api.app_context():
+        job = UploadJobs.find_by_id(job_id)
+
+    test_route = "/foobarfoo"
+
+    @cidc_api.route(f"{test_route}/<int:upload_job>")
+    @requires_upload_token_auth(lambda *a, **kw: kw["upload_job"])
+    def endpoint(*args, **kwargs):
+        assert "upload_job" in kwargs
+        return "ok", 200
+
+    client = cidc_api.test_client()
+
+    query_route = f"{test_route}/{job_id}"
+
+    # User must provide `token` query param
+    res = client.get(query_route)
+    assert res.status_code == 422
+    assert "required field" in res.json["_error"]["message"]["query"]["token"][0]
+
+    # User must provide correct `token` query param
+    res = client.get(f"{query_route}?token={'bad token'}")
+    assert res.status_code == 401
+    res = client.get(f"{query_route}?token={job.token}")
+    assert res.status_code == 200
+
+    # User whose id token authentication succeeds gets a 404 if the relevant job doesn't exist
+    res = client.get(f"{test_route}/999999?token={job.token}")
+    assert res.status_code == 404
+
+    # Mock id token authentication failure
+    def throw_error(*args, **kwargs):
+        raise Exception
+
+    monkeypatch.setattr("cidc_api.shared.auth.check_auth", throw_error)
+
+    # User whose id token authentication fails can still successfully authenticate
+    # using an upload token.
+    res = client.get(f"{query_route}?token={job.token}")
+    assert res.status_code == 200
+
+    # User whose id token authentication fails gets a 401 if the relevant job doesn't exist
+    res = client.get(f"{test_route}/999999?token={job.token}")
+    assert res.status_code == 401
 
 
 def test_update_upload_job(cidc_api, clean_db, monkeypatch):
