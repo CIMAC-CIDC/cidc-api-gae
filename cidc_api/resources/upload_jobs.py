@@ -129,7 +129,7 @@ def requires_upload_token_auth(get_upload_id):
                 else:
                     raise Unauthorized("upload_job token authentication failed")
 
-            if token != upload_job.token:
+            if str(token) != str(upload_job.token):
                 raise Unauthorized("upload_job token authentication failed")
 
             return endpoint(*pos_args, **kwargs)

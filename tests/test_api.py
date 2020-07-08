@@ -32,7 +32,7 @@ TEST_RECORD_ID = 1
 #   `allowed_methods` (required): the HTTP methods this resource supports.
 #   `POST_setup`: a list of other resources to add to the database before POSTing this resource.
 #   `PATCH_json` (required if "PATCH" in `allowed_methods`): a JSON patch update for this resource.
-#   `lookup_field`: the field whose value identifies individual items of a certain resource.
+#   `lookup_func`: given a config, return the URL suffix for an item lookup, i.e., `<resource>/<suffix>`.
 #   `filters`: a dictionary containing two entries representing possible filter queries:
 #       `empty`: a query filter that should return empty results.
 #       `one`: a query filter that should return exactly one result.
@@ -67,7 +67,7 @@ trial_metadata = {
     },
     "model": TrialMetadata,
     "allowed_methods": {"POST", "PATCH", "GET"},
-    "lookup_field": "trial_id",
+    "lookup_func": lambda cfg: cfg["trial_id"],
     "PATCH_json": {
         "metadata_json": {
             "protocol_identifier": "foo",
@@ -137,6 +137,7 @@ upload_jobs = {
         "token": upload_token,
     },
     "model": UploadJobs,
+    "lookup_func": lambda cfg: f"{cfg['id']}?token={upload_token}",
     "allowed_methods": {"PATCH", "GET"},
     "POST_setup": ["users", "trial_metadata"],
     "PATCH_json": {
@@ -209,7 +210,8 @@ def setup_mocks(config, monkeypatch):
 
 
 def get_lookup_value(config):
-    return config["json"].get(config.get("lookup_field") or "id")
+    lookup_func = config.get("lookup_func")
+    return lookup_func(config["json"]) if lookup_func else config["json"]["id"]
 
 
 def resource_requests_with_key(key):

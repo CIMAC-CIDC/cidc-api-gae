@@ -175,22 +175,24 @@ def test_get_upload_job(cidc_api, clean_db, monkeypatch):
     assert res.json["id"] == other_job
 
 
-def test_requires_upload_token_auth(cidc_api, clean_db, monkeypatch):
+def test_requires_upload_token_auth(clean_cidc_api, clean_db, monkeypatch):
     """Check that the requires_upload_token_auth decorator works as expected"""
-    user_id = setup_trial_and_user(cidc_api, monkeypatch)
-    job_id = setup_upload_jobs(cidc_api)[0]
-    with cidc_api.app_context():
+    user_id = setup_trial_and_user(clean_cidc_api, monkeypatch)
+    job_id = setup_upload_jobs(clean_cidc_api)[0]
+    with clean_cidc_api.app_context():
         job = UploadJobs.find_by_id(job_id)
+
+    print(job)
 
     test_route = "/foobarfoo"
 
-    @cidc_api.route(f"{test_route}/<int:upload_job>")
+    @clean_cidc_api.route(f"{test_route}/<int:upload_job>")
     @requires_upload_token_auth(lambda *a, **kw: kw["upload_job"])
     def endpoint(*args, **kwargs):
         assert "upload_job" in kwargs
         return "ok", 200
 
-    client = cidc_api.test_client()
+    client = clean_cidc_api.test_client()
 
     query_route = f"{test_route}/{job_id}"
 
@@ -256,9 +258,7 @@ def test_update_upload_job(cidc_api, clean_db, monkeypatch):
     revoke_upload_access.assert_not_called()
 
     # A user gets an authentication error if they provide an incorrect upload token
-    res = client.patch(
-        f"/upload_jobs/{other_job}", json={**upload_success, "token": "nope"}
-    )
+    res = client.patch(f"/upload_jobs/{other_job}?token=nope", json=upload_success)
     assert res.status_code == 401
     assert res.json["_error"]["message"] == "upload_job token authentication failed"
     publish_success.assert_not_called()
@@ -266,22 +266,18 @@ def test_update_upload_job(cidc_api, clean_db, monkeypatch):
 
     # A user gets an error if they try to update something besides the job's status
     res = client.patch(
-        f"/upload_jobs/{other_job}",
+        f"/upload_jobs/{other_job}?token={other_job_record.token}",
         headers={"if-match": other_job_record._etag},
-        json={
-            "uploader_email": "foo@bar.com",
-            "status": "",
-            "token": other_job_record.token,
-        },
+        json={"uploader_email": "foo@bar.com", "status": ""},
     )
     assert res.status_code == 422
     assert res.json["_error"]["message"]["uploader_email"][0] == "Unknown field."
 
     # A user providing a correct token can update their job's status to be a failure
     res = client.patch(
-        f"/upload_jobs/{other_job}",
+        f"/upload_jobs/{other_job}?token={other_job_record.token}",
         headers={"if-match": other_job_record._etag},
-        json={**upload_failure, "token": other_job_record.token},
+        json=upload_failure,
     )
     assert res.status_code == 200
     publish_success.assert_not_called()
@@ -294,9 +290,9 @@ def test_update_upload_job(cidc_api, clean_db, monkeypatch):
 
     # A user can update a job to be a success
     res = client.patch(
-        f"/upload_jobs/{user_job}",
+        f"/upload_jobs/{user_job}?token={user_job_record.token}",
         headers={"if-match": user_job_record._etag},
-        json={**upload_success, "token": user_job_record.token},
+        json=upload_success,
     )
     assert res.status_code == 200
     publish_success.assert_called_once_with(user_job)
@@ -310,9 +306,9 @@ def test_update_upload_job(cidc_api, clean_db, monkeypatch):
 
     # Users can't make an illegal state transition
     res = client.patch(
-        f"/upload_jobs/{user_job}",
+        f"/upload_jobs/{user_job}?token={user_job_record.token}",
         headers={"if-match": user_job_record._etag},
-        json={**invalid_update, "token": user_job_record.token},
+        json=invalid_update,
     )
     assert res.status_code == 400
 
@@ -751,11 +747,8 @@ def test_upload_wes(cidc_api, clean_db, monkeypatch):
 
     # Report an upload failure
     res = client.patch(
-        update_url,
-        json={
-            "status": UploadJobStatus.UPLOAD_FAILED.value,
-            "token": res.json["token"],
-        },
+        f"{update_url}?token={res.json['token']}",
+        json={"status": UploadJobStatus.UPLOAD_FAILED.value},
         headers={"If-Match": res.json["job_etag"]},
     )
     assert res.status_code == 200
@@ -772,11 +765,8 @@ def test_upload_wes(cidc_api, clean_db, monkeypatch):
 
     # Report an upload success
     res = client.patch(
-        update_url,
-        json={
-            "status": UploadJobStatus.UPLOAD_COMPLETED.value,
-            "token": res.json["token"],
-        },
+        f"{update_url}?token={res.json['token']}",
+        json={"status": UploadJobStatus.UPLOAD_COMPLETED.value},
         headers={"If-Match": _etag},
     )
     assert res.status_code == 200
@@ -859,11 +849,8 @@ def test_upload_olink(cidc_api, clean_db, monkeypatch):
 
     # Report an upload failure
     res = client.patch(
-        update_url,
-        json={
-            "status": UploadJobStatus.UPLOAD_FAILED.value,
-            "token": res.json["token"],
-        },
+        f"{update_url}?token={res.json['token']}",
+        json={"status": UploadJobStatus.UPLOAD_FAILED.value},
         headers={"If-Match": res.json["job_etag"]},
     )
     assert res.status_code == 200
@@ -875,11 +862,8 @@ def test_upload_olink(cidc_api, clean_db, monkeypatch):
     # is UPLOAD_FAILED, the API shouldn't permit this status to be updated to
     # UPLOAD_COMPLETED.
     bad_res = client.patch(
-        update_url,
-        json={
-            "status": UploadJobStatus.UPLOAD_COMPLETED.value,
-            "token": res.json["token"],
-        },
+        f"{update_url}?token={res.json['token']}",
+        json={"status": UploadJobStatus.UPLOAD_COMPLETED.value},
         headers={"If-Match": res.json["_etag"]},
     )
     assert bad_res.status_code == 400
@@ -896,11 +880,8 @@ def test_upload_olink(cidc_api, clean_db, monkeypatch):
         _etag = job._etag
 
     res = client.patch(
-        update_url,
-        json={
-            "status": UploadJobStatus.UPLOAD_COMPLETED.value,
-            "token": res.json["token"],
-        },
+        f"{update_url}?token={res.json['token']}",
+        json={"status": UploadJobStatus.UPLOAD_COMPLETED.value},
         headers={"If-Match": _etag},
     )
     assert res.status_code == 200
@@ -935,14 +916,14 @@ def test_poll_upload_merge_status(cidc_api, clean_db, monkeypatch):
 
     # Upload not found
     res = client.get(
-        "/ingestion/poll_upload_merge_status?id=12345", json={"token": upload_job.token}
+        f"/ingestion/poll_upload_merge_status?id=12345&token={upload_job.token}"
     )
     assert res.status_code == 404
 
-    upload_job_url = f"/ingestion/poll_upload_merge_status?id={upload_job_id}"
+    upload_job_url = f"/ingestion/poll_upload_merge_status?id={upload_job_id}&token={upload_job.token}"
 
     # Upload not-yet-ready
-    res = client.get(upload_job_url, json={"token": upload_job.token})
+    res = client.get(upload_job_url)
     assert res.status_code == 200
     assert "retry_in" in res.json and res.json["retry_in"] == 5
     assert "status" not in res.json
@@ -959,7 +940,7 @@ def test_poll_upload_merge_status(cidc_api, clean_db, monkeypatch):
             upload_job.update()
 
         # Upload ready
-        res = client.get(upload_job_url, json={"token": upload_job.token})
+        res = client.get(upload_job_url)
         assert res.status_code == 200
         assert "retry_in" not in res.json
         assert "status" in res.json and res.json["status"] == status
