@@ -95,7 +95,7 @@ def requires_upload_token_auth(get_upload_id):
     If the requesting user provided the correct upload token for the upload job, 
     then consider them authenticated.
 
-    The upload token must be provided as a field `token` on the JSON request body.
+    Requests must provide the upload token as a URL query param `token`.
     """
 
     check_id_token = requires_auth("[upload token auth - no RBAC possible]")(
