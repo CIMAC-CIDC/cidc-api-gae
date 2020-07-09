@@ -182,8 +182,6 @@ def test_requires_upload_token_auth(clean_cidc_api, clean_db, monkeypatch):
     with clean_cidc_api.app_context():
         job = UploadJobs.find_by_id(job_id)
 
-    print(job)
-
     test_route = "/foobarfoo"
 
     @clean_cidc_api.route(f"{test_route}/<int:upload_job>")
