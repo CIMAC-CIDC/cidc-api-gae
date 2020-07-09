@@ -197,12 +197,17 @@ def test_requires_upload_token_auth(cidc_api, clean_db, monkeypatch):
 
     # User must provide `token` query param
     with cidc_api.test_request_context(query_route):
-        with pytest.raises(UnprocessableEntity):
+        with pytest.raises(UnprocessableEntity) as e:
             endpoint(upload_job=job_id)
+        assert e._excinfo[1].data["messages"]["query"]["token"] == [
+            "Missing data for required field."
+        ]
 
     # User must provide correct `token` query param
     with cidc_api.test_request_context(f"{query_route}?token={'bad token'}"):
-        with pytest.raises(Unauthorized):
+        with pytest.raises(
+            Unauthorized, match="upload_job token authentication failed"
+        ):
             endpoint(upload_job=job_id)
 
     with cidc_api.test_request_context(f"{query_route}?token={job.token}"):
@@ -230,7 +235,9 @@ def test_requires_upload_token_auth(cidc_api, clean_db, monkeypatch):
     with cidc_api.test_request_context(
         f"{test_route}/{nonexistent_job_id}?token={job.token}"
     ):
-        with pytest.raises(Unauthorized):
+        with pytest.raises(
+            Unauthorized, match="upload_job token authentication failed"
+        ):
             endpoint(upload_job=nonexistent_job_id)
 
 
