@@ -147,7 +147,10 @@ upload_jobs = {
     "mocks": [
         lambda monkeypatch: monkeypatch.setattr(
             "cidc_api.shared.gcloud_client.revoke_upload_access", MagicMock()
-        )
+        ),
+        lambda monkeypatch: monkeypatch.setattr(
+            "cidc_api.shared.gcloud_client.publish_upload_success", MagicMock()
+        ),
     ],
 }
 
