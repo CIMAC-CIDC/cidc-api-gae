@@ -115,8 +115,7 @@ def requires_upload_token_auth(get_upload_id):
             # under different conditions where identity token authentication fails.
             try:
                 # Check authentication without passing any RBAC information
-                if not check_auth(None, None, None):
-                    raise Unauthorized
+                check_auth(None, None, None)
                 user = get_current_user()
             except:
                 user = None
