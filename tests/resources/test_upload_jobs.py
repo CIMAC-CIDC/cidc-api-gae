@@ -219,7 +219,7 @@ def test_requires_upload_token_auth(cidc_api, clean_db, monkeypatch):
     def throw_error(*args, **kwargs):
         raise Exception
 
-    monkeypatch.setattr("cidc_api.shared.auth.check_auth", throw_error)
+    monkeypatch.setattr("cidc_api.resources.upload_jobs.check_auth", throw_error)
 
     # User whose id token authentication fails can still successfully authenticate
     # using an upload token.

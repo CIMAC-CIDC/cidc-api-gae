@@ -18,7 +18,7 @@ from cidc_schemas.template import Template
 from cidc_schemas.template_reader import XlTemplateReader
 
 from ..shared import gcloud_client
-from ..shared.auth import public, requires_auth, get_current_user
+from ..shared.auth import public, requires_auth, check_auth, get_current_user
 from ..shared.rest_utils import (
     lookup,
     marshal_response,
@@ -98,10 +98,8 @@ def requires_upload_token_auth(get_upload_id):
     Requests must provide the upload token as a URL query param `token`.
     """
 
-    check_id_token = requires_auth("[upload token auth - no RBAC possible]")(
-        lambda: None
-    )
     token_schema = Schema.from_dict({"token": fields.Str(required=True)})(
+        # Don't throw an error if there are unknown query params in addition to "token"
         unknown=INCLUDE
     )
 
@@ -112,9 +110,13 @@ def requires_upload_token_auth(get_upload_id):
         @wraps(endpoint)
         @use_args(token_schema, location="query")
         def wrapped(args, *pos_args, **kwargs):
-            # Try to get the user associated with this request
+            # Try to get the user associated with this request.
+            # `check_auth` and `get_current_user` may both raise an exception
+            # under different conditions where identity token authentication fails.
             try:
-                check_id_token()
+                # Check authentication without passing any RBAC information
+                if not check_auth(None, None, None):
+                    raise Unauthorized
                 user = get_current_user()
             except:
                 user = None
