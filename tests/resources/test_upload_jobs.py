@@ -7,6 +7,9 @@ from typing import Tuple
 
 import pytest
 from werkzeug.exceptions import (
+    NotFound,
+    Unauthorized,
+    UnprocessableEntity,
     HTTPException,
     InternalServerError,
     BadRequest,
@@ -175,39 +178,42 @@ def test_get_upload_job(cidc_api, clean_db, monkeypatch):
     assert res.json["id"] == other_job
 
 
-def test_requires_upload_token_auth(clean_cidc_api, clean_db, monkeypatch):
+def test_requires_upload_token_auth(cidc_api, clean_db, monkeypatch):
     """Check that the requires_upload_token_auth decorator works as expected"""
-    user_id = setup_trial_and_user(clean_cidc_api, monkeypatch)
-    job_id = setup_upload_jobs(clean_cidc_api)[0]
-    with clean_cidc_api.app_context():
+    user_id = setup_trial_and_user(cidc_api, monkeypatch)
+    job_id = setup_upload_jobs(cidc_api)[0]
+    with cidc_api.app_context():
         job = UploadJobs.find_by_id(job_id)
 
     test_route = "/foobarfoo"
 
-    @clean_cidc_api.route(f"{test_route}/<int:upload_job>")
     @requires_upload_token_auth(lambda *a, **kw: kw["upload_job"])
     def endpoint(*args, **kwargs):
         assert "upload_job" in kwargs
         return "ok", 200
 
-    client = clean_cidc_api.test_client()
-
     query_route = f"{test_route}/{job_id}"
+    nonexistent_job_id = "9999999"
 
     # User must provide `token` query param
-    res = client.get(query_route)
-    assert res.status_code == 422
-    assert "required field" in res.json["_error"]["message"]["query"]["token"][0]
+    with cidc_api.test_request_context(query_route):
+        with pytest.raises(UnprocessableEntity):
+            endpoint(upload_job=job_id)
 
     # User must provide correct `token` query param
-    res = client.get(f"{query_route}?token={'bad token'}")
-    assert res.status_code == 401
-    res = client.get(f"{query_route}?token={job.token}")
-    assert res.status_code == 200
+    with cidc_api.test_request_context(f"{query_route}?token={'bad token'}"):
+        with pytest.raises(Unauthorized):
+            endpoint(upload_job=job_id)
+
+    with cidc_api.test_request_context(f"{query_route}?token={job.token}"):
+        assert endpoint(upload_job=job_id) == ("ok", 200)
 
     # User whose id token authentication succeeds gets a 404 if the relevant job doesn't exist
-    res = client.get(f"{test_route}/999999?token={job.token}")
-    assert res.status_code == 404
+    with cidc_api.test_request_context(
+        f"{test_route}/{nonexistent_job_id}?token={job.token}"
+    ):
+        with pytest.raises(NotFound):
+            endpoint(upload_job=nonexistent_job_id)
 
     # Mock id token authentication failure
     def throw_error(*args, **kwargs):
@@ -217,12 +223,15 @@ def test_requires_upload_token_auth(clean_cidc_api, clean_db, monkeypatch):
 
     # User whose id token authentication fails can still successfully authenticate
     # using an upload token.
-    res = client.get(f"{query_route}?token={job.token}")
-    assert res.status_code == 200
+    with cidc_api.test_request_context(f"{query_route}?token={job.token}"):
+        assert endpoint(upload_job=job_id) == ("ok", 200)
 
     # User whose id token authentication fails gets a 401 if the relevant job doesn't exist
-    res = client.get(f"{test_route}/999999?token={job.token}")
-    assert res.status_code == 401
+    with cidc_api.test_request_context(
+        f"{test_route}/{nonexistent_job_id}?token={job.token}"
+    ):
+        with pytest.raises(Unauthorized):
+            endpoint(upload_job=nonexistent_job_id)
 
 
 def test_update_upload_job(cidc_api, clean_db, monkeypatch):

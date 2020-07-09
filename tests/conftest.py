@@ -27,7 +27,19 @@ def cidc_api():
     return app
 
 
-def get_clean_session(cidc_api):
+@pytest.fixture
+def clean_cidc_api():
+    """An instance of the CIDC API that hasn't yet handled any requests."""
+    import cidc_api.app
+
+    importlib.reload(cidc_api.app)
+
+    return cidc_api.app.app
+
+
+@pytest.fixture
+def clean_db(cidc_api):
+    """Provide a clean test database session"""
     with cidc_api.app_context():
         session = cidc_api.extensions["sqlalchemy"].db.session
         session.query(UploadJobs).delete()
@@ -37,22 +49,4 @@ def get_clean_session(cidc_api):
         session.query(Permissions).delete
         session.commit()
 
-    return session
-
-
-@pytest.fixture
-def clean_cidc_api():
-    """An instance of the CIDC API that hasn't yet handled any requests."""
-    import cidc_api.app
-
-    importlib.reload(cidc_api.app)
-    get_clean_session(cidc_api.app.app)
-
-    return cidc_api.app.app
-
-
-@pytest.fixture
-def clean_db(cidc_api):
-    """Provide a clean test database session"""
-    session = get_clean_session(cidc_api)
     return session
