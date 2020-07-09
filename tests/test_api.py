@@ -415,7 +415,7 @@ def test_endpoint_urls(cidc_api):
         "/ingestion/upload_assay",
         "/ingestion/upload_analysis",
         "/ingestion/extra-assay-metadata",
-        "/ingestion/poll_upload_merge_status",
+        "/ingestion/poll_upload_merge_status/<int:upload_job>",
         "/permissions/",
         "/permissions/<int:permission>",
         "/trial_metadata/",

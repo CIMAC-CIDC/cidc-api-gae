@@ -11,7 +11,13 @@ from flask import Blueprint, request, Request, Response, jsonify
 from jsonschema.exceptions import ValidationError
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.exc import NoResultFound
-from werkzeug.exceptions import BadRequest, InternalServerError, NotFound, Unauthorized
+from werkzeug.exceptions import (
+    BadRequest,
+    InternalServerError,
+    NotFound,
+    Unauthorized,
+    PreconditionRequired,
+)
 
 from cidc_schemas import constants, prism
 from cidc_schemas.template import Template
@@ -87,62 +93,80 @@ def get_upload_job(upload_job: UploadJobs):
     return upload_job
 
 
-def requires_upload_token_auth(get_upload_id):
+def requires_upload_token_auth(endpoint):
     """
-    Decorator factory that adds "upload token" authentication to an endpoint. 
-    `get_upload_id` takes the arguments passed to the decorated endpoint
-    and extracts the ID of the upload job to authenticate against.
-    If the requesting user provided the correct upload token for the upload job, 
-    then consider them authenticated.
-
-    Requests must provide the upload token as a URL query param `token`.
+    Decorator that adds "upload token" authentication to an endpoint. 
+    The provided endpoint must include the upload job id as a URL param, i.e., 
+    `<int:upload_job>`. This upload job ID is used to look up the relevant upload_job
+    and check its `token` field against the user-provided `token` query parameter.
+    If authentication and upload job record lookup succeeds, pass the upload job record
+    in the `upload_job` kwarg to `endpoint`.
     """
+    # Flag this endpoint as authenticated
+    endpoint.is_protected = True
 
     token_schema = Schema.from_dict({"token": fields.Str(required=True)})(
         # Don't throw an error if there are unknown query params in addition to "token"
         unknown=INCLUDE
     )
 
-    def decorator(endpoint):
-        # Flag this endpoint as authenticated
-        endpoint.is_protected = True
+    @wraps(endpoint)
+    @use_args(token_schema, location="query")
+    def wrapped(args, *pos_args, **kwargs):
+        # Attempt identity token authentication to get user info
+        user = _get_user()
 
-        @wraps(endpoint)
-        @use_args(token_schema, location="query")
-        def wrapped(args, *pos_args, **kwargs):
-            # Try to get the user associated with this request.
-            # `check_auth` and `get_current_user` may both raise an exception
-            # under different conditions where identity token authentication fails.
-            try:
-                # Check authentication without passing any RBAC information
-                check_auth(None, None, None)
-                user = get_current_user()
-            except:
-                user = None
+        # Try to find the upload_job associated with this request
+        upload_job = _get_upload_job(user, kwargs["upload_job"])
 
-            token = args["token"]
-            upload_id = get_upload_id(*pos_args, **kwargs)
-            upload_job = UploadJobs.find_by_id(upload_id)
+        # Check that the user-provided upload token matches the saved upload token
+        token = args["token"]
+        if str(token) != str(upload_job.token):
+            raise Unauthorized("upload_job token authentication failed")
 
-            if not upload_job:
-                if user:
-                    raise NotFound(f"No upload_job with id {upload_id}")
-                else:
-                    raise Unauthorized("upload_job token authentication failed")
+        # Pass the looked-up upload_job record to `endpoint` via the `upload_job` keyword argument
+        kwargs["upload_job"] = upload_job
 
-            if str(token) != str(upload_job.token):
+        return endpoint(*pos_args, **kwargs)
+
+    def _get_user():
+        """
+        Try to get the user associated with this request.
+        `check_auth` and `get_current_user` may both raise an exception
+        under different conditions where identity token authentication fails.
+        """
+        try:
+            # Check authentication without passing any RBAC information
+            check_auth(None, None, None)
+            return get_current_user()
+        except:
+            return None
+
+    def _get_upload_job(user, job_id):
+        """
+        Use the `lookup` decorator to extract the `upload_job` URL parameter,
+        lookup the appropriate upload job record, and handle ETag validation if necessary.
+        """
+        do_lookup = lookup(
+            UploadJobs, "upload_job", check_etag=request.method == "PATCH"
+        )
+        get_job = lambda upload_job: upload_job
+
+        try:
+            return do_lookup(get_job)(upload_job=job_id)
+        except (PreconditionRequired, NotFound) as e:
+            # If there's an authenticated user associated with this request,
+            # raise errors thrown by `lookup`. Otherwise, just report that auth failed.
+            if user:
+                raise e
+            else:
                 raise Unauthorized("upload_job token authentication failed")
 
-            return endpoint(*pos_args, **kwargs)
-
-        return wrapped
-
-    return decorator
+    return wrapped
 
 
 @upload_jobs_bp.route("/<int:upload_job>", methods=["PATCH"])
-@requires_upload_token_auth(get_upload_id=lambda *a, **kw: kw["upload_job"])
-@lookup(UploadJobs, "upload_job", check_etag=True)
+@requires_upload_token_auth
 @unmarshal_request(
     UploadJobSchema(only=["status", "token"]), "upload_job_updates", load_sqla=False
 )
@@ -534,14 +558,12 @@ def upload_data_files(
     return jsonify(response)
 
 
-@ingestion_bp.route("/poll_upload_merge_status", methods=["GET"])
-@requires_upload_token_auth(get_upload_id=lambda *a, **kw: request.args.get("id"))
-def poll_upload_merge_status():
+@ingestion_bp.route("/poll_upload_merge_status/<int:upload_job>", methods=["GET"])
+@requires_upload_token_auth
+def poll_upload_merge_status(upload_job):
     """
     Check an assay upload's status, and supply the client with directions on when to retry the check.
 
-    Request: no body
-        query parameter "id": the id of the assay_upload of interest
     Response: application/json
         status {str or None}: the current status of the assay_upload (empty if not MERGE_FAILED or MERGE_COMPLETED)
         status_details {str or None}: information about `status` (e.g., error details). Only present if `status` is present.
@@ -551,18 +573,12 @@ def poll_upload_merge_status():
         401: the requesting user did not create the requested upload job
         404: no upload job with id "id" is found
     """
-    upload_id = request.args.get("id")
-    if not upload_id:
-        raise BadRequest("Missing expected query parameter 'id'")
-
-    upload = UploadJobs.find_by_id(upload_id)
-
-    if upload.status in [
+    if upload_job.status in [
         UploadJobStatus.MERGE_COMPLETED.value,
         UploadJobStatus.MERGE_FAILED.value,
     ]:
         return jsonify(
-            {"status": upload.status, "status_details": upload.status_details}
+            {"status": upload_job.status, "status_details": upload_job.status_details}
         )
 
     # TODO: get smarter about retry-scheduling

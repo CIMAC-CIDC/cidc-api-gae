@@ -187,7 +187,7 @@ def test_requires_upload_token_auth(cidc_api, clean_db, monkeypatch):
 
     test_route = "/foobarfoo"
 
-    @requires_upload_token_auth(lambda *a, **kw: kw["upload_job"])
+    @requires_upload_token_auth
     def endpoint(*args, **kwargs):
         assert "upload_job" in kwargs
         return "ok", 200
@@ -272,7 +272,11 @@ def test_update_upload_job(cidc_api, clean_db, monkeypatch):
     revoke_upload_access.assert_not_called()
 
     # A user gets an authentication error if they provide an incorrect upload token
-    res = client.patch(f"/upload_jobs/{other_job}?token=nope", json=upload_success)
+    res = client.patch(
+        f"/upload_jobs/{other_job}?token=nope",
+        headers={"if-match": other_job_record._etag},
+        json=upload_success,
+    )
     assert res.status_code == 401
     assert res.json["_error"]["message"] == "upload_job token authentication failed"
     publish_success.assert_not_called()
@@ -930,11 +934,13 @@ def test_poll_upload_merge_status(cidc_api, clean_db, monkeypatch):
 
     # Upload not found
     res = client.get(
-        f"/ingestion/poll_upload_merge_status?id=12345&token={upload_job.token}"
+        f"/ingestion/poll_upload_merge_status/12345?token={upload_job.token}"
     )
     assert res.status_code == 404
 
-    upload_job_url = f"/ingestion/poll_upload_merge_status?id={upload_job_id}&token={upload_job.token}"
+    upload_job_url = (
+        f"/ingestion/poll_upload_merge_status/{upload_job_id}?token={upload_job.token}"
+    )
 
     # Upload not-yet-ready
     res = client.get(upload_job_url)
