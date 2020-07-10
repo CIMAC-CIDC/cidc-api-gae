@@ -31,6 +31,7 @@ from ..shared.auth import (
     authenticate_and_get_user,
 )
 from ..shared.rest_utils import (
+    with_lookup,
     lookup,
     marshal_response,
     unmarshal_request,
@@ -87,7 +88,7 @@ def list_upload_jobs(args, pagination_args):
 
 @upload_jobs_bp.route("/<int:upload_job>", methods=["GET"])
 @requires_auth("upload_jobs", upload_job_roles)
-@lookup(UploadJobs, "upload_job")
+@with_lookup(UploadJobs, "upload_job")
 @marshal_response(upload_job_schema)
 def get_upload_job(upload_job: UploadJobs):
     """Get an upload_job by ID. Non-admins can only view their own upload_jobs."""
@@ -121,15 +122,10 @@ def requires_upload_token_auth(endpoint):
         # Attempt identity token authentication to get user info
         user = authenticate_and_get_user()
 
-        # Use the `lookup` decorator to extract the `upload_job` URL parameter,
-        # lookup the appropriate upload job record, and handle ETag validation if necessary.
-        do_lookup = lookup(
-            UploadJobs, "upload_job", check_etag=request.method == "PATCH"
-        )
-        get_job = lambda upload_job: upload_job
-
         try:
-            upload_job = do_lookup(get_job)(**kwargs)
+            upload_job = lookup(
+                UploadJobs, kwargs["upload_job"], check_etag=request.method == "PATCH"
+            )
         except (PreconditionRequired, NotFound) as e:
             # If there's an authenticated user associated with this request,
             # raise errors thrown by `lookup`. Otherwise, just report that auth failed.
