@@ -121,8 +121,22 @@ def requires_upload_token_auth(endpoint):
         # Attempt identity token authentication to get user info
         user = authenticate_and_get_user()
 
-        # Try to find the upload_job associated with this request
-        upload_job = _get_upload_job(user, kwargs["upload_job"])
+        # Use the `lookup` decorator to extract the `upload_job` URL parameter,
+        # lookup the appropriate upload job record, and handle ETag validation if necessary.
+        do_lookup = lookup(
+            UploadJobs, "upload_job", check_etag=request.method == "PATCH"
+        )
+        get_job = lambda upload_job: upload_job
+
+        try:
+            upload_job = do_lookup(get_job)(**kwargs)
+        except (PreconditionRequired, NotFound) as e:
+            # If there's an authenticated user associated with this request,
+            # raise errors thrown by `lookup`. Otherwise, just report that auth failed.
+            if user:
+                raise e
+            else:
+                raise Unauthorized("upload_job token authentication failed")
 
         # Check that the user-provided upload token matches the saved upload token
         token = args["token"]
@@ -133,26 +147,6 @@ def requires_upload_token_auth(endpoint):
         kwargs["upload_job"] = upload_job
 
         return endpoint(*pos_args, **kwargs)
-
-    def _get_upload_job(user, job_id):
-        """
-        Use the `lookup` decorator to extract the `upload_job` URL parameter,
-        lookup the appropriate upload job record, and handle ETag validation if necessary.
-        """
-        do_lookup = lookup(
-            UploadJobs, "upload_job", check_etag=request.method == "PATCH"
-        )
-        get_job = lambda upload_job: upload_job
-
-        try:
-            return do_lookup(get_job)(upload_job=job_id)
-        except (PreconditionRequired, NotFound) as e:
-            # If there's an authenticated user associated with this request,
-            # raise errors thrown by `lookup`. Otherwise, just report that auth failed.
-            if user:
-                raise e
-            else:
-                raise Unauthorized("upload_job token authentication failed")
 
     return wrapped
 
