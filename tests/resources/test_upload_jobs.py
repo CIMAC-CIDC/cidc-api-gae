@@ -220,11 +220,10 @@ def test_requires_upload_token_auth(cidc_api, clean_db, monkeypatch):
         with pytest.raises(NotFound):
             endpoint(upload_job=nonexistent_job_id)
 
-    # Mock id token authentication failure
-    def throw_error(*args, **kwargs):
-        raise Exception
-
-    monkeypatch.setattr("cidc_api.resources.upload_jobs.check_auth", throw_error)
+    monkeypatch.setattr(
+        "cidc_api.resources.upload_jobs.authenticate_and_get_user",
+        lambda *args, **kwargs: None,
+    )
 
     # User whose id token authentication fails can still successfully authenticate
     # using an upload token.

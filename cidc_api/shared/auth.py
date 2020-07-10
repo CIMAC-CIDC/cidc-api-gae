@@ -52,6 +52,20 @@ def requires_auth(resource: str, allowed_roles: list = []):
     return decorator
 
 
+def authenticate_and_get_user():
+    """
+    Try to authenticate the user associated with this request. Return the user
+    if authentication succeeds, or `None` if it fails.
+    NOTE: this function bypasses RBAC. It's up to the caller to determine whether
+    an authenticated user is authorized to take subsequent action.
+    """
+    try:
+        check_auth(None, None, None)
+        return get_current_user()
+    except:
+        return None
+
+
 def public(endpoint):
     """Declare an endpoint to be public, i.e., not requiring auth."""
     # Store metadata on this function stating that it is unprotected

@@ -24,7 +24,12 @@ from cidc_schemas.template import Template
 from cidc_schemas.template_reader import XlTemplateReader
 
 from ..shared import gcloud_client
-from ..shared.auth import public, requires_auth, check_auth, get_current_user
+from ..shared.auth import (
+    public,
+    requires_auth,
+    get_current_user,
+    authenticate_and_get_user,
+)
 from ..shared.rest_utils import (
     lookup,
     marshal_response,
@@ -114,7 +119,7 @@ def requires_upload_token_auth(endpoint):
     @use_args(token_schema, location="query")
     def wrapped(args, *pos_args, **kwargs):
         # Attempt identity token authentication to get user info
-        user = _get_user()
+        user = authenticate_and_get_user()
 
         # Try to find the upload_job associated with this request
         upload_job = _get_upload_job(user, kwargs["upload_job"])
@@ -128,19 +133,6 @@ def requires_upload_token_auth(endpoint):
         kwargs["upload_job"] = upload_job
 
         return endpoint(*pos_args, **kwargs)
-
-    def _get_user():
-        """
-        Try to get the user associated with this request.
-        `check_auth` and `get_current_user` may both raise an exception
-        under different conditions where identity token authentication fails.
-        """
-        try:
-            # Check authentication without passing any RBAC information
-            check_auth(None, None, None)
-            return get_current_user()
-        except:
-            return None
 
     def _get_upload_job(user, job_id):
         """
@@ -560,7 +552,7 @@ def upload_data_files(
 
 @ingestion_bp.route("/poll_upload_merge_status/<int:upload_job>", methods=["GET"])
 @requires_upload_token_auth
-def poll_upload_merge_status(upload_job):
+def poll_upload_merge_status(upload_job: UploadJobs):
     """
     Check an assay upload's status, and supply the client with directions on when to retry the check.
 
