@@ -1,116 +1,139 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
+from werkzeug.exceptions import BadRequest
 from sqlalchemy.sql import ClauseElement
 
-from .models import DownloadableFiles
-
-like = DownloadableFiles.object_url.like
+Facets = Dict[str, Union[List[str], Dict[str, List[str]]]]
 
 # Represent available downloadable file assay facets as a dictionary
 # mapping an assay names to assay subfacet dictionaries. An assay subfacet
 # dictionary maps subfacet names to a list of SQLAlchemy filter clause elements
 # for looking up files associated with the given subfacet.
-assay_facets: Dict[str, Dict[str, List[ClauseElement]]] = {
-    "cytof": {
-        "source": [
-            like("%source_%.fcs"),
-            like("%spike_in_fcs.fcs"),
-            like("%normalized_and_debarcoded.fcs"),
-            like("%processed.fcs"),
+assay_facets: Facets = {
+    "CyTOF": {
+        "Source": [
+            "%source_%.fcs",
+            "%spike_in_fcs.fcs",
+            "%normalized_and_debarcoded.fcs",
+            "%processed.fcs",
         ],
-        "cell counts": [
-            like("%cell_counts_assignment.csv"),
-            like("%cell_counts_compartment.csv"),
-            like("%cell_counts_profiling.csv"),
+        "Cell Counts": [
+            "%cell_counts_assignment.csv",
+            "%cell_counts_compartment.csv",
+            "%cell_counts_profiling.csv",
         ],
-        "labeled source": [like("%source.fcs")],
-        "analysis results": [like("%analysis.zip"), like("%results.zip")],
-        "key": [
-            like("%assignment.csv"),
-            like("%compartment.csv"),
-            like("%profiling.csv"),
-        ],
+        "Labeled Source": ["%source.fcs"],
+        "Analysis Results": ["%analysis.zip", "%results.zip"],
+        "Key": ["%assignment.csv", "%compartment.csv", "%profiling.csv"],
     },
-    "wes": {
-        "source": [
-            like("%wes%reads_%.bam"),
-            like("%wes%r1_%.fastq.gz"),
-            like("%wes%r2_%.fastq.gz"),
+    "WES": {
+        "Source": ["%wes%reads_%.bam", "%wes%r1_%.fastq.gz", "%wes%r2_%.fastq.gz"],
+        "Germline": ["%vcfcompare.txt", "%optimalpurityvalue.txt"],
+        "Clonality": ["%clonality_pyclone.tsv"],
+        "Copy Number": ["%copynumber_cnvcalls.txt", "%copynumber_cnvcalls.txt.tn.tsv"],
+        "Neoantigen": [
+            "%MHC_Class_I_all_epitopes.tsv",
+            "%MHC_Class_I_filtered_condensed_ranked.tsv",
+            "%MHC_Class_II_all_epitopes.tsv",
+            "%MHC_Class_II_filtered_condensed_ranked.tsv",
         ],
-        "germline": [like("%vcfcompare.txt"), like("%optimalpurityvalue.txt")],
-        "clonality": [like("%clonality_pyclone.tsv")],
-        "copy number": [
-            like("%copynumber_cnvcalls.txt"),
-            like("%copynumber_cnvcalls.txt.tn.tsv"),
+        "Somatic": [
+            "%vcf_tnscope_output.vcf",
+            "%maf_tnscope_output.maf",
+            "%vcf_tnscope_filter.vcf",
+            "%maf_tnscope_filter.maf",
+            "%tnscope_exons_broad.gz",
+            "%tnscope_exons_mda.gz",
+            "%tnscope_exons_mocha.gz",
         ],
-        "neoantigen": [
-            like("%MHC_Class_I_all_epitopes.tsv"),
-            like("%MHC_Class_I_filtered_condensed_ranked.tsv"),
-            like("%MHC_Class_II_all_epitopes.tsv"),
-            like("%MHC_Class_II_filtered_condensed_ranked.tsv"),
+        "Alignment": [
+            "%tn_corealigned.bam",
+            "%tn_corealigned.bam.bai",
+            "%recalibrated.bam",
+            "%recalibrated.bam.bai",
+            "%sorted.dedup.bam",
+            "%sorted.dedup.bam.bai",
         ],
-        "somatic": [
-            like("%vcf_tnscope_output.vcf"),
-            like("%maf_tnscope_output.maf"),
-            like("%vcf_tnscope_filter.vcf"),
-            like("%maf_tnscope_filter.maf"),
-            like("%tnscope_exons_broad.gz"),
-            like("%tnscope_exons_mda.gz"),
-            like("%tnscope_exons_mocha.gz"),
+        "Metrics": [
+            "%all_sample_summaries.txt",
+            "%coverage_metrics.txt",
+            "%target_metrics.txt",
+            "%coverage_metrics_summary.txt",
+            "%target_metrics_summary.txt",
+            "%mosdepth_region_dist_broad.txt",
+            "%mosdepth_region_dist_mda.txt",
+            "%mosdepth_region_dist_mocha.txt",
+            "%optitype_result.tsv",
         ],
-        "alignment": [
-            like("%tn_corealigned.bam"),
-            like("%tn_corealigned.bam.bai"),
-            like("%recalibrated.bam"),
-            like("%recalibrated.bam.bai"),
-            like("%sorted.dedup.bam"),
-            like("%sorted.dedup.bam.bai"),
-        ],
-        "metrics": [
-            like("%all_sample_summaries.txt"),
-            like("%coverage_metrics.txt"),
-            like("%target_metrics.txt"),
-            like("%coverage_metrics_summary.txt"),
-            like("%target_metrics_summary.txt"),
-            like("%mosdepth_region_dist_broad.txt"),
-            like("%mosdepth_region_dist_mda.txt"),
-            like("%mosdepth_region_dist_mocha.txt"),
-            like("%optitype_result.tsv"),
-        ],
-        "hla type": [like("%optitype_result.tsv")],
-        "report": [like("%wes_version.txt")],
+        "HLA Type": ["%optitype_result.tsv"],
+        "Report": ["%wes_version.txt"],
     },
-    "rna": {
-        "source": [
-            like("%rna%reads_%.bam"),
-            like("%rna%r1_%.fastq.gz"),
-            like("%rna%r2_%.fastq.gz"),
+    "RNA": {
+        "Source": ["%rna%reads_%.bam", "%rna%r1_%.fastq.gz", "%rna%r2_%.fastq.gz"],
+        "Alignment": [
+            "%sorted.bam",
+            "%sorted.bam.bai",
+            "%sorted.bam.stat.txt",
+            "%downsampling.bam",
+            "%downsampling.bam.bai",
         ],
-        "alignment": [
-            like("%sorted.bam"),
-            like("%sorted.bam.bai"),
-            like("%sorted.bam.stat.txt"),
-            like("%downsampling.bam"),
-            like("%downsampling.bam.bai"),
+        "Quality": [
+            "%downsampling_housekeeping.bam",
+            "%downsampling_housekeeping.bam.bai",
+            "%read_distrib.txt",
+            "%tin_score.txt",
+            "%tin_score.summary.txt",
         ],
-        "quality": [
-            like("%downsampling_housekeeping.bam"),
-            like("%downsampling_housekeeping.bam.bai"),
-            like("%read_distrib.txt"),
-            like("%tin_score.txt"),
-            like("%tin_score.summary.txt"),
-        ],
-        "gene quantification": [
-            like("%quant.sf"),
-            like("%transcriptome.bam.log"),
-            like("%aux_info_ambig_info.tsv"),
-            like("%aux_info_expected_bias.gz"),
-            like("%aux_info_fld.gz"),
-            like("%aux_info_meta_info.json"),
-            like("%aux_info_observed_bias.gz"),
-            like("%aux_info_observed_bias_3p.gz"),
-            like("%cmd_info.json"),
-            like("%salmon_quant.log"),
+        "Gene Quantification": [
+            "%quant.sf",
+            "%transcriptome.bam.log",
+            "%aux_info_ambig_info.tsv",
+            "%aux_info_expected_bias.gz",
+            "%aux_info_fld.gz",
+            "%aux_info_meta_info.json",
+            "%aux_info_observed_bias.gz",
+            "%aux_info_observed_bias_3p.gz",
+            "%cmd_info.json",
+            "%salmon_quant.log",
         ],
     },
 }
+
+clinical_facets: Facets = {
+    "Participants Info": ["%participants.csv"],
+    "Samples Info": ["%samples.csv"],
+}
+
+facets = {"Assay Type": assay_facets, "Clinical Type": clinical_facets}
+
+
+def get_facet_labels():
+    return {
+        "Assay Type": {
+            assay_name: list(subfacets.keys())
+            for assay_name, subfacets in assay_facets.items()
+        },
+        "Clinical Type": list(clinical_facets.keys()),
+    }
+
+
+def get_facets_for_paths(
+    object_url_like: ClauseElement, paths: List[List[str]]
+) -> List[ClauseElement]:
+    clause_args: List[ClauseElement] = []
+    for path in paths:
+        try:
+            if len(path) == 2:
+                path_clauses = facets[path[0]][path[1]]
+            if len(path) == 3:
+                subfacets = facets[path[0]][path[1]]
+                if not isinstance(subfacets, dict):
+                    raise Exception
+                path_clauses = subfacets[path[2]]
+        except:
+            raise BadRequest(f"no facet for path {path}")
+
+        clause_args.extend(path_clauses)
+
+    clauses = [object_url_like(clause_arg) for clause_arg in clause_args]
+    return clauses
