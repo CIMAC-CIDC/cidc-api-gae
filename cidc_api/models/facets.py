@@ -123,16 +123,13 @@ def get_facets_for_paths(
     clause_args: List[ClauseElement] = []
     for path in paths:
         try:
-            if len(path) == 2:
-                path_clauses = facets[path[0]][path[1]]
-            if len(path) == 3:
-                subfacets = facets[path[0]][path[1]]
-                if not isinstance(subfacets, dict):
-                    raise Exception
-                path_clauses = subfacets[path[2]]
-        except:
+            assert len(path) in (2, 3)
+            path_clauses = facets
+            for key in path:
+                path_clauses = path_clauses[key]
+            assert isinstance(path_clauses, list)
+        except Exception as e:
             raise BadRequest(f"no facet for path {path}")
-
         clause_args.extend(path_clauses)
 
     clauses = [object_url_like(clause_arg) for clause_arg in clause_args]
