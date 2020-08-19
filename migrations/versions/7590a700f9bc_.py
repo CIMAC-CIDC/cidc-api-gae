@@ -168,12 +168,15 @@ def build_facet_group_for_existing_files():
     """
     cases = []
     for path in list_facet_paths():
-        object_url_like = lambda exp: sa.text(f"object_url LIKE '{exp}'")
-        path_facets = sa.or_(*get_facets_for_path(object_url_like, path))
-        facet_group = "|".join(path)
-        cases.append((path_facets, facet_group))
+        path_facets = get_facets_for_path(lambda p: p, path)
+        for path_facet in path_facets:
+            clean_path_facet = path_facet.replace("%", "")
+            facet_group = "|".join([*path, clean_path_facet])
+            case_text = sa.text(f"object_url LIKE '{path_facet}'")
+            cases.append((case_text, facet_group))
 
-    return sa.case(cases)
+    # Files that don't currently have subfacets will default to [no facet group]
+    return sa.case(cases, else_="[no facet group]")
 
 
 facet_group_cases = build_facet_group_for_existing_files()
@@ -188,11 +191,12 @@ def upgrade():
     session.query(DownloadableFiles).update(
         {"facet_group": facet_group_cases}, synchronize_session="fetch"
     )
-    session.commit()
 
     op.alter_column(
         "downloadable_files", sa.Column("facet_group", sa.String(), nullable=False)
     )
+
+    session.commit()
 
 
 def downgrade():
