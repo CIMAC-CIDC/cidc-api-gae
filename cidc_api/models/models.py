@@ -741,6 +741,7 @@ class DownloadableFiles(CommonColumns):
     file_name = Column(String, nullable=False)
     file_size_bytes = Column(BigInteger, nullable=False)
     uploaded_timestamp = Column(DateTime, nullable=False)
+    facet_group = Column(String, nullable=False)
     # NOTE: this column actually has type CITEXT.
     data_format = Column(String, nullable=False)
     additional_metadata = Column(JSONB, nullable=True)
