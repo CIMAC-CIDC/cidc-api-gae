@@ -867,6 +867,7 @@ class DownloadableFiles(CommonColumns):
         trial_id: str,
         upload_type: str,
         data_format: str,
+        facet_group: str,
         blob: Blob,
         session: Session,
         commit: bool = True,
@@ -890,6 +891,7 @@ class DownloadableFiles(CommonColumns):
         df.trial_id = trial_id
         df.upload_type = upload_type
         df.data_format = data_format
+        df.facet_group = facet_group
         df.object_url = blob.name
         df.file_name = blob.name
         df.file_size_bytes = blob.size
