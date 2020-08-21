@@ -4,7 +4,7 @@ import json
 import hashlib
 from datetime import datetime, timedelta
 from enum import Enum as EnumBaseClass
-from functools import wraps, lru_cache
+from functools import wraps
 from typing import Optional, List, Union, Callable
 
 from flask import current_app as app, Flask
@@ -780,14 +780,7 @@ class DownloadableFiles(CommonColumns):
 
     @data_category.expression
     def data_category(cls):
-        return cls.build_data_category_cases()
-
-    @classmethod
-    @lru_cache(maxsize=1)  # this method will always return the same result
-    def build_data_category_cases(cls):
-        return case(
-            [(cls.facet_group == k, v) for k, v in facet_groups_to_names.items()]
-        )
+        return DATA_CATEGORY_CASE_CLAUSE
 
     @staticmethod
     def build_file_filter(
@@ -929,3 +922,10 @@ class DownloadableFiles(CommonColumns):
         the given GCS object url.
         """
         return session.query(DownloadableFiles).filter_by(object_url=object_url).one()
+
+
+# Query clause for computing a downloadable file's data category.
+# Used above in the DownloadableFiles.data_category computed property.
+DATA_CATEGORY_CASE_CLAUSE = case(
+    [(DownloadableFiles.facet_group == k, v) for k, v in facet_groups_to_names.items()]
+)
