@@ -4,7 +4,7 @@ import json
 import hashlib
 from datetime import datetime, timedelta
 from enum import Enum as EnumBaseClass
-from functools import wraps
+from functools import wraps, lru_cache
 from typing import Optional, List, Union, Callable
 
 from flask import current_app as app, Flask
@@ -27,6 +27,8 @@ from sqlalchemy import (
     desc,
     update,
     or_,
+    case,
+    literal_column,
 )
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -41,7 +43,7 @@ from sqlalchemy.engine.interfaces import ExecutionContext
 
 from cidc_schemas import prism, unprism, json_validation
 
-from .facets import get_facets_for_paths
+from .facets import get_facet_groups_for_paths, facet_groups_to_names
 from ..config.db import BaseModel
 from ..config.settings import (
     PAGINATION_PAGE_SIZE,
@@ -772,6 +774,21 @@ class DownloadableFiles(CommonColumns):
     def file_ext(cls):
         return func.substring(cls.object_url, cls.FILE_EXT_REGEX)
 
+    @hybrid_property
+    def data_category(self):
+        return facet_groups_to_names.get(self.facet_group)
+
+    @data_category.expression
+    def data_category(cls):
+        return cls.build_data_category_cases()
+
+    @classmethod
+    @lru_cache(maxsize=1)  # this method will always return the same result
+    def build_data_category_cases(cls):
+        return case(
+            [(cls.facet_group == k, v) for k, v in facet_groups_to_names.items()]
+        )
+
     @staticmethod
     def build_file_filter(
         trial_ids: List[str] = [], facets: List[List[str]] = [], user: Users = None
@@ -794,10 +811,8 @@ class DownloadableFiles(CommonColumns):
         if trial_ids:
             file_filters.append(DownloadableFiles.trial_id.in_(trial_ids))
         if facets:
-            facet_filters = get_facets_for_paths(
-                DownloadableFiles.object_url.like, facets
-            )
-            file_filters.append(or_(*facet_filters))
+            facet_groups = get_facet_groups_for_paths(facets)
+            file_filters.append(DownloadableFiles.facet_group.in_(facet_groups))
         if user and not user.is_admin():
             permissions = Permissions.find_for_user(user.id)
             perm_set = [(p.trial_id, p.upload_type) for p in permissions]
