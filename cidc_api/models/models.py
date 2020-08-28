@@ -782,6 +782,10 @@ class DownloadableFiles(CommonColumns):
     def data_category(cls):
         return DATA_CATEGORY_CASE_CLAUSE
 
+    @property
+    def flat_object_url(self):
+        return self.object_url.replace("/", "_")
+
     @staticmethod
     def build_file_filter(
         trial_ids: List[str] = [], facets: List[List[str]] = [], user: Users = None

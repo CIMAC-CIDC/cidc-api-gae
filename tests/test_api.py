@@ -403,6 +403,7 @@ def test_endpoint_urls(cidc_api):
     expected_endpoints = {
         "/",
         "/downloadable_files/",
+        "/downloadable_files/filelist",
         "/downloadable_files/download_url",
         "/downloadable_files/filter_facets",
         "/downloadable_files/<int:downloadable_file>",
