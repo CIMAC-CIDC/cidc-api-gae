@@ -11,6 +11,7 @@ from ..models import (
     PermissionListSchema,
     CIDCRole,
     IntegrityError,
+    NoResultFound,
 )
 from ..shared.auth import get_current_user, requires_auth
 from ..shared.rest_utils import (
@@ -95,6 +96,9 @@ def create_permission(permission: Permissions) -> Permissions:
 @with_lookup(Permissions, "permission", check_etag=True)
 def delete_permission(permission: Permissions):
     """Delete a permission record."""
-    permission.delete()
+    try:
+        permission.delete()
+    except NoResultFound as e:
+        raise NotFound(str(e.orig))
 
     return delete_response()

@@ -52,7 +52,12 @@ from ..config.settings import (
     INACTIVE_USER_DAYS,
 )
 from ..shared import emails
-from ..shared.gcloud_client import publish_artifact_upload, publish_upload_success
+from ..shared.gcloud_client import (
+    publish_artifact_upload,
+    publish_upload_success,
+    grant_download_access,
+    revoke_download_access,
+)
 
 
 def with_default_session(f):
@@ -329,6 +334,54 @@ class Permissions(CommonColumns):
     granted_to_user = Column(Integer, nullable=False, index=True)
     trial_id = Column(String, nullable=False, index=True)
     upload_type = Column(String, nullable=False)
+
+    @with_default_session
+    def insert(self, session: Session, commit: bool = True, compute_etag: bool = True):
+        """
+        Insert this permission record into the database and add a corresponding IAM policy binding
+        on the GCS data bucket.
+
+        NOTE: values provided to the `commit` argument will be ignored. This method always commits.
+        """
+        grantee = Users.find_by_id(self.granted_to_user)
+        if grantee is None:
+            raise IntegrityError(f"No user with id {self.granted_to_user}")
+
+        # Grant IAM permission in GCS
+        grant_download_access(grantee.email, self.trial_id, self.upload_type)
+
+        try:
+            # Always commit, because we need to know whether to rollback the GCS permission grant
+            super().insert(session=session, commit=True, compute_etag=compute_etag)
+        except:
+            session.rollback()
+            # If adding the db record fails, revoke the IAM permission
+            revoke_download_access(grantee.email, self.trial_id, self.upload_type)
+            raise
+
+    @with_default_session
+    def delete(self, session: Session, commit: bool = True):
+        """
+        Delete this permission record from the database and revoke the corresponding IAM policy binding
+        on the GCS data bucket.
+
+        NOTE: values provided to the `commit` argument will be ignored. This method always commits.
+        """
+        grantee = Users.find_by_id(self.granted_to_user)
+        if grantee is None:
+            raise NoResultFound(f"No user with id {self.granted_to_user}")
+
+        # Revoke IAM permission in GCS
+        revoke_download_access(grantee.email, self.trial_id, self.upload_type)
+
+        try:
+            # Always commit, because we need to know whether to rollback the GCS permission grant
+            super().delete(session=session, commit=True)
+        except:
+            session.rollback()
+            # If deleting the db record fails, add back the IAM permission
+            grant_download_access(grantee.email, self.trial_id, self.upload_type)
+            raise
 
     @staticmethod
     @with_default_session

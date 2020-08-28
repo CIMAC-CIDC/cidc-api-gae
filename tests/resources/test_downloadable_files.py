@@ -11,10 +11,14 @@ from cidc_api.models import (
 )
 from cidc_api.config.settings import GOOGLE_DATA_BUCKET
 
-from ..utils import mock_current_user, make_admin
+from ..utils import mock_current_user, make_admin, mock_gcloud_client
 
 
 def setup_user(cidc_api, monkeypatch) -> int:
+    # this is necessary for adding/removing permissions from this user
+    # without trying to contact GCP
+    mock_gcloud_client(monkeypatch)
+
     current_user = Users(
         email="test@email.com",
         role=CIDCRole.CIMAC_USER.value,

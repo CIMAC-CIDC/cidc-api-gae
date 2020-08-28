@@ -10,7 +10,7 @@ from cidc_api.models import (
     CIDCRole,
 )
 
-from ..utils import mock_current_user, make_admin
+from ..utils import mock_current_user, make_admin, mock_gcloud_client
 
 TRIAL_ID = "foo"
 
@@ -66,6 +66,7 @@ def setup_permissions(cidc_api, monkeypatch) -> Tuple[int, int]:
 
 def test_list_permissions(cidc_api, clean_db, monkeypatch):
     """Check that listing permissions works as expected."""
+    mock_gcloud_client(monkeypatch)
     current_user_id, other_user_id = setup_permissions(cidc_api, monkeypatch)
 
     client = cidc_api.test_client()
@@ -93,6 +94,7 @@ def test_list_permissions(cidc_api, clean_db, monkeypatch):
 
 def test_get_permission(cidc_api, clean_db, monkeypatch):
     """Check that getting a single permission by ID works as expected."""
+    mock_gcloud_client(monkeypatch)
     current_user_id, other_user_id = setup_permissions(cidc_api, monkeypatch)
 
     with cidc_api.app_context():
@@ -123,6 +125,7 @@ def test_get_permission(cidc_api, clean_db, monkeypatch):
 
 def test_create_permission(cidc_api, clean_db, monkeypatch):
     """Check that creating a new permission works as expected."""
+    gcloud_client = mock_gcloud_client(monkeypatch)
     current_user_id, other_user_id = setup_permissions(cidc_api, monkeypatch)
 
     with cidc_api.app_context():
@@ -131,11 +134,15 @@ def test_create_permission(cidc_api, clean_db, monkeypatch):
     client = cidc_api.test_client()
 
     # Non-admins should be blocked from posting to this endpoint
+    gcloud_client.reset_mocks()
     res = client.post("permissions")
     assert res.status_code == 401
     assert "not authorized to access this endpoint" in res.json["_error"]["message"]
+    gcloud_client.grant_download_access.assert_not_called()
+    gcloud_client.revoke_download_access.assert_not_called()
 
     # Admins should be able to create new permissions
+    gcloud_client.reset_mocks()
     make_admin(current_user_id, cidc_api)
     perm = {
         "granted_to_user": other_user_id,
@@ -148,15 +155,21 @@ def test_create_permission(cidc_api, clean_db, monkeypatch):
     assert {**res.json, **perm} == res.json
     with cidc_api.app_context():
         assert Permissions.find_by_id(res.json["id"])
+    gcloud_client.grant_download_access.assert_called_once()
+    gcloud_client.revoke_download_access.assert_not_called()
 
     # Re-insertion is not allowed
+    gcloud_client.reset_mocks()
     res = client.post("permissions", json=perm)
     assert res.status_code == 400
     assert "unique constraint" in res.json["_error"]["message"]
+    gcloud_client.grant_download_access.assert_called_once()
+    gcloud_client.revoke_download_access.assert_called_once()
 
 
 def test_delete_permission(cidc_api, clean_db, monkeypatch):
     """Check that deleting a permission works as expected."""
+    gcloud_client = mock_gcloud_client(monkeypatch)
     current_user_id, other_user_id = setup_permissions(cidc_api, monkeypatch)
 
     with cidc_api.app_context():
@@ -165,29 +178,44 @@ def test_delete_permission(cidc_api, clean_db, monkeypatch):
     client = cidc_api.test_client()
 
     # Non-admins are not allowed to delete
+    gcloud_client.reset_mock()
     res = client.delete(f"permissions/{perm.id}")
     assert res.status_code == 401
     assert "not authorized to access this endpoint" in res.json["_error"]["message"]
+    gcloud_client.grant_download_access.assert_not_called()
+    gcloud_client.revoke_download_access.assert_not_called()
 
     make_admin(current_user_id, cidc_api)
 
     # Requester must supply an If-Match header
+    gcloud_client.reset_mock()
     res = client.delete(f"permissions/{perm.id}")
     assert res.status_code == 428
+    gcloud_client.grant_download_access.assert_not_called()
+    gcloud_client.revoke_download_access.assert_not_called()
 
     headers = {"If-Match": "foobar"}
 
     # Returns NotFound if no record exists
+    gcloud_client.reset_mock()
     res = client.delete(f"permissions/1232123", headers=headers)
     assert res.status_code == 404
+    gcloud_client.grant_download_access.assert_not_called()
+    gcloud_client.revoke_download_access.assert_not_called()
 
     # A mismatched ETag leads to a PreconditionFailed error
+    gcloud_client.reset_mock()
     res = client.delete(f"permissions/{perm.id}", headers=headers)
     assert res.status_code == 412
+    gcloud_client.grant_download_access.assert_not_called()
+    gcloud_client.revoke_download_access.assert_not_called()
 
     # A matching ETag leads to a successful deletion
+    gcloud_client.reset_mock()
     headers["If-Match"] = perm._etag
     res = client.delete(f"permissions/{perm.id}", headers=headers)
     assert res.status_code == 204
     with cidc_api.app_context():
         assert Permissions.find_by_id(perm.id) is None
+    gcloud_client.grant_download_access.assert_not_called()
+    gcloud_client.revoke_download_access.assert_called_once()
