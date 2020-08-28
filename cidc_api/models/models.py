@@ -401,6 +401,22 @@ class Permissions(CommonColumns):
             .first()
         )
 
+    @staticmethod
+    @with_default_session
+    def grant_all_iam_permissions(session: Session):
+        perms = Permissions.list(session=session)
+        for perm in perms:
+            user_email = Users.find_by_id(perm.granted_to_user).email
+            grant_download_access(user_email, perm.trial_id, perm.upload_type)
+
+    @staticmethod
+    @with_default_session
+    def revoke_all_iam_permissions(session: Session):
+        perms = Permissions.list(session=session)
+        for perm in perms:
+            user_email = Users.find_by_id(perm.granted_to_user).email
+            revoke_download_access(user_email, perm.trial_id, perm.upload_type)
+
 
 class ValidationMultiError(Exception):
     """Holds multiple jsonschema.ValidationErrors"""
