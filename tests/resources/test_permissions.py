@@ -166,6 +166,13 @@ def test_create_permission(cidc_api, clean_db, monkeypatch):
     gcloud_client.grant_download_access.assert_called_once()
     gcloud_client.revoke_download_access.assert_called_once()
 
+    # The permission grantee must exist
+    gcloud_client.reset_mocks()
+    perm["granted_to_user"] = 999999999  # user doesn't exist
+    res = client.post("permissions", json=perm)
+    assert res.status_code == 400
+    assert "user must exist, but no user found" in res.json["_error"]["message"]
+
 
 def test_delete_permission(cidc_api, clean_db, monkeypatch):
     """Check that deleting a permission works as expected."""

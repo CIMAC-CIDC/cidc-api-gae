@@ -345,7 +345,11 @@ class Permissions(CommonColumns):
         """
         grantee = Users.find_by_id(self.granted_to_user)
         if grantee is None:
-            raise IntegrityError(f"No user with id {self.granted_to_user}")
+            raise IntegrityError(
+                params=None,
+                statement=None,
+                orig=f"`granted_to_user` user must exist, but no user found with id {self.granted_to_user}",
+            )
 
         # Grant IAM permission in GCS
         grant_download_access(grantee.email, self.trial_id, self.upload_type)
@@ -369,7 +373,7 @@ class Permissions(CommonColumns):
         """
         grantee = Users.find_by_id(self.granted_to_user)
         if grantee is None:
-            raise NoResultFound(f"No user with id {self.granted_to_user}")
+            raise NoResultFound(f"no user with id {self.granted_to_user}")
 
         # Revoke IAM permission in GCS
         revoke_download_access(grantee.email, self.trial_id, self.upload_type)

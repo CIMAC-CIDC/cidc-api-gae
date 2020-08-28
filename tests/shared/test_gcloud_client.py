@@ -74,8 +74,12 @@ def test_revoke_upload_access(monkeypatch):
 
 def test_grant_download_access(monkeypatch):
     """Check that grant_download_access adds policy bindings as expected"""
-    # Check simple binding creation
+    bindings = [
+        # Role without a condition
+        {"role": "some-other-role", "members": {f"user:JohnDoe"}}
+    ]
 
+    # Check simple binding creation
     def set_iam_policy(policy):
         bindings = policy.bindings
         assert len(bindings) == 1
@@ -103,10 +107,10 @@ def test_grant_download_access(monkeypatch):
 
     def set_iam_policy(policy):
         bindings = policy.bindings
-        assert len(bindings) == 1
+        assert len(bindings) == 2
         assert bindings[0] == matching_binding
 
-    _mock_gcloud_storage([matching_binding], set_iam_policy, monkeypatch)
+    _mock_gcloud_storage([matching_binding] + bindings, set_iam_policy, monkeypatch)
     grant_download_access(EMAIL, "10021", "wes_analysis")
 
 
@@ -130,10 +134,12 @@ def test_revoke_download_access(monkeypatch):
             "members": {"user:test@email.com"},
             "role": GOOGLE_DOWNLOAD_ROLE,
         },
+        # Role without a condition
+        {"role": "some-other-role", "members": {f"user:JohnDoe"}},
     ]
 
     def set_iam_policy(policy):
-        assert len(policy.bindings) == 1
+        assert len(policy.bindings) == 2
         assert "10021/cytof" in policy.bindings[0]["condition"]["title"]
 
     # revocation on well-formed bindings
