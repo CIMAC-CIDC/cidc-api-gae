@@ -3,11 +3,10 @@ import json
 import datetime
 from collections import namedtuple
 from concurrent.futures import Future
-from typing import List, Optional, Tuple, Callable
+from typing import List, Tuple
 from typing.io import BinaryIO
 
 import requests
-from requests.exceptions import Timeout
 
 from google.cloud import storage, pubsub
 
@@ -326,7 +325,6 @@ def send_email(to_emails: List[str], subject: str, html_content: str, **kw):
     Publish an email-to-send to the emails topic.
     `kw` are expected to be sendgrid json api style additional email parameters. 
     """
-
     # Don't actually send an email if this is a test
     if TESTING or ENV == "dev":
         print(f"Would send email with subject '{subject}' to {to_emails}")
