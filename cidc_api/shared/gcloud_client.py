@@ -129,6 +129,7 @@ def grant_download_access(user_email: str, trial_id: str, upload_type: str):
 
     # get the current IAM policy for the data bucket
     bucket = _get_bucket(GOOGLE_DATA_BUCKET)
+    # see https://cloud.google.com/storage/docs/access-control/using-iam-permissions#code-samples_3
     policy = bucket.get_iam_policy(requested_policy_version=3)
     policy.version = 3
 
@@ -167,6 +168,7 @@ def revoke_download_access(user_email: str, trial_id: str, upload_type: str):
 
     # get the current IAM policy for the data bucket
     bucket = _get_bucket(GOOGLE_DATA_BUCKET)
+    # see https://cloud.google.com/storage/docs/access-control/using-iam-permissions#code-samples_3
     policy = bucket.get_iam_policy(requested_policy_version=3)
     policy.version = 3
 
