@@ -141,14 +141,25 @@ def test_create_permission(cidc_api, clean_db, monkeypatch):
     gcloud_client.grant_download_access.assert_not_called()
     gcloud_client.revoke_download_access.assert_not_called()
 
-    # Admins should be able to create new permissions
-    gcloud_client.reset_mocks()
     make_admin(current_user_id, cidc_api)
     perm = {
         "granted_to_user": other_user_id,
         "trial_id": TRIAL_ID,
         "upload_type": "bar",
     }
+
+    # When an IAM grant error occurs, the permission db record shouldn't be created
+    gcloud_client.reset_mocks()
+    gcloud_client.grant_download_access.side_effect = Exception("oops")
+    res = client.post("permissions", json=perm)
+    assert "IAM grant failed" in res.json["_error"]["message"]
+    assert res.status_code == 500
+    with cidc_api.app_context():
+        assert clean_db.query(Permissions).filter_by(**perm).all() == []
+    gcloud_client.grant_download_access.side_effect = None
+
+    # Admins should be able to create new permissions
+    gcloud_client.reset_mocks()
     res = client.post("permissions", json=perm)
     assert res.status_code == 201
     assert "id" in res.json
@@ -163,8 +174,8 @@ def test_create_permission(cidc_api, clean_db, monkeypatch):
     res = client.post("permissions", json=perm)
     assert res.status_code == 400
     assert "unique constraint" in res.json["_error"]["message"]
-    gcloud_client.grant_download_access.assert_called_once()
-    gcloud_client.revoke_download_access.assert_called_once()
+    gcloud_client.grant_download_access.assert_not_called()
+    gcloud_client.revoke_download_access.assert_not_called()
 
     # The permission grantee must exist
     gcloud_client.reset_mocks()
@@ -172,6 +183,8 @@ def test_create_permission(cidc_api, clean_db, monkeypatch):
     res = client.post("permissions", json=perm)
     assert res.status_code == 400
     assert "user must exist, but no user found" in res.json["_error"]["message"]
+    gcloud_client.grant_download_access.assert_not_called()
+    gcloud_client.revoke_download_access.assert_not_called()
 
 
 def test_delete_permission(cidc_api, clean_db, monkeypatch):
@@ -217,9 +230,20 @@ def test_delete_permission(cidc_api, clean_db, monkeypatch):
     gcloud_client.grant_download_access.assert_not_called()
     gcloud_client.revoke_download_access.assert_not_called()
 
+    headers["If-Match"] = perm._etag
+
+    # A well-formed delete request fails if IAM revoke fails
+    gcloud_client.reset_mock()
+    gcloud_client.revoke_download_access.side_effect = Exception("oops")
+    res = client.delete(f"permissions/{perm.id}", headers=headers)
+    assert "IAM revoke failed" in res.json["_error"]["message"]
+    assert res.status_code == 500
+    with cidc_api.app_context():
+        assert Permissions.find_by_id(perm.id) is not None
+    gcloud_client.revoke_download_access.side_effect = None
+
     # A matching ETag leads to a successful deletion
     gcloud_client.reset_mock()
-    headers["If-Match"] = perm._etag
     res = client.delete(f"permissions/{perm.id}", headers=headers)
     assert res.status_code == 204
     with cidc_api.app_context():

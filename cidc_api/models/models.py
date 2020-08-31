@@ -302,6 +302,10 @@ class Users(CommonColumns):
         return res
 
 
+class IAMException(Exception):
+    pass
+
+
 class Permissions(CommonColumns):
     __tablename__ = "permissions"
     __table_args__ = (
@@ -351,17 +355,16 @@ class Permissions(CommonColumns):
                 orig=f"`granted_to_user` user must exist, but no user found with id {self.granted_to_user}",
             )
 
-        # Grant IAM permission in GCS
-        grant_download_access(grantee.email, self.trial_id, self.upload_type)
+        # Always commit, because we don't want to grant IAM download unless this insert succeeds.
+        super().insert(session=session, commit=True, compute_etag=compute_etag)
 
         try:
-            # Always commit, because we need to know whether to rollback the GCS permission grant
-            super().insert(session=session, commit=True, compute_etag=compute_etag)
-        except:
-            session.rollback()
-            # If adding the db record fails, revoke the IAM permission
-            revoke_download_access(grantee.email, self.trial_id, self.upload_type)
-            raise
+            # Grant IAM permission in GCS only if db insert worked
+            grant_download_access(grantee.email, self.trial_id, self.upload_type)
+        except Exception as e:
+            # Delete the just-created permissions record
+            super().delete()
+            raise IAMException("IAM grant failed.") from e
 
     @with_default_session
     def delete(self, session: Session, commit: bool = True):
@@ -375,17 +378,15 @@ class Permissions(CommonColumns):
         if grantee is None:
             raise NoResultFound(f"no user with id {self.granted_to_user}")
 
-        # Revoke IAM permission in GCS
-        revoke_download_access(grantee.email, self.trial_id, self.upload_type)
-
         try:
-            # Always commit, because we need to know whether to rollback the GCS permission grant
-            super().delete(session=session, commit=True)
-        except:
-            session.rollback()
-            # If deleting the db record fails, add back the IAM permission
-            grant_download_access(grantee.email, self.trial_id, self.upload_type)
-            raise
+            # Revoke IAM permission in GCS
+            revoke_download_access(grantee.email, self.trial_id, self.upload_type)
+        except Exception as e:
+            raise IAMException(
+                "IAM revoke failed, and permission db record not removed."
+            ) from e
+
+        super().delete(session=session, commit=True)
 
     @staticmethod
     @with_default_session
