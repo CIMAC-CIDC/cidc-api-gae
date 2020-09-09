@@ -194,6 +194,7 @@ def revoke_download_access(user_email: str, trial_id: str, upload_type: str):
 
 # This is a limit set by GCP - there will never be more than this many
 # conditional bindings for a single member-role combo.
+# See: https://cloud.google.com/iam/docs/conditions-overview
 MAX_DOWNLOAD_BINDINGS = 20
 
 
