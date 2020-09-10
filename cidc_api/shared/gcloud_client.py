@@ -1,6 +1,7 @@
 """Utilities for interacting with the Google Cloud Platform APIs."""
 import json
 import datetime
+import warnings
 from collections import namedtuple
 from concurrent.futures import Future
 from typing import List, Tuple, Optional
@@ -117,9 +118,6 @@ def revoke_upload_access(user_email: str):
     bucket.set_iam_policy(policy)
 
 
-_DOWNLOAD_CLAUSE_OR = " || "
-
-
 def grant_download_access(user_email: str, trial_id: str, upload_type: str):
     """
     Give a user download access to all objects in a trial of a particular upload type.
@@ -136,25 +134,25 @@ def grant_download_access(user_email: str, trial_id: str, upload_type: str):
     policy.version = 3
 
     # find the policy binding for this user if one exists
-    binding_index, binding = _get_user_download_binding(policy, user_email)
+    binding = _find_and_pop_download_binding(
+        policy, user_email
+    ) or _create_empty_download_binding(user_email)
 
     # add the permission clause in the binding condition expression if it isn't already included
     expression = binding["condition"]["expression"]
     if prefix_expression not in expression:
-        full_clause = f"({prefix_expression} && {ttl_expression})"
-        expression = (
-            f"{expression}{_DOWNLOAD_CLAUSE_OR}{full_clause}"
-            if expression
-            else full_clause
+        if expression:
+            prefix_clauses, _ = _unpack_download_expression(expression)
+            prefix_clauses.append(prefix_expression)
+        else:
+            # This is a new binding with no prefix other clauses
+            prefix_clauses = [prefix_expression]
+        binding["condition"]["expression"] = _build_download_expression(
+            prefix_clauses, ttl_expression
         )
-        binding["condition"]["expression"] = expression
 
-    # add or update the binding on the bucket policy
-    if binding_index is not None:
-        policy.bindings[binding_index] = binding
-    else:
-        policy.bindings.append(binding)
-
+    # add the updated binding to the policy
+    policy.bindings.append(binding)
     bucket.set_iam_policy(policy)
 
 
@@ -173,22 +171,27 @@ def revoke_download_access(user_email: str, trial_id: str, upload_type: str):
     policy.version = 3
 
     # find the policy binding for this user if one exists
-    binding_index, binding = _get_user_download_binding(policy, user_email)
+    binding = _find_and_pop_download_binding(policy, user_email)
 
     # remove the relevant clause from the condition if it exists
-    if binding_index is not None:
+    if binding is not None:
         expression = binding["condition"]["expression"]
         if prefix_expression in expression:
+            prefix_clauses, ttl_clause = _unpack_download_expression(expression)
             filtered_clauses = [
-                clause
-                for clause in expression.split(_DOWNLOAD_CLAUSE_OR)
-                if prefix_expression not in clause
+                clause for clause in prefix_clauses if prefix_expression not in clause
             ]
-            binding["condition"]["expression"] = _DOWNLOAD_CLAUSE_OR.join(
-                filtered_clauses
+            binding["condition"]["expression"] = _build_download_expression(
+                filtered_clauses, ttl_clause
+            )
+        else:
+            warnings.warn(
+                f"Tried to revoke a non-existent download IAM permission for {user_email}/{trial_id}/{upload_type}"
             )
 
-    policy.bindings[binding_index] = binding
+        # add the updated binding to the policy
+        policy.bindings.append(binding)
+
     bucket.set_iam_policy(policy)
 
 
@@ -208,13 +211,9 @@ def revoke_all_download_access(user_email: str):
     policy = bucket.get_iam_policy(requested_policy_version=3)
     policy.version = 3
 
-    # find all download role policy bindings for this user and delete them
+    # find and pop all download role policy bindings for this user
     for _ in range(MAX_DOWNLOAD_BINDINGS):
-        binding_index, _ = _get_user_download_binding(policy, user_email)
-        # remove the user's download binding
-        if binding_index is not None:
-            policy.bindings.pop(binding_index)
-        else:
+        if _find_and_pop_download_binding(policy, user_email) is None:
             break
 
     bucket.set_iam_policy(policy)
@@ -251,42 +250,65 @@ def _get_ttl_expression(days_until_expiry: int = INACTIVE_USER_DAYS) -> str:
     return ttl_expression
 
 
-def _get_user_download_binding(
+_GCS_CEL_AND = " && "
+_GCS_CEL_OR = " || "
+
+
+def _build_download_expression(prefix_clauses: List[str], ttl_clause: str) -> str:
+    return f"({_GCS_CEL_OR.join(prefix_clauses)}){_GCS_CEL_AND}{ttl_clause}"
+
+
+def _unpack_download_expression(download_expression: str) -> Tuple[List[str], str]:
+    prefix_clauses, ttl_clause = download_expression.split(_GCS_CEL_AND)
+    prefix_clauses = prefix_clauses[1:-1]  # trim parentheses
+    return prefix_clauses.split(_GCS_CEL_OR), ttl_clause
+
+
+def _find_and_pop_download_binding(
     policy: storage.bucket.Policy, user_email: str
-) -> Tuple[Optional[int], dict]:
+) -> Optional[dict]:
     """
-    Find a download policy binding for the given `member_id` on `policy`, returning a tuple
-    containing the binding index (possibly `None` if the binding doesn't exist) and the binding 
-    (either existing or newly created).
+    Find a download policy binding for the given `user_email` on `policy`, and pop
+    it from the policy's bindings list if it exists.
     """
     member_id = f"user:{user_email}"
 
     # try to find the policy binding on the `policy`
-    user_binding = None
     user_binding_index = None
     for i, binding in enumerate(policy.bindings):
-        try:
-            user_is_member = binding["members"] == {member_id}
-            role_is_download = binding["role"] == GOOGLE_DOWNLOAD_ROLE
-            if user_is_member and role_is_download:
-                user_binding = binding
-                user_binding_index = i
-        except KeyError:
-            pass
+        user_is_member = binding.get("members") == {member_id}
+        role_is_download = binding.get("role") == GOOGLE_DOWNLOAD_ROLE
+        if user_is_member and role_is_download:
+            # a user should be a member of no more than one conditional download binding
+            if user_binding_index is not None:
+                warnings.warn(
+                    f"Found multiple conditional download bindings for {user_email}. This is an invariant violation - "
+                    "check out permissions on the CIDC data bucket in the GCS console to debug."
+                )
+                break
+            user_binding_index = i
 
-    # if no policy binding exists, create a new one
-    if user_binding is None:
-        user_binding = {
-            "role": GOOGLE_DOWNLOAD_ROLE,
-            "members": {member_id},
-            "condition": {
-                "title": f"Conditional download access for {user_email}",
-                "description": f"Auto-updated by the CIDC API on {datetime.datetime.now()}",
-                "expression": "",
-            },
-        }
+    binding = (
+        policy.bindings.pop(user_binding_index)
+        if user_binding_index is not None
+        else None
+    )
 
-    return user_binding_index, user_binding
+    return binding
+
+
+def _create_empty_download_binding(user_email: str) -> dict:
+    member_id = f"user:{user_email}"
+
+    return {
+        "role": GOOGLE_DOWNLOAD_ROLE,
+        "members": {member_id},
+        "condition": {
+            "title": f"Conditional download access for {user_email}",
+            "description": f"Auto-updated by the CIDC API on {datetime.datetime.now()}",
+            "expression": "",
+        },
+    }
 
 
 def get_signed_url(
