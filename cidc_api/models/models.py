@@ -50,6 +50,7 @@ from ..config.settings import (
     MAX_PAGINATION_PAGE_SIZE,
     TESTING,
     INACTIVE_USER_DAYS,
+    GOOGLE_MAX_DOWNLOAD_PERMISSIONS,
 )
 from ..shared import emails
 from ..shared.gcloud_client import (
@@ -357,6 +358,17 @@ class Permissions(CommonColumns):
                 params=None,
                 statement=None,
                 orig=f"`granted_to_user` user must exist, but no user found with id {self.granted_to_user}",
+            )
+
+        # A user can only have 20 granular permissions at a time, due to GCS constraints
+        if (
+            len(Permissions.find_for_user(self.granted_to_user))
+            >= GOOGLE_MAX_DOWNLOAD_PERMISSIONS
+        ):
+            raise IntegrityError(
+                params=None,
+                statement=None,
+                orig=f"{grantee.email} has greater than or equal to the maximum number of allowed granular permissions ({GOOGLE_MAX_DOWNLOAD_PERMISSIONS}). Remove unused permissions to add others.",
             )
 
         # Always commit, because we don't want to grant IAM download unless this insert succeeds.
