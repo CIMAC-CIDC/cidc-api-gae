@@ -236,7 +236,7 @@ def validate(template, xlsx):
 
 def check_permissions(user, trial_id, template_type):
     """
-    Check that the given user has permissions to uplod to the given trial / template type.
+    Check that the given user has permissions to upload to the given trial / template type.
 
     If no trial exists with this ID, raise a 404.
     If no permission exists for this user-trial-template_type trio, raise a 401.
