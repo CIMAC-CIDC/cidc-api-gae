@@ -144,10 +144,6 @@ def grant_download_access(user_email: str, trial_id: str, upload_type: str):
     bucket.set_iam_policy(policy)
 
 
-# Arbitrary upper bound on the number of GCS bindings we expect a user to have
-MAX_REVOKE_ALL_ITERATIONS = 250
-
-
 def revoke_download_access(user_email: str, trial_id: str, upload_type: str):
     """
     Revoke a user's download access to all objects in a trial of a particular upload type.
@@ -163,7 +159,7 @@ def revoke_download_access(user_email: str, trial_id: str, upload_type: str):
     policy.version = 3
 
     # find and remove all matching policy bindings for this user if any exist
-    for i in range(MAX_REVOKE_ALL_ITERATIONS):
+    for i in range(GOOGLE_MAX_DOWNLOAD_PERMISSIONS):
         removed_binding = _find_and_pop_download_binding(
             policy, user_email, prefix_expression
         )
@@ -177,6 +173,10 @@ def revoke_download_access(user_email: str, trial_id: str, upload_type: str):
     bucket.set_iam_policy(policy)
 
 
+# Arbitrary upper bound on the number of GCS bindings we expect a user to have
+MAX_REVOKE_ALL_ITERATIONS = 250
+
+
 def revoke_all_download_access(user_email: str):
     """
     Completely revoke a user's download access to all objects in the data bucket.
@@ -188,7 +188,7 @@ def revoke_all_download_access(user_email: str):
     policy.version = 3
 
     # find and pop all download role policy bindings for this user
-    for _ in range(GOOGLE_MAX_DOWNLOAD_PERMISSIONS):
+    for _ in range(MAX_REVOKE_ALL_ITERATIONS):
         # this finds and removes *any* download binding for the given user_email
         if _find_and_pop_download_binding(policy, user_email, "") is None:
             break

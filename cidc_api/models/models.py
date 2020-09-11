@@ -244,6 +244,10 @@ class Users(CommonColumns):
         """Returns true if this user is a CIDC admin."""
         return self.role == CIDCRole.ADMIN.value
 
+    def is_nci_user(self) -> bool:
+        """Returns true if this user is an NCI Biobank user."""
+        return self.role == CIDCRole.NCI_BIOBANK_USER.value
+
     @with_default_session
     def update_accessed(self, session: Session, commit: bool = True):
         """Set this user's last system access to now."""
@@ -884,7 +888,8 @@ class DownloadableFiles(CommonColumns):
         if facets:
             facet_groups = get_facet_groups_for_paths(facets)
             file_filters.append(DownloadableFiles.facet_group.in_(facet_groups))
-        if user and not user.is_admin():
+        # Admins and NCI biobank users can view all files
+        if user and not user.is_admin() and not user.is_nci_user():
             permissions = Permissions.find_for_user(user.id)
             perm_set = [(p.trial_id, p.upload_type) for p in permissions]
             file_tuples = tuple_(
