@@ -2,8 +2,6 @@ from unittest.mock import MagicMock
 from datetime import datetime
 from typing import Tuple
 
-from flask.globals import current_app
-
 from cidc_api.models import (
     Users,
     Permissions,
