@@ -413,18 +413,25 @@ class Permissions(CommonColumns):
     @staticmethod
     @with_default_session
     def grant_all_iam_permissions(session: Session):
-        perms = Permissions.list(session=session)
-        for perm in perms:
-            user_email = Users.find_by_id(perm.granted_to_user).email
-            grant_download_access(user_email, perm.trial_id, perm.upload_type)
+        Permissions._change_all_iam_permissions(grant=True, session=session)
 
     @staticmethod
     @with_default_session
     def revoke_all_iam_permissions(session: Session):
-        perms = Permissions.list(session=session)
+        Permissions._change_all_iam_permissions(grant=False, session=session)
+
+    @staticmethod
+    @with_default_session
+    def _change_all_iam_permissions(grant: bool, session: Session):
+        perms = Permissions.list(page_size=Permissions.count(), session=session)
         for perm in perms:
-            user_email = Users.find_by_id(perm.granted_to_user).email
-            revoke_download_access(user_email, perm.trial_id, perm.upload_type)
+            user = Users.find_by_id(perm.granted_to_user)
+            if user.is_admin() or user.is_nci_user():
+                pass
+            if grant:
+                grant_download_access(user.email, perm.trial_id, perm.upload_type)
+            else:
+                revoke_download_access(user.email, perm.trial_id, perm.upload_type)
 
 
 class ValidationMultiError(Exception):
