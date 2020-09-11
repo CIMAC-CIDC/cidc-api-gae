@@ -107,7 +107,6 @@ def test_list_downloadable_files(cidc_api, clean_db, monkeypatch):
 
     # Admins and NCI biobank users can view all files regardless of their permissions
     for role in [CIDCRole.ADMIN.value, CIDCRole.NCI_BIOBANK_USER.value]:
-        print(role)
         make_role(user_id, role, cidc_api)
         res = client.get("/downloadable_files")
         assert res.status_code == 200
