@@ -427,7 +427,7 @@ class Permissions(CommonColumns):
         for perm in perms:
             user = Users.find_by_id(perm.granted_to_user)
             if user.is_admin() or user.is_nci_user():
-                pass
+                continue
             if grant:
                 grant_download_access(user.email, perm.trial_id, perm.upload_type)
             else:
