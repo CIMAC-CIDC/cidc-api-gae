@@ -43,7 +43,7 @@ from sqlalchemy.engine.interfaces import ExecutionContext
 
 from cidc_schemas import prism, unprism, json_validation
 
-from .facets import get_facet_groups_for_paths, facet_groups_to_names
+from .files.facets import get_facet_groups_for_paths, facet_groups_to_names
 from ..config.db import BaseModel
 from ..config.settings import (
     PAGINATION_PAGE_SIZE,

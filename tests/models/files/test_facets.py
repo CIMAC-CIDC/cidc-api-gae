@@ -3,11 +3,10 @@ from unittest.mock import MagicMock
 import pytest
 from werkzeug.exceptions import BadRequest
 
-from cidc_api.models.facets import (
+from cidc_api.models.files.facets import (
     facets,
     get_facet_info,
     get_facet_groups_for_paths,
-    FacetConfig,
 )
 
 
