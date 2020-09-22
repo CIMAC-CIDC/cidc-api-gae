@@ -1,5 +1,6 @@
 from flask import Blueprint
-from werkzeug.exceptions import BadRequest, NotFound
+from webargs import fields
+from werkzeug.exceptions import BadRequest
 
 from ..shared.auth import requires_auth
 from ..models import (
@@ -25,13 +26,25 @@ partial_trial_metadata_schema = TrialMetadataSchema(partial=True)
 trial_modifier_roles = [CIDCRole.ADMIN.value, CIDCRole.NCI_BIOBANK_USER.value]
 
 
+trial_filter_schema = {
+    "include_file_bundles": fields.Bool(),
+    "trial_ids": fields.DelimitedList(fields.Str),
+}
+
+
 @trial_metadata_bp.route("/", methods=["GET"])
 @requires_auth("trial_metadata", trial_modifier_roles)
-@use_args_with_pagination({}, trial_metadata_schema)
+@use_args_with_pagination(trial_filter_schema, trial_metadata_schema)
 @marshal_response(trial_metadata_list_schema)
 def list_trial_metadata(args, pagination_args):
     """List all trial metadata records."""
-    trials = TrialMetadata.list(**pagination_args)
+    filter_ = TrialMetadata.build_trial_filter(**args)
+    if "include_file_bundles" in args and args.pop("include_file_bundles"):
+        trials = TrialMetadata.list_with_file_bundles(
+            filter_=filter_, **pagination_args
+        )
+    else:
+        trials = TrialMetadata.list(filter_=filter_, **pagination_args)
     count = TrialMetadata.count()
 
     return {"_items": trials, "_meta": {"total": count}}

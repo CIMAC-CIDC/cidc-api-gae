@@ -1,11 +1,9 @@
-import os
 import re
-import json
 import hashlib
 from datetime import datetime, timedelta
 from enum import Enum as EnumBaseClass
 from functools import wraps
-from typing import Optional, List, Union, Callable
+from typing import Dict, Optional, List, Union, Callable
 
 from flask import current_app as app, Flask
 from google.cloud.storage import Blob
@@ -26,9 +24,8 @@ from sqlalchemy import (
     asc,
     desc,
     update,
-    or_,
     case,
-    literal_column,
+    select,
 )
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -43,7 +40,13 @@ from sqlalchemy.engine.interfaces import ExecutionContext
 
 from cidc_schemas import prism, unprism, json_validation
 
-from .files.facets import get_facet_groups_for_paths, facet_groups_to_names
+from .files import (
+    get_facet_groups_for_paths,
+    facet_groups_to_names,
+    details_dict,
+    FilePurpose,
+    FACET_NAME_DELIM,
+)
 from ..config.db import BaseModel
 from ..config.settings import (
     PAGINATION_PAGE_SIZE,
@@ -146,23 +149,27 @@ class CommonColumns(BaseModel):  # type: ignore
 
     @classmethod
     @with_default_session
-    def list(
+    def list(cls, session: Session, **pagination_args):
+        """List records in this table, with pagination support."""
+        query = session.query(cls)
+        query = cls._add_pagination_filters(query, **pagination_args)
+        return query.all()
+
+    @classmethod
+    def _add_pagination_filters(
         cls,
-        session: Session,
+        query: Query,
         page_num: int = 0,
         page_size: int = PAGINATION_PAGE_SIZE,
         sort_field: Optional[str] = None,
         sort_direction: Optional[str] = None,
         filter_: Callable[[Query], Query] = lambda q: q,
-    ):
-        """List records in this table, with pagination support."""
+    ) -> Query:
         # Enforce positive page numbers
         page_num = 0 if page_num < 0 else page_num
 
         # Enforce maximum page size
         page_size = min(page_size, MAX_PAGINATION_PAGE_SIZE)
-
-        query = session.query(cls)
 
         # Handle sorting
         if sort_field:
@@ -180,7 +187,7 @@ class CommonColumns(BaseModel):  # type: ignore
         query = query.offset(page_num * page_size)
         query = query.limit(page_size)
 
-        return query.all()
+        return query
 
     @classmethod
     @with_default_session
@@ -456,6 +463,38 @@ trial_metadata_validator: json_validation._Validator = json_validation.load_and_
     "clinical_trial.json", return_validator=True
 )
 
+FileBundle = Dict[str, Dict[FilePurpose, List[int]]]
+
+
+def _build_file_bundle(files: List[dict]) -> FileBundle:
+    """
+    Given a list of `files` dictionarys with shape:
+    ```
+    {'type': <file type>, 'purpose': <file purpose>, 'id': <file db id>}
+    ```
+    return a "file bundle" with shape
+    ```
+    {
+        <type 1>: {
+            <purpose 1>: [<file id 1>, <file id 2>, ...],
+            <purpose 2>: [...]
+        },
+        <type 2>: {...}
+    }
+    ```
+    """
+    file_bundles: FileBundle = {}
+    for f in files:
+        if f["type"] is None:
+            continue
+        purpose: FilePurpose = f["purpose"] or "miscellaneous"
+        type_bundle = file_bundles.get(f["type"], {})
+        file_ids = type_bundle.get(purpose, [])
+        file_ids.append(f["id"])
+        type_bundle[purpose] = file_ids
+        file_bundles[f["type"]] = type_bundle
+    return file_bundles
+
 
 class TrialMetadata(CommonColumns):
     __tablename__ = "trial_metadata"
@@ -605,6 +644,62 @@ class TrialMetadata(CommonColumns):
         if not trial:
             raise NoResultFound(f"No trial found with id {trial_id}")
         return unprism.unprism_samples(trial.metadata_json)
+
+    file_bundle: Optional[FileBundle]
+
+    @classmethod
+    @with_default_session
+    def list_with_file_bundles(cls, session: Session, **pagination_args):
+        """TODO: docstring"""
+        # Build a query that collects all files for each trial
+        query = (
+            session.query(
+                TrialMetadata,
+                # Aggregate files for this trial record as a JSON object with shape:
+                # [
+                #   {'type': <file1 type>, 'purpose': <file1 purpose>, 'id': <file1 id>},
+                #   {'type': <file2 type>, 'purpose': <file2 purpose>, 'id': <file2 id>},
+                #   ...
+                # ]
+                func.json_agg(
+                    func.json_build_object(
+                        "type",
+                        DownloadableFiles.consolidated_upload_type,
+                        "purpose",
+                        DownloadableFiles.file_purpose,
+                        "id",
+                        DownloadableFiles.id,
+                    )
+                ),
+            )
+            .filter(TrialMetadata.trial_id == DownloadableFiles.trial_id)
+            .group_by(TrialMetadata)
+        )
+
+        # Apply pagination options to the query
+        query = cls._add_pagination_filters(query, **pagination_args)
+
+        # Run the query
+        query_results = query.all()
+
+        # Build file bundles from the query results
+        trials: List[TrialMetadata] = []
+        for trial, files in query_results:
+            file_bundle = _build_file_bundle(files)
+            trial.file_bundle = file_bundle
+            trials.append(trial)
+
+        return trials
+
+    @classmethod
+    def build_trial_filter(cls, trial_ids: List[str] = [], assays: List[str] = []):
+        filters = []
+        if trial_ids:
+            filters.append(cls.trial_id.in_(trial_ids))
+        if assays:
+            # NOTE: assay filters not yet supported
+            pass
+        return lambda q: q.filter(*filters)
 
 
 class UploadJobStatus(EnumBaseClass):
@@ -879,6 +974,26 @@ class DownloadableFiles(CommonColumns):
     def data_category(cls):
         return DATA_CATEGORY_CASE_CLAUSE
 
+    @hybrid_property
+    def consolidated_upload_type(self):
+        """
+        The overarching data category for a file. E.g., files with `upload_type` of
+        "cytof"` and `"cytof_analyis"` should both have a `consolidated_upload_type` of `"CyTOF"`.
+        """
+        return self.data_category.split(FACET_NAME_DELIM, 1)[0]
+
+    @consolidated_upload_type.expression
+    def consolidated_upload_type(cls):
+        return func.split_part(DATA_CATEGORY_CASE_CLAUSE, FACET_NAME_DELIM, 1)
+
+    @hybrid_property
+    def file_purpose(self):
+        return details_dict.get(self.facet_group).file_purpose
+
+    @file_purpose.expression
+    def file_purpose(cls):
+        return FILE_PURPOSE_CASE_CLAUSE
+
     @property
     def flat_object_url(self):
         return self.object_url.replace("/", "_")
@@ -1030,4 +1145,13 @@ class DownloadableFiles(CommonColumns):
 # Used above in the DownloadableFiles.data_category computed property.
 DATA_CATEGORY_CASE_CLAUSE = case(
     [(DownloadableFiles.facet_group == k, v) for k, v in facet_groups_to_names.items()]
+)
+
+# Query clause for computing a downloadable file's file purpose.
+# Used above in the DownloadableFiles.file_purpose computed property.
+FILE_PURPOSE_CASE_CLAUSE = case(
+    [
+        (DownloadableFiles.facet_group == facet_group, file_details.file_purpose)
+        for facet_group, file_details in details_dict.items()
+    ]
 )
