@@ -26,6 +26,7 @@ from sqlalchemy import (
     update,
     case,
     select,
+    literal,
 )
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -651,7 +652,7 @@ class TrialMetadata(CommonColumns):
     @with_default_session
     def list_with_file_bundles(cls, session: Session, **pagination_args):
         """TODO: docstring"""
-        # Build a query that collects all files for each trial
+        # Build a query that collects trials along with all files for that trial
         query = (
             session.query(
                 TrialMetadata,
@@ -675,6 +676,14 @@ class TrialMetadata(CommonColumns):
             .filter(TrialMetadata.trial_id == DownloadableFiles.trial_id)
             .group_by(TrialMetadata)
         )
+        # The above query excludes trials with no files, so add them here
+        query = query.union_all(
+            session.query(TrialMetadata, literal("null")).filter(
+                TrialMetadata.trial_id.notin_(
+                    session.query(DownloadableFiles.trial_id).distinct()
+                )
+            )
+        )
 
         # Apply pagination options to the query
         query = cls._add_pagination_filters(query, **pagination_args)
@@ -685,20 +694,26 @@ class TrialMetadata(CommonColumns):
         # Build file bundles from the query results
         trials: List[TrialMetadata] = []
         for trial, files in query_results:
-            file_bundle = _build_file_bundle(files)
+            if files is None:
+                file_bundle: FileBundle = {}
+            else:
+                file_bundle = _build_file_bundle(files)
             trial.file_bundle = file_bundle
             trials.append(trial)
 
         return trials
 
     @classmethod
-    def build_trial_filter(cls, trial_ids: List[str] = [], assays: List[str] = []):
+    def build_trial_filter(cls, user: Users, trial_ids: List[str] = []):
         filters = []
         if trial_ids:
             filters.append(cls.trial_id.in_(trial_ids))
-        if assays:
-            # NOTE: assay filters not yet supported
-            pass
+        if not user.is_admin() and not user.is_nci_user():
+            permitted_trials = select([Permissions.trial_id]).where(
+                Permissions.granted_to_user == user.id
+            )
+            filters.append(cls.trial_id.in_(permitted_trials))
+        # possible TODO: filter by assays in a trial
         return lambda q: q.filter(*filters)
 
 
