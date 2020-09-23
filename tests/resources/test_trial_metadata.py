@@ -114,10 +114,9 @@ def test_list_trials(cidc_api, clean_db, monkeypatch):
     assert res.json["_items"][0]
     for trial in res.json["_items"]:
         if trial["trial_id"] == "test-trial-1":
-            assert trial["file_bundle"] == {
-                "CyTOF": {"source": [0, 1], "analysis": [2]},
-                "WES": {"source": [3]},
-            }
+            assert set(trial["file_bundle"]["CyTOF"]["source"]) == set([0, 1])
+            assert trial["file_bundle"]["CyTOF"]["analysis"] == [2]
+            assert trial["file_bundle"]["WES"]["source"] == [3]
         else:
             assert trial["file_bundle"] == {}
 
