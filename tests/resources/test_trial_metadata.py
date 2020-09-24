@@ -79,14 +79,14 @@ def test_list_trials(cidc_api, clean_db, monkeypatch):
         assert set([t["id"] for t in res.json["_items"]]) == set([trial_1, trial_2])
         assert not any("file_bundle" in t for t in res.json["_items"])
 
-    # Listing trials with empty file bundles
+    # Listing trials with file bundles excludes trials with no files
     res = client.get("/trial_metadata?include_file_bundles=true")
     assert res.status_code == 200
-    assert len(res.json["_items"]) == 2
-    assert res.json["_items"][0]["file_bundle"] == {}
+    assert len(res.json["_items"]) == 0
 
-    # Add some files for these trials
+    # Add some files...
     with cidc_api.app_context():
+        # for trial 1
         for id, (type, facet_group) in enumerate(
             [
                 ("cytof", "/cytof/spike_in.fcs"),
@@ -99,7 +99,25 @@ def test_list_trials(cidc_api, clean_db, monkeypatch):
                 id=id,
                 trial_id="test-trial-1",
                 facet_group=facet_group,
-                object_url=facet_group,
+                object_url=f"test-trial-1/{facet_group}",
+                file_name="",
+                data_format="",
+                upload_type=type,
+                file_size_bytes=0,
+                uploaded_timestamp=datetime.now(),
+            ).insert()
+        # for trial 2
+        for id_minus_4, (type, facet_group) in enumerate(
+            [
+                ("participants info", "csv|participants info"),
+                ("mif", "/mif/roi_/phenotype_map.tif"),
+            ]
+        ):
+            DownloadableFiles(
+                id=id_minus_4 + 4,
+                trial_id="test-trial-2",
+                facet_group=facet_group,
+                object_url=f"test-trial-2/{facet_group}",
                 file_name="",
                 data_format="",
                 upload_type=type,
@@ -107,18 +125,19 @@ def test_list_trials(cidc_api, clean_db, monkeypatch):
                 uploaded_timestamp=datetime.now(),
             ).insert()
 
-    # Listing trials with populated file bundles
-    res = client.get("/trial_metadata?include_file_bundles=true")
+    # Listing trials with populated file bundles (also, check that sorting works)
+    res = client.get(
+        "/trial_metadata?include_file_bundles=true&sort_field=trial_id&sort_direction=asc"
+    )
     assert res.status_code == 200
     assert len(res.json["_items"]) == 2
     assert res.json["_items"][0]
-    for trial in res.json["_items"]:
-        if trial["trial_id"] == "test-trial-1":
-            assert set(trial["file_bundle"]["CyTOF"]["source"]) == set([0, 1])
-            assert trial["file_bundle"]["CyTOF"]["analysis"] == [2]
-            assert trial["file_bundle"]["WES"]["source"] == [3]
-        else:
-            assert trial["file_bundle"] == {}
+    [trial_json_1, trial_json_2] = res.json["_items"]
+    assert set(trial_json_1["file_bundle"]["CyTOF"]["source"]) == set([0, 1])
+    assert trial_json_1["file_bundle"]["CyTOF"]["analysis"] == [2]
+    assert trial_json_1["file_bundle"]["WES"]["source"] == [3]
+    assert trial_json_2["file_bundle"]["Participants Info"]["clinical"] == [4]
+    assert trial_json_2["file_bundle"]["mIF"]["analysis"] == [5]
 
     # Filtering by trial id seems to work when file bundles are included
     res = client.get("/trial_metadata?include_file_bundles=true&trial_ids=test-trial-1")

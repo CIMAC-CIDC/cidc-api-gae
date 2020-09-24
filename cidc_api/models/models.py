@@ -26,7 +26,7 @@ from sqlalchemy import (
     update,
     case,
     select,
-    literal,
+    literal_column,
 )
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -40,6 +40,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.engine.interfaces import ExecutionContext
 
 from cidc_schemas import prism, unprism, json_validation
+from sqlalchemy.sql.elements import literal
 
 from .files import (
     get_facet_groups_for_paths,
@@ -467,36 +468,6 @@ trial_metadata_validator: json_validation._Validator = json_validation.load_and_
 FileBundle = Dict[str, Dict[FilePurpose, List[int]]]
 
 
-def _build_file_bundle(files: List[dict]) -> FileBundle:
-    """
-    Given a list of `files` dictionarys with shape:
-    ```
-    {'type': <file type>, 'purpose': <file purpose>, 'id': <file db id>}
-    ```
-    return a "file bundle" with shape
-    ```
-    {
-        <type 1>: {
-            <purpose 1>: [<file id 1>, <file id 2>, ...],
-            <purpose 2>: [...]
-        },
-        <type 2>: {...}
-    }
-    ```
-    """
-    file_bundles: FileBundle = {}
-    for f in files:
-        if f["type"] is None:
-            continue
-        purpose: FilePurpose = f["purpose"] or "miscellaneous"
-        type_bundle = file_bundles.get(f["type"], {})
-        file_ids = type_bundle.get(purpose, [])
-        file_ids.append(f["id"])
-        type_bundle[purpose] = file_ids
-        file_bundles[f["type"]] = type_bundle
-    return file_bundles
-
-
 class TrialMetadata(CommonColumns):
     __tablename__ = "trial_metadata"
     # The CIMAC-determined trial id
@@ -651,38 +622,11 @@ class TrialMetadata(CommonColumns):
     @classmethod
     @with_default_session
     def list_with_file_bundles(cls, session: Session, **pagination_args):
-        """TODO: docstring"""
+        """List `TrialMetadata` records from the database along with their `file_bundle`s."""
         # Build a query that collects trials along with all files for that trial
-        query = (
-            session.query(
-                TrialMetadata,
-                # Aggregate files for this trial record as a JSON object with shape:
-                # [
-                #   {'type': <file1 type>, 'purpose': <file1 purpose>, 'id': <file1 id>},
-                #   {'type': <file2 type>, 'purpose': <file2 purpose>, 'id': <file2 id>},
-                #   ...
-                # ]
-                func.json_agg(
-                    func.json_build_object(
-                        "type",
-                        DownloadableFiles.consolidated_upload_type,
-                        "purpose",
-                        DownloadableFiles.file_purpose,
-                        "id",
-                        DownloadableFiles.id,
-                    )
-                ),
-            )
-            .filter(TrialMetadata.trial_id == DownloadableFiles.trial_id)
-            .group_by(TrialMetadata)
-        )
-        # The above query excludes trials with no files, so add them here
-        query = query.union_all(
-            session.query(TrialMetadata, literal("null")).filter(
-                TrialMetadata.trial_id.notin_(
-                    session.query(DownloadableFiles.trial_id).distinct()
-                )
-            )
+        file_bundle_query = DownloadableFiles.build_file_bundle_query()
+        query = session.query(cls, file_bundle_query.c.file_bundle).join(
+            file_bundle_query, TrialMetadata.trial_id == file_bundle_query.c.trial_id
         )
 
         # Apply pagination options to the query
@@ -691,13 +635,9 @@ class TrialMetadata(CommonColumns):
         # Run the query
         query_results = query.all()
 
-        # Build file bundles from the query results
+        # Add file bundles to the `file_bundle` attribute on each trial record
         trials: List[TrialMetadata] = []
-        for trial, files in query_results:
-            if files is None:
-                file_bundle: FileBundle = {}
-            else:
-                file_bundle = _build_file_bundle(files)
+        for trial, file_bundle in query_results:
             trial.file_bundle = file_bundle
             trials.append(trial)
 
@@ -1009,10 +949,6 @@ class DownloadableFiles(CommonColumns):
     def file_purpose(cls):
         return FILE_PURPOSE_CASE_CLAUSE
 
-    @property
-    def flat_object_url(self):
-        return self.object_url.replace("/", "_")
-
     @staticmethod
     def build_file_filter(
         trial_ids: List[str] = [], facets: List[List[str]] = [], user: Users = None
@@ -1154,6 +1090,80 @@ class DownloadableFiles(CommonColumns):
         the given GCS object url.
         """
         return session.query(DownloadableFiles).filter_by(object_url=object_url).one()
+
+    @classmethod
+    @with_default_session
+    def list_object_urls(
+        cls, ids: List[int], session: Session, filter_: Callable[[Query], Query]
+    ) -> List[str]:
+        """Get all object_urls for a batch of downloadable file record IDs"""
+        query = session.query(cls.object_url).filter(cls.id.in_(ids))
+        query = filter_(query)
+        return [r[0] for r in query.all()]
+
+    @classmethod
+    def build_file_bundle_query(cls) -> Query:
+        """
+        Build a query that selects nested file bundles from the downloadable files table.
+        The `file_bundles` query below should produce one bundle per unique `trial_id` that
+        appears in the downloadable files table. Each bundle will have shape like:
+        ```
+          {
+              <type 1>: {
+                <purpose 1>: [<file id 1>, <file id 2>, ...],
+                <purpose 2>: [...]
+              },
+              <type 2>: {...}
+          }
+        ```
+        where "type" is something like `"Olink"` or `"Participants Info"` and "purpose" is a `FilePurpose` string.
+        """
+        id_bundles = (
+            select(
+                [
+                    cls.trial_id,
+                    cls.consolidated_upload_type.label("type"),
+                    cls.file_purpose.label("purpose"),
+                    func.json_agg(cls.id).label("ids"),
+                ]
+            )
+            .group_by(cls.trial_id, cls.consolidated_upload_type, cls.file_purpose)
+            .alias("id_bundles")
+        )
+        purpose_bundles = (
+            select(
+                [
+                    literal_column("id_bundles.trial_id"),
+                    literal_column("id_bundles.type"),
+                    func.json_object_agg(
+                        func.coalesce(
+                            literal_column("id_bundles.purpose"), "miscellaneous"
+                        ),
+                        literal_column("id_bundles.ids"),
+                    ).label("purposes"),
+                ]
+            )
+            .select_from(id_bundles)
+            .group_by(
+                literal_column("id_bundles.trial_id"), literal_column("id_bundles.type")
+            )
+            .alias("purpose_bundles")
+        )
+        file_bundles = (
+            select(
+                [
+                    literal_column("purpose_bundles.trial_id").label("trial_id"),
+                    func.json_object_agg(
+                        func.coalesce(literal_column("purpose_bundles.type"), "other"),
+                        literal_column("purpose_bundles.purposes"),
+                    ).label("file_bundle"),
+                ]
+            )
+            .select_from(purpose_bundles)
+            .group_by(literal_column("purpose_bundles.trial_id"))
+            .alias("file_bundles")
+        )
+        return file_bundles
 
 
 # Query clause for computing a downloadable file's data category.

@@ -40,7 +40,7 @@ trial_filter_schema = {
 def list_trial_metadata(args, pagination_args):
     """List all trial metadata records."""
     user = get_current_user()
-    include_file_bundles = bundle_argname in args and args.pop(bundle_argname)
+    include_file_bundles = args.pop(bundle_argname, False)
     filter_ = TrialMetadata.build_trial_filter(user=user, **args)
     if include_file_bundles:
         trials = TrialMetadata.list_with_file_bundles(
