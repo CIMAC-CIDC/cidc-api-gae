@@ -1118,13 +1118,21 @@ class DownloadableFiles(CommonColumns):
         ```
         where "type" is something like `"Olink"` or `"Participants Info"` and "purpose" is a `FilePurpose` string.
         """
+        tid_col, type_col, purp_col, ids_col, purps_col = (
+            literal_column("trial_id"),
+            literal_column("type"),
+            literal_column("purpose"),
+            literal_column("ids"),
+            literal_column("purposes"),
+        )
+
         id_bundles = (
             select(
                 [
                     cls.trial_id,
-                    cls.consolidated_upload_type.label("type"),
-                    cls.file_purpose.label("purpose"),
-                    func.json_agg(cls.id).label("ids"),
+                    cls.consolidated_upload_type.label(type_col.key),
+                    cls.file_purpose.label(purp_col.key),
+                    func.json_agg(cls.id).label(ids_col.key),
                 ]
             )
             .group_by(cls.trial_id, cls.consolidated_upload_type, cls.file_purpose)
@@ -1133,34 +1141,28 @@ class DownloadableFiles(CommonColumns):
         purpose_bundles = (
             select(
                 [
-                    literal_column("id_bundles.trial_id"),
-                    literal_column("id_bundles.type"),
+                    tid_col,
+                    type_col,
                     func.json_object_agg(
-                        func.coalesce(
-                            literal_column("id_bundles.purpose"), "miscellaneous"
-                        ),
-                        literal_column("id_bundles.ids"),
-                    ).label("purposes"),
+                        func.coalesce(purp_col, "miscellaneous"), ids_col
+                    ).label(purps_col.key),
                 ]
             )
             .select_from(id_bundles)
-            .group_by(
-                literal_column("id_bundles.trial_id"), literal_column("id_bundles.type")
-            )
+            .group_by(tid_col, type_col)
             .alias("purpose_bundles")
         )
         file_bundles = (
             select(
                 [
-                    literal_column("purpose_bundles.trial_id").label("trial_id"),
+                    tid_col.label(tid_col.key),
                     func.json_object_agg(
-                        func.coalesce(literal_column("purpose_bundles.type"), "other"),
-                        literal_column("purpose_bundles.purposes"),
+                        func.coalesce(type_col, "other"), purps_col
                     ).label("file_bundle"),
                 ]
             )
             .select_from(purpose_bundles)
-            .group_by(literal_column("purpose_bundles.trial_id"))
+            .group_by(tid_col)
             .alias("file_bundles")
         )
         return file_bundles
