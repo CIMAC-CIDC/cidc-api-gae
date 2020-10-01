@@ -508,7 +508,7 @@ def test_extract_schema_and_xlsx_failures(
     cidc_api, url, data, error, message, clean_db, monkeypatch
 ):
     """
-    Test that we get the expected errors when trying to extract 
+    Test that we get the expected errors when trying to extract
     schema/template from a malformed request.
     """
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
@@ -974,6 +974,15 @@ def test_extra_metadata(cidc_api, clean_db, monkeypatch):
     res = client.post("/ingestion/extra-assay-metadata", data={"job_id": 123})
     assert res.status_code == 400
     assert "files" in res.json["_error"]["message"]
+
+    with open("data/npx_invalid.xlsx", "rb") as f:
+        res = client.post(
+            "/ingestion/extra-assay-metadata",
+            data={"job_id": 123, "uuid-1": (io.BytesIO(f.read()), "fname1")},
+        )
+    assert res.status == 400
+    assert "fname1" in res.json["_error"]["message"]
+    assert "cannot be parsed" in res.json["_error"]["message"]
 
     merge_extra_metadata = MagicMock()
     monkeypatch.setattr(

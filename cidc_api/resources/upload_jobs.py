@@ -593,12 +593,12 @@ def extra_assay_metadata():
     except ValueError as e:
         # thrown by parser itself if file cannot be parsed, e.g. wrong file uploaded
         # wrapped by merger to include uuid / assay_hint information, just use that message
-        raise BadRequest(f"{e!s}\nIs it the wrong format or file?")
+        # thrown by UploadJobs.merge_extra_metadata if job_id doesn't exist or is already merged
+        # thrown by getting artifact if uuid doesn't exist in the trial
+        raise BadRequest(f"{e!s}")
 
-    # TODO see if it's validation sort of error and return BadRequest
-    except Exception as e:
-        # TypeError thrown by parser itself if file is not the right type, i.e. internal error
-        raise e
+    # Uncaught i.e. internal errors
+    # TypeError thrown by parser itself if file is not the right type
 
     # TODO: return something here?
     return jsonify({})
