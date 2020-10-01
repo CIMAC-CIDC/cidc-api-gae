@@ -975,14 +975,30 @@ def test_extra_metadata(cidc_api, clean_db, monkeypatch):
     assert res.status_code == 400
     assert "files" in res.json["_error"]["message"]
 
-    with open("tests/resources/data/npx_invalid.xlsx", "rb") as f:
-        res = client.post(
-            "/ingestion/extra-assay-metadata",
-            data={"job_id": 123, "uuid-1": (io.BytesIO(f.read()), "fname1")},
-        )
+    with open("tests/resources/data/npx_valid.xlsx", "rb") as f:
+        valid_npx = f.read()
+    res = client.post(
+        "/ingestion/extra-assay-metadata",
+        data={"job_id": 123, "uuid-1": (io.BytesIO(valid_npx), "fname1")},
+    )
     assert res.status_code == 400
-    assert "fname1" in res.json["_error"]["message"]
-    assert "cannot be parsed" in res.json["_error"]["message"]
+    assert "123" in res.json["_error"]["message"]
+
+    with open("tests/resources/data/npx_invalid.xlsx", "rb") as f:
+        invalid_npx = f.read()
+    res = client.post(
+        ASSAY_UPLOAD, data=form_data("olink.xlsx", io.BytesIO(valid_npx), "olink")
+    ).json()
+    job_id = res["job_id"]
+    extra_metadata = res["extra_metadata"]
+
+    res = client.post(
+        "/ingestion/extra-assay-metadata",
+        data={
+            "job_id": job_id,
+            extra_metadata.keys()[0]: (io.BytesIO(invalid_npx), "olink"),
+        },
+    )
 
     merge_extra_metadata = MagicMock()
     monkeypatch.setattr(
@@ -991,11 +1007,7 @@ def test_extra_metadata(cidc_api, clean_db, monkeypatch):
 
     res = client.post(
         "/ingestion/extra-assay-metadata",
-        data={
-            "job_id": 123,
-            "uuid-1": (io.BytesIO(b"fake file 1"), "fname1"),
-            "uuid-2": (io.BytesIO(b"fake file 2"), "fname2"),
-        },
+        data={"job_id": job_id, "uuid-1": (io.BytesIO(b"fake file 1"), "fname1")},
     )
     assert res.status_code == 200
     merge_extra_metadata.assert_called()
