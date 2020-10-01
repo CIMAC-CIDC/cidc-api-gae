@@ -989,6 +989,8 @@ def test_extra_metadata(cidc_api, clean_db, monkeypatch):
     res = client.post(
         ASSAY_UPLOAD, data=form_data("olink.xlsx", io.BytesIO(valid_npx), "olink")
     )
+    if res.status_code != 200:
+        print(res.json["_error"]["message"])
     assert res.status_code == 200
     job_id = res.json["job_id"]
     extra_metadata = res.json["extra_metadata"]
