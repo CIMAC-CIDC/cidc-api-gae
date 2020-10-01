@@ -988,7 +988,7 @@ def test_extra_metadata(cidc_api, clean_db, monkeypatch):
         invalid_npx = f.read()
     res = client.post(
         ASSAY_UPLOAD, data=form_data("olink.xlsx", io.BytesIO(valid_npx), "olink")
-    ).json()
+    ).json
     job_id = res["job_id"]
     extra_metadata = res["extra_metadata"]
 
