@@ -977,6 +977,9 @@ def test_extra_metadata(cidc_api, clean_db, monkeypatch):
 
     with open("tests/resources/data/npx_valid.xlsx", "rb") as f:
         valid_npx = f.read()
+    with open("tests/resources/data/npx_invalid.xlsx", "rb") as f:
+        invalid_npx = f.read()
+
     res = client.post(
         "/ingestion/extra-assay-metadata",
         data={"job_id": 123, "uuid-1": (io.BytesIO(valid_npx), "fname1")},
@@ -984,22 +987,15 @@ def test_extra_metadata(cidc_api, clean_db, monkeypatch):
     assert res.status_code == 400
     assert "123" in res.json["_error"]["message"]
 
-    with open("tests/resources/data/npx_invalid.xlsx", "rb") as f:
-        invalid_npx = f.read()
-    res = client.post(
-        ASSAY_UPLOAD, data=form_data("olink.xlsx", io.BytesIO(valid_npx), "olink")
-    )
-    if res.status_code != 200:
-        print(res.json["_error"]["message"])
-    assert res.status_code == 200
-    job_id = res.json["job_id"]
-    extra_metadata = res.json["extra_metadata"]
+    job_id, _ = setup_upload_jobs(cidc_api)
 
     res = client.post(
         "/ingestion/extra-assay-metadata",
         data={
             "job_id": job_id,
-            extra_metadata.keys()[0]: (io.BytesIO(invalid_npx), "olink"),
+            extra_metadata.keys()[0]: form_data(
+                "olink.xlsx", io.BytesIO(valid_npx), "olink"
+            ),
         },
     )
 
