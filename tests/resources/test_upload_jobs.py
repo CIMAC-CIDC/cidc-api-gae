@@ -980,7 +980,7 @@ def test_extra_metadata(cidc_api, clean_db, monkeypatch):
             "/ingestion/extra-assay-metadata",
             data={"job_id": 123, "uuid-1": (io.BytesIO(f.read()), "fname1")},
         )
-    assert res.status == 400
+    assert res.status_code == 400
     assert "fname1" in res.json["_error"]["message"]
     assert "cannot be parsed" in res.json["_error"]["message"]
 
