@@ -975,7 +975,7 @@ def test_extra_metadata(cidc_api, clean_db, monkeypatch):
     assert res.status_code == 400
     assert "files" in res.json["_error"]["message"]
 
-    with open("data/npx_invalid.xlsx", "rb") as f:
+    with open("tests/resources/data/npx_invalid.xlsx", "rb") as f:
         res = client.post(
             "/ingestion/extra-assay-metadata",
             data={"job_id": 123, "uuid-1": (io.BytesIO(f.read()), "fname1")},
