@@ -1000,6 +1000,8 @@ def test_extra_metadata(cidc_api, clean_db, monkeypatch):
             "uuid-1": form_data("olink.xlsx", io.BytesIO(valid_npx), "olink"),
         },
     )
+    if res.status_code != 200:
+        print(res.json["_error"]["message"])
     assert res.status_code == 200
     merge_extra_metadata.assert_called()
 
