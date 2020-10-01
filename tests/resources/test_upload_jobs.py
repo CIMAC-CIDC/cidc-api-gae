@@ -987,24 +987,18 @@ def test_extra_metadata(cidc_api, clean_db, monkeypatch):
     assert res.status_code == 400
     assert "123" in res.json["_error"]["message"]
 
-    job_id, _ = setup_upload_jobs(cidc_api)
+    merge_extra_metadata = MagicMock()
+    monkeypatch.setattr(
+        "cidc_api.models.UploadJobs.merge_extra_metadata", merge_extra_metadata
+    )
 
+    job_id, _ = setup_upload_jobs(cidc_api)
     res = client.post(
         "/ingestion/extra-assay-metadata",
         data={
             "job_id": job_id,
             "uuid-1": form_data("olink.xlsx", io.BytesIO(valid_npx), "olink"),
         },
-    )
-
-    merge_extra_metadata = MagicMock()
-    monkeypatch.setattr(
-        "cidc_api.models.UploadJobs.merge_extra_metadata", merge_extra_metadata
-    )
-
-    res = client.post(
-        "/ingestion/extra-assay-metadata",
-        data={"job_id": job_id, "uuid-1": (io.BytesIO(b"fake file 1"), "fname1")},
     )
     assert res.status_code == 200
     merge_extra_metadata.assert_called()
