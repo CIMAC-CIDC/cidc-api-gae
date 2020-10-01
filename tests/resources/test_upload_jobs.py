@@ -993,9 +993,7 @@ def test_extra_metadata(cidc_api, clean_db, monkeypatch):
         "/ingestion/extra-assay-metadata",
         data={
             "job_id": job_id,
-            extra_metadata.keys()[0]: form_data(
-                "olink.xlsx", io.BytesIO(valid_npx), "olink"
-            ),
+            "uuid-1": form_data("olink.xlsx", io.BytesIO(valid_npx), "olink"),
         },
     )
 
