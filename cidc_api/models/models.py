@@ -790,7 +790,7 @@ class UploadJobs(CommonColumns):
 
         job = UploadJobs.find_by_id(job_id, session=session)
 
-        if job is None or job.status == UploadJobs.MERGE_COMPLETED:
+        if job is None or job.status == UploadJobStatus.MERGE_COMPLETED:
             raise ValueError(f"Upload job {job_id} doesn't exist or is already merged")
 
         print(f"About to merge extra md to {job.id}/{job.status}")
