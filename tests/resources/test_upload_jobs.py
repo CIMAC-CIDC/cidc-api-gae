@@ -957,12 +957,11 @@ def test_poll_upload_merge_status(cidc_api, clean_db, monkeypatch):
         )
 
 
-def test_extra_metadata(cidc_api, clean_db, monkeypatch):
-    """Ensure the extra assay metadata endpoint follows the expected execution flow"""
+def test_extra_assay_metadata(cidc_api, monkeypatch):
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
     make_cimac_biofx_user(user_id, cidc_api)
-
     client = cidc_api.test_client()
+
     res = client.post("/ingestion/extra-assay-metadata")
     assert res.status_code == 400
     assert "Expected form" in res.json["_error"]["message"]
@@ -975,35 +974,77 @@ def test_extra_metadata(cidc_api, clean_db, monkeypatch):
     assert res.status_code == 400
     assert "files" in res.json["_error"]["message"]
 
-    with open("tests/resources/data/npx_valid.xlsx", "rb") as f:
-        valid_npx = f.read()
-    with open("tests/resources/data/npx_invalid.xlsx", "rb") as f:
-        invalid_npx = f.read()
+    with monkeypatch.context():
+        merge_extra_metadata = MagicMock()
+        merge_extra_metadata.return_value = Mock()  # not caught
+        monkeypatch.settattr(
+            "cidc_api.models.UploadJobs.merge_extra_metadata", merge_extra_metadata
+        )
+        res = client.post(
+            "/ingestion/extra-assay-metadata",
+            data={"job_id": 123},
+            files={"uuid-1": "filename"},
+        )
+        assert res.status_code == 200
+        merge_extra_metadata.assert_called_once()
 
-    res = client.post(
-        "/ingestion/extra-assay-metadata",
-        data={"job_id": 123, "uuid-1": (io.BytesIO(valid_npx), "fname1")},
-    )
-    assert res.status_code == 400
-    assert "123" in res.json["_error"]["message"]
+    with monkeypatch.context():
+        find_by_id = MagicMock()
+        find_by_id.return_value = None
+        monkeypatch.settattr("cidc_api.models.UploadJobs.find_by_id", find_by_id)
+        res = client.post(
+            "/ingestion/extra-assay-metadata",
+            data={"job_id": 123},
+            files={"uuid-1": "filename"},
+        )
+        assert res.status_code == 400
+        find_by_id.assert_called_once_with(123)
+        assert "123 doesn't exist" in res.json["_error"]["message"]
 
-    job_id, _ = setup_upload_jobs(cidc_api)
-    res = client.post(
-        "/ingestion/extra-assay-metadata",
-        data={
-            "job_id": job_id,
-            "uuid-1": form_data("olink.xlsx", io.BytesIO(valid_npx), "olink"),
-        },
-    )
-    assert res.status_code == 400
-    assert "files in request" in res.json["_error"]["message"]
+    with monkeypatch.context():
+        merge_artifact_extra_metadata = MagicMock()
+        merge_artifact_extra_metadata.return_value = ("md patch", "artifact", "nothing")
+        monkeypatch.settattr(
+            "cidc_schemas.prism.merge_artifact_extra_metadata",
+            merge_artifact_extra_metadata,
+        )
+        res = client.post(
+            "/ingestion/extra-assay-metadata",
+            data={"job_id": 123},
+            files={"uuid-1": "filename"},
+        )
+        assert res.status_code == 200
+        merge_artifact_extra_metadata.assert_called_once()
 
-    # merge_extra_metadata = MagicMock()
-    # monkeypatch.setattr(
-    #     "cidc_api.models.UploadJobs.merge_extra_metadata", merge_extra_metadata
-    # )
-    # TODO add test that actually passes
-    # merge_extra_metadata.assert_called()
+    with monkeypatch.context():
+        merge_artifact_extra_metadata = MagicMock()
+        merge_artifact_extra_metadata.side_effect = ValueError("testing")
+        monkeypatch.settattr(
+            "cidc_schemas.prism.merge_artifact_extra_metadata",
+            merge_artifact_extra_metadata,
+        )
+        res = client.post(
+            "/ingestion/extra-assay-metadata",
+            data={"job_id": 123},
+            files={"uuid-1": "filename"},
+        )
+        assert res.status_code == 400  # ValueError should get translated to BadRequest
+        assert "testing" in res.json["_error"]["message"]
+
+    with monkeypatch.context():
+        merge_artifact_extra_metadata = MagicMock()
+        merge_artifact_extra_metadata.side_effect = TypeError("testing")
+        monkeypatch.settattr(
+            "cidc_schemas.prism.merge_artifact_extra_metadata",
+            merge_artifact_extra_metadata,
+        )
+        res = client.post(
+            "/ingestion/extra-assay-metadata",
+            data={"job_id": 123},
+            files={"uuid-1": "filename"},
+        )
+        assert res.status_code == 500  # TypeError should be a server error
+        assert "testing" in res.json["_error"]["message"]
 
 
 def test_merge_extra_metadata(cidc_api, clean_db, monkeypatch):
