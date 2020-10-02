@@ -958,9 +958,6 @@ def test_poll_upload_merge_status(cidc_api, clean_db, monkeypatch):
 
 
 def test_extra_assay_metadata(cidc_api, monkeypatch):
-    user_id = setup_trial_and_user(cidc_api, monkeypatch)
-    make_cimac_biofx_user(user_id, cidc_api)
-
     client = cidc_api.test_client()
 
     res = client.post("/ingestion/extra-assay-metadata")
