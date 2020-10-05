@@ -989,15 +989,12 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
         merge_extra_metadata.assert_called_once()
 
     with monkeypatch.context():
-        find_by_id = MagicMock()
-        find_by_id.return_value = None
-        monkeypatch.setattr("cidc_api.models.UploadJobs.find_by_id", find_by_id)
         res = client.post(
             "/ingestion/extra-assay-metadata",
             data={"job_id": 987, "uuid-1": (io.BytesIO(b"fake file"), "fname1")},
         )
         assert res.status_code == 400
-        find_by_id.assert_called_once_with(123)
+        find_by_id.assert_called_once_with(987)
         assert "987 doesn't exist" in res.json["_error"]["message"]
 
     with monkeypatch.context():
