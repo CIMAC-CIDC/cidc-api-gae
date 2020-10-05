@@ -977,7 +977,7 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
 
     with monkeypatch.context():
         merge_extra_metadata = MagicMock()
-        merge_extra_metadata.return_value = Mock()  # not caught
+        merge_extra_metadata.return_value = MagicMock()  # not caught
         monkeypatch.settattr(
             "cidc_api.models.UploadJobs.merge_extra_metadata", merge_extra_metadata
         )
