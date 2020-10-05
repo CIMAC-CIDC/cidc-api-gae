@@ -978,7 +978,7 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
     with monkeypatch.context():
         merge_extra_metadata = MagicMock()
         merge_extra_metadata.return_value = MagicMock()  # not caught
-        monkeypatch.settattr(
+        monkeypatch.setattr(
             "cidc_api.models.UploadJobs.merge_extra_metadata", merge_extra_metadata
         )
         res = client.post(
@@ -992,7 +992,7 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
     with monkeypatch.context():
         find_by_id = MagicMock()
         find_by_id.return_value = None
-        monkeypatch.settattr("cidc_api.models.UploadJobs.find_by_id", find_by_id)
+        monkeypatch.setattr("cidc_api.models.UploadJobs.find_by_id", find_by_id)
         res = client.post(
             "/ingestion/extra-assay-metadata",
             data={"job_id": 123},
@@ -1005,7 +1005,7 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
     with monkeypatch.context():
         merge_artifact_extra_metadata = MagicMock()
         merge_artifact_extra_metadata.return_value = ("md patch", "artifact", "nothing")
-        monkeypatch.settattr(
+        monkeypatch.setattr(
             "cidc_schemas.prism.merge_artifact_extra_metadata",
             merge_artifact_extra_metadata,
         )
@@ -1020,7 +1020,7 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
     with monkeypatch.context():
         merge_artifact_extra_metadata = MagicMock()
         merge_artifact_extra_metadata.side_effect = ValueError("testing")
-        monkeypatch.settattr(
+        monkeypatch.setattr(
             "cidc_schemas.prism.merge_artifact_extra_metadata",
             merge_artifact_extra_metadata,
         )
@@ -1035,7 +1035,7 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
     with monkeypatch.context():
         merge_artifact_extra_metadata = MagicMock()
         merge_artifact_extra_metadata.side_effect = TypeError("testing")
-        monkeypatch.settattr(
+        monkeypatch.setattr(
             "cidc_schemas.prism.merge_artifact_extra_metadata",
             merge_artifact_extra_metadata,
         )
