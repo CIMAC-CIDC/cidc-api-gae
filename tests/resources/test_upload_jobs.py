@@ -1016,7 +1016,7 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
         )
         if res.status_code != 200:
             with cidc_api.app_context():
-                raise Exception(UploadJobs.find_by_id(job_id).status)
+                raise Exception(UploadJobs.find_by_id(job_id))
         assert res.status_code == 200
         merge_artifact_extra_metadata.assert_called_once()
 
