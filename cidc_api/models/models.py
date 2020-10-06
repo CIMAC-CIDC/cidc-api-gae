@@ -839,7 +839,6 @@ class UploadJobs(CommonColumns):
         """
 
         job = UploadJobs.find_by_id(job_id, session=session)
-        raise Exception(str(job))
 
         if job is None or job.status == UploadJobStatus.MERGE_COMPLETED:
             raise ValueError(f"Upload job {job_id} doesn't exist or is already merged")

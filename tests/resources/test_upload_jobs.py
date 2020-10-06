@@ -976,6 +976,15 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
     assert "files" in res.json["_error"]["message"]
 
     with monkeypatch.context():
+        res = client.post(
+            "/ingestion/extra-assay-metadata",
+            data={"job_id": 987, "uuid-1": (io.BytesIO(b"fake file"), "fname1")},
+        )
+        assert res.status_code == 400
+        find_by_id.assert_called_once_with(987)
+        assert "987 doesn't exist" in res.json["_error"]["message"]
+
+    with monkeypatch.context():
         merge_extra_metadata = MagicMock()
         merge_extra_metadata.return_value = MagicMock()  # not caught
         monkeypatch.setattr(
@@ -987,15 +996,6 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
         )
         assert res.status_code == 200
         merge_extra_metadata.assert_called_once()
-
-    with monkeypatch.context():
-        res = client.post(
-            "/ingestion/extra-assay-metadata",
-            data={"job_id": 987, "uuid-1": (io.BytesIO(b"fake file"), "fname1")},
-        )
-        assert res.status_code == 400
-        find_by_id.assert_called_once_with(987)
-        assert "987 doesn't exist" in res.json["_error"]["message"]
 
     with monkeypatch.context():
         merge_artifact_extra_metadata = MagicMock()
