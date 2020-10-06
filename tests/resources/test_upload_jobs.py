@@ -960,6 +960,7 @@ def test_poll_upload_merge_status(cidc_api, clean_db, monkeypatch):
 def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
     make_cimac_biofx_user(user_id, cidc_api)
+    job_id, _ = setup_upload_jobs(cidc_api)
 
     client = cidc_api.test_client()
 
@@ -991,10 +992,16 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
         )
         res = client.post(
             "/ingestion/extra-assay-metadata",
-            data={"job_id": 123, "uuid-1": (io.BytesIO(b"fake file"), "fname1")},
+            data={"job_id": job_id, "uuid-1": (io.BytesIO(b"fake file"), "fname1")},
         )
         assert res.status_code == 200
         merge_extra_metadata.assert_called_once()
+
+    # reset the job's status
+    with cidc_api.app_context():
+        UploadJobs.get_by_id(job_id)._set_status_no_validation(
+            UploadJobStatus.STARTED.value
+        )
 
     with monkeypatch.context() as m:
         merge_artifact_extra_metadata = MagicMock()
