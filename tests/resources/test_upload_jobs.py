@@ -1012,7 +1012,7 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
         )
         res = client.post(
             "/ingestion/extra-assay-metadata",
-            data={"job_id": 123, "uuid-1": (io.BytesIO(b"fake file"), "fname1")},
+            data={"job_id": job_id, "uuid-1": (io.BytesIO(b"fake file"), "fname1")},
         )
         if res.status_code != 200:
             with cidc_api.app_context():
