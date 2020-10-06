@@ -997,12 +997,6 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
         assert res.status_code == 200
         merge_extra_metadata.assert_called_once()
 
-    # reset the job's status
-    with cidc_api.app_context():
-        upload_job = UploadJobs.find_by_id(job_id)
-        upload_job._set_status_no_validation(UploadJobStatus.STARTED.value)
-        upload_job.update()
-
     with monkeypatch.context() as m:
         merge_artifact_extra_metadata = MagicMock()
         merge_artifact_extra_metadata.return_value = ("md patch", {}, "nothing")
@@ -1028,7 +1022,7 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
         )
         res = client.post(
             "/ingestion/extra-assay-metadata",
-            data={"job_id": 123, "uuid-1": (io.BytesIO(b"fake file"), "fname1")},
+            data={"job_id": job_id, "uuid-1": (io.BytesIO(b"fake file"), "fname1")},
         )
         assert res.status_code == 400  # ValueError should get translated to BadRequest
         assert "testing" in res.json["_error"]["message"]
@@ -1042,7 +1036,7 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
         )
         res = client.post(
             "/ingestion/extra-assay-metadata",
-            data={"job_id": 123, "uuid-1": (io.BytesIO(b"fake file"), "fname1")},
+            data={"job_id": job_id, "uuid-1": (io.BytesIO(b"fake file"), "fname1")},
         )
         assert res.status_code == 500  # TypeError should be a server error
         assert "testing" in res.json["_error"]["message"]
