@@ -999,9 +999,9 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
 
     # reset the job's status
     with cidc_api.app_context():
-        UploadJobs.find_by_id(job_id)._set_status_no_validation(
-            UploadJobStatus.STARTED.value
-        )
+        upload_job = UploadJobs.find_by_id(job_id)
+        upload_job._set_status_no_validation(UploadJobStatus.STARTED.value)
+        upload_job.update()
 
     with monkeypatch.context() as m:
         merge_artifact_extra_metadata = MagicMock()
