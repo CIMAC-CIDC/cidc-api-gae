@@ -999,7 +999,7 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
 
     # reset the job's status
     with cidc_api.app_context():
-        UploadJobs.get_by_id(job_id)._set_status_no_validation(
+        UploadJobs.find_by_id(job_id)._set_status_no_validation(
             UploadJobStatus.STARTED.value
         )
 
