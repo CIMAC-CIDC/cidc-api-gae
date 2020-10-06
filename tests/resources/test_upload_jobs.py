@@ -1039,7 +1039,6 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
             data={"job_id": job_id, "uuid-1": (io.BytesIO(b"fake file"), "fname1")},
         )
         assert res.status_code == 500  # TypeError should be a server error
-        assert "testing" in res.json["_error"]["message"]
 
 
 def test_merge_extra_metadata(cidc_api, clean_db, monkeypatch):
