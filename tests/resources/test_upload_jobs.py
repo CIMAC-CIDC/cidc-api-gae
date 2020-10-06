@@ -1007,6 +1007,8 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
             "/ingestion/extra-assay-metadata",
             data={"job_id": 123, "uuid-1": (io.BytesIO(b"fake file"), "fname1")},
         )
+        if res.status_code != 200:
+            raise res.json["_error"]["message"]
         assert res.status_code == 200
         merge_artifact_extra_metadata.assert_called_once()
 
