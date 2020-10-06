@@ -1005,7 +1005,7 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
 
     with monkeypatch.context() as m:
         merge_artifact_extra_metadata = MagicMock()
-        merge_artifact_extra_metadata.return_value = ("md patch", "artifact", "nothing")
+        merge_artifact_extra_metadata.return_value = ("md patch", {}, "nothing")
         m.setattr(
             "cidc_schemas.prism.merge_artifact_extra_metadata",
             merge_artifact_extra_metadata,
