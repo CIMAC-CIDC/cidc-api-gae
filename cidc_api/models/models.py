@@ -994,9 +994,11 @@ class DownloadableFiles(CommonColumns):
               has an associated `cimac_id`.
             * isn't sample-specific, and relates to the same `data_category_prefix`.
         """
+        # If this file has an associated sample, get other files associated with that sample.
+        # Otherwise, get other non-sample-specific files for this trial and data category.
         if self.cimac_id is not None:
             query = text(
-                "SELECT downloadable_files.* "
+                "SELECT DISTINCT downloadable_files.* "
                 "FROM downloadable_files, LATERAL jsonb_each_text(additional_metadata) addm_kv "
                 "WHERE addm_kv.value LIKE :cimac_id AND trial_id = :trial_id AND id != :id"
             )
@@ -1009,8 +1011,6 @@ class DownloadableFiles(CommonColumns):
                 session.execute(query, params), DownloadableFiles
             )
         else:
-            # If a file's additional metadata JSON has no key that ends with `.cimac_id`,
-            # then we consider that file "not sample specific".
             not_sample_specific = not_(
                 literal_column("additional_metadata::text").like('%.cimac_id":%')
             )
@@ -1264,10 +1264,5 @@ FILE_PURPOSE_CASE_CLAUSE = case(
 def result_proxy_to_models(
     result_proxy: ResultProxy, model: BaseModel
 ) -> List[BaseModel]:
-    model_instances = []
-    for row_proxy in result_proxy:
-        row_dict = {}
-        for key, value in row_proxy.items():
-            row_dict[key] = value
-        model_instances.append(model(**row_dict))
-    return model_instances
+    """Materialize a sqlalchemy `result_proxy` iterable as a list of `model` instances"""
+    return [model(**dict(row_proxy.items())) for row_proxy in result_proxy]
