@@ -28,7 +28,6 @@ from sqlalchemy import (
     select,
     literal_column,
     not_,
-    or_,
 )
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
