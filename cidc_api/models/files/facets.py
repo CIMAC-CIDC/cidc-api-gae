@@ -200,6 +200,11 @@ assay_facets: Facets = {
         "Images": FacetConfig(["/ihc/ihc_image."]),
         "Combined Markers": FacetConfig(["csv|ihc marker combined"]),
     },
+    "TCR": {
+        "Source": FacetConfig(
+            ["/tcr/r1.fastq.gz", "/tcr/r2.fastq.gz", "/tcr/i1.fastq.gz", "/tcr/i2.fastq.gz"]
+        ),
+    },
 }
 
 clinical_facets: Facets = {
