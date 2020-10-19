@@ -203,12 +203,13 @@ assay_facets: Facets = {
     "TCR": {
         "Source": FacetConfig(
             [
-                "/tcr/r1.fastq.gz",
-                "/tcr/r2.fastq.gz",
-                "/tcr/i1.fastq.gz",
-                "/tcr/i2.fastq.gz",
+                "/tcr/replicate_/r1.fastq.gz",
+                "/tcr/replicate_/r2.fastq.gz",
+                "/tcr/replicate_/i1.fastq.gz",
+                "/tcr/replicate_/i2.fastq.gz",
             ]
-        )
+        ),
+        "Misc.": FacetConfig(["/tcr/SampleSheet.csv"]),
     },
 }
 
