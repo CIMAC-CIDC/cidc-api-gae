@@ -7,7 +7,7 @@ from flask_migrate import Migrate, upgrade
 from werkzeug.exceptions import HTTPException
 from marshmallow.exceptions import ValidationError
 
-from cidc_schemas.template import generate_all_templates
+from cidc_schemas.template import generate_all_templates, convert_all_apis
 
 from .config.db import init_db
 from .config.settings import SETTINGS
@@ -19,6 +19,9 @@ app.config.update(SETTINGS)
 
 # Enable CORS
 CORS(app, resources={r"*": {"origins": app.config["ALLOWED_CLIENT_URL"]}})
+
+# convert all ngs-pipeline-api output_API.json into template.json
+convert_all_apis()
 
 # Generate empty Excel templates
 generate_all_templates(app.config["TEMPLATES_DIR"])
