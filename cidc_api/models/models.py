@@ -28,6 +28,7 @@ from sqlalchemy import (
     select,
     literal_column,
     not_,
+    distinct,
 )
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -691,6 +692,53 @@ class TrialMetadata(CommonColumns):
             filters.append(cls.trial_id.in_(permitted_trials))
         # possible TODO: filter by assays in a trial
         return lambda q: q.filter(*filters)
+
+    @classmethod
+    @with_default_session
+    def get_metadata_counts(cls, session: Session) -> dict:
+        """
+        Return a dictionary with the following structure:
+        ```
+            {
+                "num_trials": <count of all trials>,
+                "num_participants": <count of all participants across all trials>,
+                "num_samples": <count of all samples across all participants across all trials>
+            }
+        ```
+        """
+        # Count all trials, participants, and samples in the database
+        query = (
+            select(
+                [
+                    func.count(distinct(literal_column("trial_id"))),
+                    func.count("participants"),
+                    func.sum(
+                        func.jsonb_array_length(
+                            literal_column("participants->'samples'")
+                        )
+                    ),
+                ]
+            )
+            .select_from(
+                select(
+                    [
+                        cls.trial_id,
+                        func.jsonb_array_elements(
+                            literal_column("metadata_json->'participants'")
+                        ).label("participants"),
+                    ]
+                ).alias("p")
+            )
+            .limit(1)
+        )
+
+        [(num_trials, num_participants, num_samples)] = session.execute(query)
+
+        return {
+            "num_trials": num_trials,
+            "num_participants": num_participants,
+            "num_samples": num_samples,
+        }
 
 
 class UploadJobStatus(EnumBaseClass):
