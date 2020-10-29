@@ -707,29 +707,23 @@ class TrialMetadata(CommonColumns):
         ```
         """
         # Count all trials, participants, and samples in the database
-        query = (
+        query = select(
+            [
+                func.count(distinct(literal_column("trial_id"))),
+                func.count("participants"),
+                func.sum(
+                    func.jsonb_array_length(literal_column("participants->'samples'"))
+                ),
+            ]
+        ).select_from(
             select(
                 [
-                    func.count(distinct(literal_column("trial_id"))),
-                    func.count("participants"),
-                    func.sum(
-                        func.jsonb_array_length(
-                            literal_column("participants->'samples'")
-                        )
-                    ),
+                    cls.trial_id,
+                    func.jsonb_array_elements(
+                        literal_column("metadata_json->'participants'")
+                    ).label("participants"),
                 ]
-            )
-            .select_from(
-                select(
-                    [
-                        cls.trial_id,
-                        func.jsonb_array_elements(
-                            literal_column("metadata_json->'participants'")
-                        ).label("participants"),
-                    ]
-                ).alias("p")
-            )
-            .limit(1)
+            ).alias("p")
         )
 
         [(num_trials, num_participants, num_samples)] = session.execute(query)
