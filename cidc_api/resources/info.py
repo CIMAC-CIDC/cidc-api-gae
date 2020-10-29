@@ -49,11 +49,13 @@ def extra_data_types():
 def data_overview():
     """Return an overview of data ingested into the system"""
     metadata_counts = TrialMetadata.get_metadata_counts()
-    file_count = DownloadableFiles.count()
+    num_files = DownloadableFiles.count()
+    num_bytes = DownloadableFiles.get_total_bytes()
     return jsonify(
         {
             **metadata_counts,
-            "num_files": file_count,
+            "num_files": num_files,
+            "num_bytes": num_bytes,
             "num_assays": len(prism.SUPPORTED_ASSAYS),
         }
     )

@@ -86,7 +86,7 @@ def test_info_data_overview(cidc_api, clean_db):
                 data_format="",
                 facet_group="/wes/r2_.fastq.gz",  # this is what makes this file "related"
                 uploaded_timestamp=datetime.now(),
-                file_size_bytes=0,
+                file_size_bytes=2,
                 file_name="",
             ).insert()
 
@@ -100,6 +100,7 @@ def test_info_data_overview(cidc_api, clean_db):
         "num_participants": 15,
         "num_samples": 40,
         "num_files": 3,
+        "num_bytes": 6,
     }
 
 

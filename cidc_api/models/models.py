@@ -1326,6 +1326,12 @@ class DownloadableFiles(CommonColumns):
         )
         return file_bundles
 
+    @classmethod
+    @with_default_session
+    def get_total_bytes(cls, session: Session) -> int:
+        """Get the total number of bytes of data stored across all files."""
+        return session.query(func.sum(cls.file_size_bytes)).one()[0]
+
 
 # Query clause for computing a downloadable file's data category.
 # Used above in the DownloadableFiles.data_category computed property.
