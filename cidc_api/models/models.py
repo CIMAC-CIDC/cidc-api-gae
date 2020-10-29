@@ -28,7 +28,6 @@ from sqlalchemy import (
     select,
     literal_column,
     not_,
-    distinct,
 )
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -707,26 +706,17 @@ class TrialMetadata(CommonColumns):
         ```
         """
         # Count all trials, participants, and samples in the database
-        query = select(
-            [
-                func.count(distinct(literal_column("trial_id"))),
-                func.count("participants"),
-                func.sum(
-                    func.jsonb_array_length(literal_column("participants->'samples'"))
-                ),
-            ]
-        ).select_from(
-            select(
-                [
-                    cls.trial_id,
-                    func.jsonb_array_elements(
-                        literal_column("metadata_json->'participants'")
-                    ).label("participants"),
-                ]
-            ).alias("p")
+        [(num_trials, num_participants, num_samples)] = session.execute(
+            """
+            SELECT
+                COUNT(DISTINCT trial_id),
+                COUNT(participants),
+                SUM(jsonb_array_length(participants->'samples'))
+            FROM
+                trial_metadata,
+                LATERAL jsonb_array_elements(metadata_json->'participants') participants;
+            """
         )
-
-        [(num_trials, num_participants, num_samples)] = session.execute(query)
 
         return {
             "num_trials": num_trials,
