@@ -32,6 +32,7 @@ def mock_gcloud_client(monkeypatch) -> MagicMock:
     NOTE: only mocks usages of these methods within the `cidc_api.models.models` module.
     """
     gcloud_client = MagicMock()
+    gcloud_client.confirm_account_approval = MagicMock()
     gcloud_client.revoke_download_access = MagicMock()
     gcloud_client.grant_download_access = MagicMock()
 

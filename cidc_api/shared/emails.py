@@ -31,15 +31,15 @@ def sendable(email_template):
 def confirm_account_approval(user) -> dict:
     """Send a message to the user confirming that they are approved to use the CIDC."""
 
-    subject = "CIDC Registration Approval"
+    subject = "CIDC Account Approval"
 
     html_content = f"""
     <p>Hello {user.first_n} {user.last_n},</p>
     <p>
-        Your registration for the CIMAC-CIDC Data Portal has now been approved. 
+        Your registration for the CIMAC-CIDC Portal is now approved. 
         To continue to the Portal, visit https://portal.cimac-network.org.
     </p>
-    <p>If you have any questions, please email us at cidc@jimmy.harvard.edu.</p>
+    <p>If you haven't already, please reach out to cidc@jimmy.harvard.edu to request access to data for particular trials and assays.</p>
     <p>Thanks,<br/>The CIDC Project Team</p>
     """
 
