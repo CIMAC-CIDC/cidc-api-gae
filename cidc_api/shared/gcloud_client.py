@@ -1,18 +1,18 @@
 """Utilities for interacting with the Google Cloud Platform APIs."""
 import json
 import datetime
+import warnings
 from collections import namedtuple
 from concurrent.futures import Future
-from typing import List
+from typing import List, Tuple, Optional
 from typing.io import BinaryIO
 
 import requests
-from requests.exceptions import Timeout
 
-from google.cloud import storage
-from google.cloud import pubsub
+from google.cloud import storage, pubsub
 
 from ..config.settings import (
+    GOOGLE_DOWNLOAD_ROLE,
     GOOGLE_UPLOAD_ROLE,
     GOOGLE_UPLOAD_BUCKET,
     GOOGLE_UPLOAD_TOPIC,
@@ -21,9 +21,11 @@ from ..config.settings import (
     GOOGLE_EMAILS_TOPIC,
     GOOGLE_PATIENT_SAMPLE_TOPIC,
     GOOGLE_ARTIFACT_UPLOAD_TOPIC,
+    GOOGLE_MAX_DOWNLOAD_PERMISSIONS,
     TESTING,
     ENV,
     DEV_CFUNCTIONS_SERVER,
+    INACTIVE_USER_DAYS,
 )
 
 
@@ -115,6 +117,167 @@ def revoke_upload_access(user_email: str):
     policy[GOOGLE_UPLOAD_ROLE].discard(f"user:{user_email}")
     print(f"{GOOGLE_UPLOAD_ROLE} binding updated to {policy[GOOGLE_UPLOAD_ROLE]}")
     bucket.set_iam_policy(policy)
+
+
+def grant_download_access(user_email: str, trial_id: str, upload_type: str):
+    """
+    Give a user download access to all objects in a trial of a particular upload type.
+    """
+    url_prefix, prefix_expression = _build_prefix_clause(trial_id, upload_type)
+
+    print(f"Granting download access on {url_prefix}* to {user_email}")
+
+    # get the current IAM policy for the data bucket
+    bucket = _get_bucket(GOOGLE_DATA_BUCKET)
+    # see https://cloud.google.com/storage/docs/access-control/using-iam-permissions#code-samples_3
+    policy = bucket.get_iam_policy(requested_policy_version=3)
+    policy.version = 3
+
+    # try to find the policy binding for this user if one exists
+    binding = _find_and_pop_download_binding(policy, user_email, prefix_expression)
+    # build a new binding if no existing binding was found
+    if binding is None:
+        binding = _build_download_binding(user_email, prefix_expression)
+
+    # (re)insert the binding into the policy
+    policy.bindings.append(binding)
+    bucket.set_iam_policy(policy)
+
+
+def revoke_download_access(user_email: str, trial_id: str, upload_type: str):
+    """
+    Revoke a user's download access to all objects in a trial of a particular upload type.
+    """
+    url_prefix, prefix_expression = _build_prefix_clause(trial_id, upload_type)
+
+    print(f"Revoking download access on {url_prefix}* from {user_email}")
+
+    # get the current IAM policy for the data bucket
+    bucket = _get_bucket(GOOGLE_DATA_BUCKET)
+    # see https://cloud.google.com/storage/docs/access-control/using-iam-permissions#code-samples_3
+    policy = bucket.get_iam_policy(requested_policy_version=3)
+    policy.version = 3
+
+    # find and remove all matching policy bindings for this user if any exist
+    for i in range(GOOGLE_MAX_DOWNLOAD_PERMISSIONS):
+        removed_binding = _find_and_pop_download_binding(
+            policy, user_email, prefix_expression
+        )
+        if removed_binding is None:
+            if i == 0:
+                warnings.warn(
+                    f"Tried to revoke a non-existent download IAM permission for {user_email}/{trial_id}/{upload_type}"
+                )
+            break
+
+    bucket.set_iam_policy(policy)
+
+
+# Arbitrary upper bound on the number of GCS bindings we expect a user to have
+MAX_REVOKE_ALL_ITERATIONS = 250
+
+
+def revoke_all_download_access(user_email: str):
+    """
+    Completely revoke a user's download access to all objects in the data bucket.
+    """
+    # get the current IAM policy for the data bucket
+    bucket = _get_bucket(GOOGLE_DATA_BUCKET)
+    # see https://cloud.google.com/storage/docs/access-control/using-iam-permissions#code-samples_3
+    policy = bucket.get_iam_policy(requested_policy_version=3)
+    policy.version = 3
+
+    # find and pop all download role policy bindings for this user
+    for _ in range(MAX_REVOKE_ALL_ITERATIONS):
+        # this finds and removes *any* download binding for the given user_email
+        if _find_and_pop_download_binding(policy, user_email, "") is None:
+            break
+
+    bucket.set_iam_policy(policy)
+
+
+def _build_prefix_clause(trial_id: str, upload_type: str) -> Tuple[str, str]:
+    """
+    Build the object URL prefix and CEL IAM condition for restricting downloads to objects 
+    belonging to the given trial_id and upload_type.
+
+    See: https://cloud.google.com/storage/docs/access-control/iam#conditions
+    """
+    # convert, e.g., wes_bam -> wes, cytof_analysis -> cytof, participants info -> participants
+    broad_upload_type = upload_type.lower().replace(" ", "_").split("_", 1)[0]
+
+    # build the prefix check expression
+    url_prefix = f"{trial_id}/{broad_upload_type}"
+    prefix_expression = f'resource.name.startsWith("projects/_/buckets/{GOOGLE_DATA_BUCKET}/objects/{url_prefix}")'
+
+    return url_prefix, prefix_expression
+
+
+def _build_ttl_clause(days_until_expiry: int = INACTIVE_USER_DAYS) -> str:
+    """
+    Build the time-to-live CEL IAM condition for restricting GCS download permissions' lifetimes
+    to `days_until_expiry` days.
+    """
+    grant_until_date = (
+        (datetime.datetime.now() + datetime.timedelta(days_until_expiry))
+        .date()
+        .isoformat()
+    )
+    ttl_expression = f'request.time < timestamp("{grant_until_date}T00:00:00Z")'
+    return ttl_expression
+
+
+def _build_download_expression(prefix_clause: str, ttl_clause: str) -> str:
+    return " && ".join([prefix_clause, ttl_clause])
+
+
+def _find_and_pop_download_binding(
+    policy: storage.bucket.Policy, user_email: str, prefix_clause: str
+) -> Optional[dict]:
+    """
+    Find a download policy binding for the given `user_email` on `policy`, and pop
+    it from the policy's bindings list if it exists.
+    """
+    member_id = f"user:{user_email}"
+
+    # try to find the policy binding on the `policy`
+    user_binding_index = None
+    for i, binding in enumerate(policy.bindings):
+        user_is_member = binding.get("members") == {member_id}
+        role_is_download = binding.get("role") == GOOGLE_DOWNLOAD_ROLE
+        has_prefix = prefix_clause in binding.get("condition", {}).get("expression", "")
+        if user_is_member and role_is_download and has_prefix:
+            # a user should be a member of no more than one conditional download binding
+            if user_binding_index is not None:
+                warnings.warn(
+                    f"Found multiple conditional download bindings for {user_email}/{prefix_clause}. This is an invariant violation - "
+                    "check out permissions on the CIDC data bucket in the GCS console to debug."
+                )
+                break
+            user_binding_index = i
+
+    binding = (
+        policy.bindings.pop(user_binding_index)
+        if user_binding_index is not None
+        else None
+    )
+
+    return binding
+
+
+def _build_download_binding(user_email: str, prefix_clause: str) -> dict:
+    member_id = f"user:{user_email}"
+    ttl_clause = _build_ttl_clause()
+
+    return {
+        "role": GOOGLE_DOWNLOAD_ROLE,
+        "members": {member_id},
+        "condition": {
+            "title": f"Conditional download access for {user_email}",
+            "description": f"Auto-updated by the CIDC API on {datetime.datetime.now()}",
+            "expression": _build_download_expression(prefix_clause, ttl_clause),
+        },
+    }
 
 
 def get_signed_url(
@@ -220,7 +383,6 @@ def send_email(to_emails: List[str], subject: str, html_content: str, **kw):
     Publish an email-to-send to the emails topic.
     `kw` are expected to be sendgrid json api style additional email parameters. 
     """
-
     # Don't actually send an email if this is a test
     if TESTING or ENV == "dev":
         print(f"Would send email with subject '{subject}' to {to_emails}")

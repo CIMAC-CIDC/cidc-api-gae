@@ -68,6 +68,11 @@ class DownloadableFileSchema(BaseSchema):
     class Meta(BaseSchema.Meta):
         model = DownloadableFiles
 
+    file_ext = fields.Str(dump_only=True)
+    data_category = fields.Str(dump_only=True)
+    data_category_prefix = fields.Str(dump_only=True)
+    cimac_id = fields.Str(dump_only=True)
+
 
 DownloadableFileListSchema = _make_list_schema(DownloadableFileSchema())
 
@@ -83,6 +88,8 @@ PermissionListSchema = _make_list_schema(PermissionSchema())
 class TrialMetadataSchema(BaseSchema):
     class Meta(BaseSchema.Meta):
         model = TrialMetadata
+
+    file_bundle = fields.Dict(dump_only=True)
 
 
 TrialMetadataListSchema = _make_list_schema(TrialMetadataSchema())

@@ -2,8 +2,8 @@
 
 | Environment | Branch                                                                   | Status                                                                                                                                | Maintainability | Test Coverage |
 | ----------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---- |
-| production  | [production](https://github.com/CIMAC-CIDC/cidc-api-gae/tree/production) | [![Build Status](https://travis-ci.org/CIMAC-CIDC/cidc-api-gae.svg?branch=production)](https://travis-ci.org/CIMAC-CIDC/cidc-api-gae) | | |
-| staging     | [master](https://github.com/CIMAC-CIDC/cidc-api-gae)                     | [![Build Status](https://travis-ci.org/CIMAC-CIDC/cidc-api-gae.svg?branch=master)](https://travis-ci.org/CIMAC-CIDC/cidc-api-gae)     | [![Maintainability](https://api.codeclimate.com/v1/badges/71d93f067ea23efdc842/maintainability)](https://codeclimate.com/github/CIMAC-CIDC/cidc-api-gae/maintainability) | [![Test Coverage](https://api.codeclimate.com/v1/badges/71d93f067ea23efdc842/test_coverage)](https://codeclimate.com/github/CIMAC-CIDC/cidc-api-gae/test_coverage) |
+| production  | [production](https://github.com/CIMAC-CIDC/cidc-api-gae/tree/production) | [![Build Status](https://travis-ci.com/CIMAC-CIDC/cidc-api-gae.svg?branch=production)](https://travis-ci.com/CIMAC-CIDC/cidc-api-gae) | | |
+| staging     | [master](https://github.com/CIMAC-CIDC/cidc-api-gae)                     | [![Build Status](https://travis-ci.com/CIMAC-CIDC/cidc-api-gae.svg?branch=master)](https://travis-ci.com/CIMAC-CIDC/cidc-api-gae)     | [![Maintainability](https://api.codeclimate.com/v1/badges/71d93f067ea23efdc842/maintainability)](https://codeclimate.com/github/CIMAC-CIDC/cidc-api-gae/maintainability) | [![Test Coverage](https://api.codeclimate.com/v1/badges/71d93f067ea23efdc842/test_coverage)](https://codeclimate.com/github/CIMAC-CIDC/cidc-api-gae/test_coverage) |
 
 
 The next generation of the CIDC API, reworked to use Google Cloud-managed services. This API is built with the Eve REST API framework backed by Google Cloud SQL, running on Google App Engine.
@@ -53,11 +53,13 @@ psql -c "create user cidcdev with password '1234'"
 psql -c "create database cidc"
 psql -c "grant all privileges on database cidc to cidcdev"
 psql cidc -c "create extension citext"
+psql cidc -c "create extension pgcrypto"
 
 # Database to use for automated testing
 psql -c "create database cidctest"
 psql -c "grant all privileges on database cidctest to cidcdev"
 psql cidctest -c "create extension citext"
+psql cidctest -c "create extension pgcrypto"
 ```
 Now, you should be able to connect to your development database with the URI `postgresql://cidcdev:1234@localhost:5432/cidc`. Or, in the postgres REPL:
 ```bash

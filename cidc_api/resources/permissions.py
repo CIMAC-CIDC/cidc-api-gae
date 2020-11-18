@@ -3,7 +3,7 @@ from typing import List
 from webargs import fields
 from webargs.flaskparser import use_args
 from flask import Blueprint
-from werkzeug.exceptions import Unauthorized, NotFound, BadRequest
+from werkzeug.exceptions import Unauthorized, NotFound, BadRequest, InternalServerError
 
 from ..models import (
     Permissions,
@@ -11,10 +11,12 @@ from ..models import (
     PermissionListSchema,
     CIDCRole,
     IntegrityError,
+    NoResultFound,
+    IAMException,
 )
 from ..shared.auth import get_current_user, requires_auth
 from ..shared.rest_utils import (
-    lookup,
+    with_lookup,
     marshal_response,
     unmarshal_request,
     delete_response,
@@ -28,7 +30,7 @@ permission_list_schema = PermissionListSchema()
 
 @permissions_bp.route("/", methods=["GET"])
 @requires_auth("permissions")
-@use_args({"user_id": fields.Str()}, location="query")
+@use_args({"user_id": fields.Int()}, location="query")
 @marshal_response(permission_list_schema)
 def list_permissions(args: dict):
     """
@@ -61,7 +63,7 @@ def list_permissions(args: dict):
 
 @permissions_bp.route("/<int:permission>", methods=["GET"])
 @requires_auth("permissions_item")
-@lookup(Permissions, "permission")
+@with_lookup(Permissions, "permission")
 @marshal_response(permission_schema)
 def get_permission(permission: Permissions) -> Permissions:
     """Look up the permission record with id `permission_id`."""
@@ -80,21 +82,32 @@ def get_permission(permission: Permissions) -> Permissions:
 @marshal_response(permission_schema, 201)
 def create_permission(permission: Permissions) -> Permissions:
     """Create a new permission record."""
-    granter = get_current_user()
-    permission.granted_by_user = granter.id
+    if permission.granted_by_user is None:
+        granter = get_current_user()
+        permission.granted_by_user = granter.id
     try:
         permission.insert()
     except IntegrityError as e:
         raise BadRequest(str(e.orig))
+    except IAMException as e:
+        # We return info on this internal error, since this is an admin-only endpoint
+        raise InternalServerError(str(e))
 
     return permission
 
 
 @permissions_bp.route("/<int:permission>", methods=["DELETE"])
 @requires_auth("permissions_item", allowed_roles=[CIDCRole.ADMIN.value])
-@lookup(Permissions, "permission", check_etag=True)
+@with_lookup(Permissions, "permission", check_etag=True)
 def delete_permission(permission: Permissions):
     """Delete a permission record."""
-    permission.delete()
+    try:
+        deleter = get_current_user()
+        permission.delete(deleted_by=deleter)
+    except NoResultFound as e:
+        raise NotFound(str(e.orig))
+    except IAMException as e:
+        # We return info on this internal error, since this is an admin-only endpoint
+        raise InternalServerError(str(e))
 
     return delete_response()

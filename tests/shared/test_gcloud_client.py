@@ -8,34 +8,34 @@ from cidc_api.config import settings
 from cidc_api.shared.gcloud_client import (
     grant_upload_access,
     revoke_upload_access,
-    publish_upload_success,
-    send_email,
+    grant_download_access,
+    revoke_download_access,
+    revoke_all_download_access,
     _xlsx_gcs_uri_format,
     upload_xlsx_to_gcs,
     _pseudo_blob,
+    _build_download_binding,
 )
 from cidc_api.config.settings import (
     GOOGLE_UPLOAD_ROLE,
     GOOGLE_UPLOAD_BUCKET,
     GOOGLE_DATA_BUCKET,
+    GOOGLE_DOWNLOAD_ROLE,
 )
 
 EMAIL = "test@email.com"
 
 
-def _mock_gcloud_storage(members, set_iam_policy_fn, monkeypatch):
+def _mock_gcloud_storage(bindings, set_iam_policy_fn, monkeypatch):
     api_request = MagicMock()
-    api_request.return_value = {
-        "bindings": [{"role": GOOGLE_UPLOAD_ROLE, "members": ["rando"] + members}]
-    }
+    api_request.return_value = {"bindings": bindings}
     monkeypatch.setattr("google.cloud._http.JSONConnection.api_request", api_request)
 
     def set_iam_policy(self, policy):
-        assert "rando" in policy[GOOGLE_UPLOAD_ROLE]
-        set_iam_policy_fn(self, policy)
+        set_iam_policy_fn(policy)
 
     monkeypatch.setattr(
-        "google.cloud.storage.bucket.Bucket.set_iam_policy", set_iam_policy_fn
+        "google.cloud.storage.bucket.Bucket.set_iam_policy", set_iam_policy
     )
 
     # mocking `google.cloud.storage.Client()` to not actually create a client
@@ -45,21 +45,155 @@ def _mock_gcloud_storage(members, set_iam_policy_fn, monkeypatch):
 
 
 def test_grant_upload_access(monkeypatch):
-    def set_iam_policy(self, policy):
+    def set_iam_policy(policy):
+        assert f"user:rando" in policy[GOOGLE_UPLOAD_ROLE]
         assert f"user:{EMAIL}" in policy[GOOGLE_UPLOAD_ROLE]
 
-    _mock_gcloud_storage([], set_iam_policy, monkeypatch)
+    _mock_gcloud_storage(
+        [{"role": GOOGLE_UPLOAD_ROLE, "members": ["user:rando"]}],
+        set_iam_policy,
+        monkeypatch,
+    )
 
     grant_upload_access(EMAIL)
 
 
 def test_revoke_upload_access(monkeypatch):
-    def set_iam_policy(self, policy):
+    def set_iam_policy(policy):
+        assert f"user:rando" in policy[GOOGLE_UPLOAD_ROLE]
         assert f"user:{EMAIL}" not in policy[GOOGLE_UPLOAD_ROLE]
 
-    _mock_gcloud_storage([f"user:{EMAIL}"], set_iam_policy, monkeypatch)
+    _mock_gcloud_storage(
+        [{"role": GOOGLE_UPLOAD_ROLE, "members": ["user:rando", f"user:{EMAIL}"]}],
+        set_iam_policy,
+        monkeypatch,
+    )
 
     revoke_upload_access(EMAIL)
+
+
+def test_grant_download_access(monkeypatch):
+    """Check that grant_download_access adds policy bindings as expected"""
+    bindings = [
+        # Role without a condition
+        {"role": "some-other-role", "members": {f"user:JohnDoe"}}
+    ]
+
+    # Check simple binding creation
+    def set_iam_policy(policy):
+        bindings = policy.bindings
+        assert len(bindings) == 1
+        [binding] = bindings
+        assert binding["members"] == {f"user:{EMAIL}"}
+        assert binding["role"] == GOOGLE_DOWNLOAD_ROLE
+        condition = binding["condition"]
+        assert condition["title"] == f"Conditional download access for {EMAIL}"
+        assert "updated by the CIDC API" in condition["description"]
+        assert "10021/wes" in condition["expression"]
+
+    _mock_gcloud_storage([], set_iam_policy, monkeypatch)
+    grant_download_access(EMAIL, "10021", "wes_analysis")
+
+    matching_binding = _build_download_binding(
+        EMAIL,
+        'resource.name.startsWith("projects/_/buckets/cidc-data-staging/objects/10021/wes")',
+    )
+
+    def set_iam_policy(policy):
+        bindings = policy.bindings
+        assert len(bindings) == 2
+        assert matching_binding in bindings
+
+    # Check idempotence
+    _mock_gcloud_storage([matching_binding] + bindings, set_iam_policy, monkeypatch)
+    grant_download_access(EMAIL, "10021", "wes_analysis")
+
+    # Check adding a second binding
+    def set_iam_policy(policy):
+        bindings = policy.bindings
+        assert len(bindings) == 3
+        assert matching_binding in policy.bindings
+        assert any(
+            "10021/participants" in binding["condition"]["expression"]
+            for binding in policy.bindings
+            if "condition" in binding
+        )
+
+    _mock_gcloud_storage([matching_binding] + bindings, set_iam_policy, monkeypatch)
+    grant_download_access(EMAIL, "10021", "Participants Info")
+
+
+def test_revoke_download_access(monkeypatch):
+    bindings = [
+        _build_download_binding(
+            EMAIL,
+            'resource.name.startsWith("projects/_/buckets/cidc-data-staging/objects/10021/wes")',
+        ),
+        _build_download_binding(
+            EMAIL,
+            'resource.name.startsWith("projects/_/buckets/cidc-data-staging/objects/10021/cytof")',
+        ),
+        {"role": "some-other-role", "members": {f"user:JohnDoe"}},
+    ]
+
+    def set_iam_policy(policy):
+        assert len(policy.bindings) == 2
+        assert not any(
+            "10021/wes" in binding["condition"]["expression"]
+            for binding in policy.bindings
+            if "condition" in binding
+        )
+
+    # revocation on well-formed bindings
+    _mock_gcloud_storage(list(bindings), set_iam_policy, monkeypatch)
+    revoke_download_access(EMAIL, "10021", "wes")
+
+    # revocation when target binding doesn't exist
+    _mock_gcloud_storage(bindings[1:], set_iam_policy, monkeypatch)
+    revoke_download_access(EMAIL, "10021", "wes")
+
+    # revocation when target binding is duplicated
+    bindings = [
+        _build_download_binding(
+            EMAIL,
+            'resource.name.startsWith("projects/_/buckets/cidc-data-staging/objects/10021/wes")',
+        ),
+        _build_download_binding(
+            EMAIL,
+            'resource.name.startsWith("projects/_/buckets/cidc-data-staging/objects/10021/wes")',
+        ),
+        _build_download_binding(
+            EMAIL,
+            'resource.name.startsWith("projects/_/buckets/cidc-data-staging/objects/10021/cytof")',
+        ),
+        {"role": "some-other-role", "members": {f"user:JohnDoe"}},
+    ]
+    _mock_gcloud_storage(bindings, set_iam_policy, monkeypatch)
+    revoke_download_access(EMAIL, "10021", "wes")
+
+
+def test_revoke_all_download_access(monkeypatch):
+    bindings = [
+        {"members": {f"user:{EMAIL}"}, "role": "some-other-role"},
+        # This isn't realistic - more likely, there'd be different conditions
+        # associated with these duplicate bindings
+        {"members": {f"user:{EMAIL}"}, "role": GOOGLE_DOWNLOAD_ROLE},
+        {"members": {f"user:{EMAIL}"}, "role": GOOGLE_DOWNLOAD_ROLE},
+        {"members": {f"user:{EMAIL}"}, "role": GOOGLE_DOWNLOAD_ROLE},
+        {"members": {f"user:{EMAIL}"}, "role": GOOGLE_DOWNLOAD_ROLE},
+    ]
+
+    def set_iam_policy(policy):
+        assert len(policy.bindings) == 1
+        assert policy.bindings[0]["role"] != GOOGLE_DOWNLOAD_ROLE
+
+    # Deletion with many items
+    _mock_gcloud_storage(bindings, set_iam_policy, monkeypatch)
+    revoke_all_download_access(EMAIL)
+
+    # Idempotent deletion
+    _mock_gcloud_storage(bindings[:1], set_iam_policy, monkeypatch)
+    revoke_all_download_access(EMAIL)
 
 
 def test_xlsx_gcs_uri_format(monkeypatch):

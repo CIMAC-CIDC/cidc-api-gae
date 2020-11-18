@@ -1,7 +1,8 @@
 from flask import Blueprint
-from werkzeug.exceptions import BadRequest, NotFound
+from webargs import fields
+from werkzeug.exceptions import BadRequest
 
-from ..shared.auth import requires_auth
+from ..shared.auth import get_current_user, requires_auth
 from ..models import (
     CIDCRole,
     TrialMetadata,
@@ -10,7 +11,7 @@ from ..models import (
     IntegrityError,
 )
 from ..shared.rest_utils import (
-    lookup,
+    with_lookup,
     marshal_response,
     unmarshal_request,
     use_args_with_pagination,
@@ -25,13 +26,28 @@ partial_trial_metadata_schema = TrialMetadataSchema(partial=True)
 trial_modifier_roles = [CIDCRole.ADMIN.value, CIDCRole.NCI_BIOBANK_USER.value]
 
 
+bundle_argname = "include_file_bundles"
+trial_filter_schema = {
+    bundle_argname: fields.Bool(),
+    "trial_ids": fields.DelimitedList(fields.Str),
+}
+
+
 @trial_metadata_bp.route("/", methods=["GET"])
-@requires_auth("trial_metadata", trial_modifier_roles)
-@use_args_with_pagination({}, trial_metadata_schema)
+@requires_auth("trial_metadata")
+@use_args_with_pagination(trial_filter_schema, trial_metadata_schema)
 @marshal_response(trial_metadata_list_schema)
 def list_trial_metadata(args, pagination_args):
     """List all trial metadata records."""
-    trials = TrialMetadata.list(**pagination_args)
+    user = get_current_user()
+    include_file_bundles = args.pop(bundle_argname, False)
+    filter_ = TrialMetadata.build_trial_filter(user=user, **args)
+    if include_file_bundles:
+        trials = TrialMetadata.list_with_file_bundles(
+            filter_=filter_, **pagination_args
+        )
+    else:
+        trials = TrialMetadata.list(filter_=filter_, **pagination_args)
     count = TrialMetadata.count()
 
     return {"_items": trials, "_meta": {"total": count}}
@@ -53,7 +69,7 @@ def create_trial_metadata(trial):
 
 @trial_metadata_bp.route("/<string:trial>", methods=["GET"])
 @requires_auth("trial_metadata_item", trial_modifier_roles)
-@lookup(TrialMetadata, "trial", find_func=TrialMetadata.find_by_trial_id)
+@with_lookup(TrialMetadata, "trial", find_func=TrialMetadata.find_by_trial_id)
 @marshal_response(trial_metadata_schema)
 def get_trial_metadata_by_trial_id(trial):
     """Get one trial metadata record by trial identifier."""
@@ -62,7 +78,7 @@ def get_trial_metadata_by_trial_id(trial):
 
 @trial_metadata_bp.route("/<string:trial>", methods=["PATCH"])
 @requires_auth("trial_metadata_item", trial_modifier_roles)
-@lookup(
+@with_lookup(
     TrialMetadata, "trial", check_etag=True, find_func=TrialMetadata.find_by_trial_id
 )
 @unmarshal_request(partial_trial_metadata_schema, "trial_updates", load_sqla=False)

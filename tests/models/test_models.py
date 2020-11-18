@@ -1,9 +1,8 @@
 import io
-import sys
 from copy import deepcopy
 from functools import wraps
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
@@ -11,6 +10,7 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from cidc_api.app import app
 from cidc_api.models import (
+    CommonColumns,
     Users,
     TrialMetadata,
     UploadJobs,
@@ -20,6 +20,7 @@ from cidc_api.models import (
     UploadJobStatus,
     NoResultFound,
     ValidationMultiError,
+    CIDCRole,
 )
 from cidc_api.config.settings import (
     PAGINATION_PAGE_SIZE,
@@ -28,6 +29,8 @@ from cidc_api.config.settings import (
 )
 from cidc_schemas.prism import PROTOCOL_ID_FIELD_NAME
 from cidc_schemas import prism
+
+from ..utils import make_admin, mock_gcloud_client
 
 
 def db_test(test):
@@ -253,19 +256,22 @@ def test_disable_inactive_users(clean_db):
     """Check that the disable_inactive_users method disables users appropriately"""
     # Create two users who should be disabled, and one who should not
     now = datetime.now()
-    Users(email="1", _accessed=now - timedelta(days=INACTIVE_USER_DAYS)).insert()
-    Users(email="2", _accessed=now - timedelta(days=INACTIVE_USER_DAYS + 5)).insert()
-    Users(email="3", _accessed=now - timedelta(days=INACTIVE_USER_DAYS - 1)).insert()
+    Users(email="1@", _accessed=now - timedelta(days=INACTIVE_USER_DAYS)).insert()
+    Users(email="2@", _accessed=now - timedelta(days=INACTIVE_USER_DAYS + 5)).insert()
+    Users(email="3@", _accessed=now - timedelta(days=INACTIVE_USER_DAYS - 1)).insert()
 
     # All users start off enabled
     for user in Users.list():
         assert user.disabled == False
 
-    Users.disable_inactive_users()
+    disabled = Users.disable_inactive_users()
+    disabled = [u for u in disabled]
+
+    assert len(disabled)
 
     users = Users.list()
-    assert len([u for u in users if u.disabled])
-    assert [u for u in users if not u.disabled][0].email == "3"
+    assert len([u for u in users if u.disabled]) == len(disabled)
+    assert [u for u in users if not u.disabled][0].email == "3@"
 
 
 TRIAL_ID = "cimac-12345"
@@ -401,6 +407,25 @@ def test_create_assay_upload(clean_db):
 
 
 @db_test
+def test_upload_job_no_file_map(clean_db):
+    """Try to create an assay upload"""
+    new_user = Users.create(PROFILE)
+
+    metadata_patch = {PROTOCOL_ID_FIELD_NAME: TRIAL_ID}
+    gcs_xlsx_uri = "xlsx/assays/wes/12:0:1.5123095"
+
+    TrialMetadata.create(TRIAL_ID, METADATA)
+
+    new_job = UploadJobs.create(
+        prism.SUPPORTED_MANIFESTS[0], EMAIL, None, metadata_patch, gcs_xlsx_uri
+    )
+    assert list(new_job.upload_uris_with_data_uris_with_uuids()) == []
+
+    job = UploadJobs.find_by_id_and_email(new_job.id, PROFILE["email"])
+    assert list(job.upload_uris_with_data_uris_with_uuids()) == []
+
+
+@db_test
 def test_assay_upload_merge_extra_metadata(clean_db, monkeypatch):
     """Try to create an assay upload"""
     new_user = Users.create(PROFILE)
@@ -505,6 +530,15 @@ def test_create_downloadable_file_from_metadata(clean_db, monkeypatch):
 
     # Create the trial (to avoid violating foreign-key constraint)
     TrialMetadata.create(TRIAL_ID, METADATA)
+
+    # Create files with empty or "null" additional metadata
+    for nullish_value in ["null", None, {}]:
+        df = DownloadableFiles.create_from_metadata(
+            TRIAL_ID, "wes", file_metadata, additional_metadata=nullish_value
+        )
+        clean_db.refresh(df)
+        assert df.additional_metadata == {}
+
     # Create the file
     DownloadableFiles.create_from_metadata(
         TRIAL_ID, "wes", file_metadata, additional_metadata=additional_metadata
@@ -545,6 +579,36 @@ def test_create_downloadable_file_from_metadata(clean_db, monkeypatch):
 
 
 @db_test
+def test_downloadable_files_additional_metadata_default(clean_db):
+    TrialMetadata.create(TRIAL_ID, METADATA)
+    df = DownloadableFiles(
+        trial_id=TRIAL_ID,
+        upload_type="wes",
+        object_url="10021/Patient 1/sample 1/aliquot 1/wes_forward.fastq",
+        file_name="wes_forward.fastq",
+        file_size_bytes=1,
+        md5_hash="hash1234",
+        uploaded_timestamp=datetime.now(),
+        data_format="FASTQ",
+    )
+
+    # Check no value passed
+    df.insert()
+    assert df.additional_metadata == {}
+
+    for nullish_value in [None, "null", {}]:
+        df.additional_metadata = nullish_value
+        df.update()
+        assert df.additional_metadata == {}
+
+    # Non-nullish value doesn't get overridden
+    non_nullish_value = {"foo": "bar"}
+    df.additional_metadata = non_nullish_value
+    df.update()
+    assert df.additional_metadata == non_nullish_value
+
+
+@db_test
 def test_create_downloadable_file_from_blob(clean_db, monkeypatch):
     """Try to create a downloadable file from a GCS blob"""
     fake_blob = MagicMock()
@@ -566,7 +630,7 @@ def test_create_downloadable_file_from_blob(clean_db, monkeypatch):
         )
     )
     df = DownloadableFiles.create_from_blob(
-        "id", "pbmc", "Shipping Manifest", fake_blob
+        "id", "pbmc", "Shipping Manifest", "pbmc/shipping", fake_blob
     )
 
     # Mock artifact upload publishing
@@ -586,7 +650,7 @@ def test_create_downloadable_file_from_blob(clean_db, monkeypatch):
     fake_blob.size = 6
     fake_blob.md5_hash = "6"
     df = DownloadableFiles.create_from_blob(
-        "id", "pbmc", "Shipping Manifest", fake_blob
+        "id", "pbmc", "Shipping Manifest", "pbmc/shipping", fake_blob
     )
 
     # Check that the file was created
@@ -600,9 +664,81 @@ def test_create_downloadable_file_from_blob(clean_db, monkeypatch):
 
     # Check that artifact upload publishes
     DownloadableFiles.create_from_blob(
-        "id", "pbmc", "Shipping Manifest", fake_blob, alert_artifact_upload=True
+        "id",
+        "pbmc",
+        "Shipping Manifest",
+        "pbmc/shipping",
+        fake_blob,
+        alert_artifact_upload=True,
     )
     publisher.assert_called_once_with(fake_blob.name)
+
+
+def test_downloadable_files_data_category_prefix():
+    """Check that data_category_prefix's are derived as expected"""
+    file_w_category = DownloadableFiles(facet_group="/wes/r1_.fastq.gz")
+    assert file_w_category.data_category_prefix == "WES"
+
+    file_no_category = DownloadableFiles()
+    assert file_no_category.data_category_prefix == None
+
+
+@db_test
+def test_downloadable_files_get_related_files(clean_db):
+    # Create a trial to avoid constraint errors
+    TrialMetadata.create(trial_id=TRIAL_ID, metadata_json=METADATA)
+
+    # Convenience function for building file records
+    def create_df(facet_group, additional_metadata={}) -> DownloadableFiles:
+        df = DownloadableFiles(
+            facet_group=facet_group,
+            additional_metadata=additional_metadata,
+            trial_id=TRIAL_ID,
+            uploaded_timestamp=datetime.now(),
+            file_size_bytes=0,
+            file_name="",
+            data_format="",
+            object_url=facet_group,  # just filler, not relevant to the test
+            upload_type="",
+        )
+        df.insert()
+        clean_db.refresh(df)
+        return df
+
+    # Set up test data
+    cimac_id_1 = "CTTTPPP01.01"
+    cimac_id_2 = "CTTTPPP02.01"
+    files = [
+        create_df(
+            "/cytof/normalized_and_debarcoded.fcs", {"some.path.cimac_id": cimac_id_1}
+        ),
+        create_df(
+            "/cytof_analysis/assignment.csv",
+            # NOTE: this isn't realistic - assignment files aren't sample-specific - but
+            # it serves the purpose of the test.
+            {"path.cimac_id": cimac_id_1, "another.path.cimac_id": cimac_id_1},
+        ),
+        create_df("/cytof_analysis/source.fcs", {"path.to.cimac_id": cimac_id_2}),
+        create_df("/cytof_analysis/reports.zip"),
+        create_df("/cytof_analysis/analysis.zip"),
+        create_df("/wes/r1_.fastq.gz"),
+    ]
+
+    # Based on setup, we expect the following disjoint sets of related files:
+    related_file_groups = [
+        [files[0], files[1]],
+        [files[2]],
+        [files[3], files[4]],
+        [files[5]],
+    ]
+
+    # Check that get_related_files returns what we expect
+    for file_group in related_file_groups:
+        for file_record in file_group:
+            other_ids = [f.id for f in file_group if f.id != file_record.id]
+            related_files = file_record.get_related_files()
+            assert set([f.id for f in related_files]) == set(other_ids)
+            assert len(related_files) == len(other_ids)
 
 
 def test_with_default_session(cidc_api, clean_db):
@@ -640,3 +776,198 @@ def test_assay_upload_status():
                 )
             assert UploadJobStatus.is_valid_transition(upload, merge)
             assert not UploadJobStatus.is_valid_transition(merge, upload)
+
+
+@db_test
+def test_permissions_insert(clean_db, monkeypatch, capsys):
+    gcloud_client = mock_gcloud_client(monkeypatch)
+    user = Users(email="test@user.com")
+    user.insert()
+    trial = TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA)
+    trial.insert()
+
+    _insert = MagicMock()
+    monkeypatch.setattr(CommonColumns, "insert", _insert)
+
+    # if don't give granted_by_user
+    perm = Permissions(
+        granted_to_user=user.id, trial_id=trial.trial_id, upload_type="wes"
+    )
+    with pytest.raises(IntegrityError, match="`granted_by_user` user must be given"):
+        perm.insert()
+    _insert.assert_not_called()
+
+    # if give bad granted_by_user
+    _insert.reset_mock()
+    perm = Permissions(
+        granted_to_user=user.id,
+        trial_id=trial.trial_id,
+        upload_type="wes",
+        granted_by_user=999999,
+    )
+    with pytest.raises(IntegrityError, match="`granted_by_user` user must exist"):
+        perm.insert()
+    _insert.assert_not_called()
+
+    # if give bad granted_to_user
+    _insert.reset_mock()
+    perm = Permissions(
+        granted_to_user=999999,
+        trial_id=trial.trial_id,
+        upload_type="wes",
+        granted_by_user=user.id,
+    )
+    with pytest.raises(IntegrityError, match="`granted_to_user` user must exist"):
+        perm.insert()
+    _insert.assert_not_called()
+
+    # This one will work
+    _insert.reset_mock()
+    perm = Permissions(
+        granted_to_user=user.id,
+        trial_id=trial.trial_id,
+        upload_type="wes",
+        granted_by_user=user.id,
+    )
+    perm.insert()
+    _insert.assert_called_once()
+    captured = capsys.readouterr()
+    assert (
+        captured.out.strip()
+        == f"admin-action: {user.email} gave {user.email} the permission wes on {trial.trial_id}"
+    )
+
+
+@db_test
+def test_permissions_delete(clean_db, monkeypatch, capsys):
+    gcloud_client = mock_gcloud_client(monkeypatch)
+    user = Users(email="test@user.com")
+    user.insert()
+    trial = TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA)
+    trial.insert()
+    perm = Permissions(
+        granted_to_user=user.id,
+        trial_id=trial.trial_id,
+        upload_type="wes",
+        granted_by_user=user.id,
+    )
+    with capsys.disabled():
+        perm.insert()
+
+    # Deleting a record by a user doesn't exist leads to an error
+    gcloud_client.reset_mocks()
+    with pytest.raises(NoResultFound, match="no user with id"):
+        perm.delete(deleted_by=999999)
+
+    # Deletion of an existing permission leads to no error
+    gcloud_client.reset_mocks()
+    perm.delete(deleted_by=user.id)
+    gcloud_client.revoke_download_access.assert_called_once()
+    gcloud_client.grant_download_access.assert_not_called()
+    captured = capsys.readouterr()
+    assert (
+        captured.out.strip()
+        == f"admin-action: {user.email} removed from {user.email} the permission wes on {trial.trial_id}"
+    )
+
+    # Deleting an already-deleted record is idempotent
+    gcloud_client.reset_mocks()
+    perm.delete(deleted_by=user)
+    gcloud_client.revoke_download_access.assert_called_once()
+    gcloud_client.grant_download_access.assert_not_called()
+
+    # Deleting a record whose user doesn't exist leads to an error
+    gcloud_client.reset_mocks()
+    with pytest.raises(NoResultFound, match="no user with id"):
+        Permissions(granted_to_user=999999).delete(deleted_by=user)
+
+    gcloud_client.revoke_download_access.assert_not_called()
+    gcloud_client.grant_download_access.assert_not_called()
+
+
+@db_test
+def test_permissions_grant_all_iam_permissions(clean_db, monkeypatch):
+    """
+    Smoke test that Permissions.grant_all_iam_permissions calls grant_download_access the right arguments.
+    """
+    gcloud_client = mock_gcloud_client(monkeypatch)
+    user = Users(email="test@user.com")
+    user.insert()
+    trial = TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA)
+    trial.insert()
+
+    upload_types = ["wes", "cytof", "rna", "plasma"]
+    for upload_type in upload_types:
+        Permissions(
+            granted_to_user=user.id,
+            trial_id=trial.trial_id,
+            upload_type=upload_type,
+            granted_by_user=user.id,
+        ).insert()
+
+    Permissions.grant_all_iam_permissions()
+    gcloud_client.grant_download_access.assert_has_calls(
+        [call(user.email, trial.trial_id, upload_type) for upload_type in upload_types]
+    )
+
+    # not called on admins or nci biobank users
+    gcloud_client.grant_download_access.reset_mock()
+    for role in [CIDCRole.ADMIN.value, CIDCRole.NCI_BIOBANK_USER.value]:
+        user.role = role
+        user.update()
+        Permissions.grant_all_iam_permissions()
+        gcloud_client.grant_download_access.assert_not_called()
+
+
+@db_test
+def test_permissions_revoke_all_iam_permissions(clean_db, monkeypatch):
+    """
+    Smoke test that Permissions.revoke_all_iam_permissions calls revoke_download_access the right arguments.
+    """
+    gcloud_client = mock_gcloud_client(monkeypatch)
+    user = Users(email="test@user.com")
+    user.insert()
+    trial = TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA)
+    trial.insert()
+
+    upload_types = ["wes", "cytof", "rna", "plasma"]
+    for upload_type in upload_types:
+        Permissions(
+            granted_to_user=user.id,
+            trial_id=trial.trial_id,
+            upload_type=upload_type,
+            granted_by_user=user.id,
+        ).insert()
+
+    Permissions.revoke_all_iam_permissions()
+    gcloud_client.revoke_download_access.assert_has_calls(
+        [call(user.email, trial.trial_id, upload_type) for upload_type in upload_types]
+    )
+
+    # not called on admins or nci biobank users
+    gcloud_client.revoke_download_access.reset_mock()
+    for role in [CIDCRole.ADMIN.value, CIDCRole.NCI_BIOBANK_USER.value]:
+        user.role = role
+        user.update()
+        Permissions.revoke_all_iam_permissions()
+        gcloud_client.revoke_download_access.assert_not_called()
+
+
+@db_test
+def test_user_confirm_approval(clean_db, monkeypatch):
+    """Ensure that users are notified when their account goes from pending to approved."""
+    confirm_account_approval = MagicMock()
+    monkeypatch.setattr(
+        "cidc_api.shared.emails.confirm_account_approval", confirm_account_approval
+    )
+
+    user = Users(email="test@user.com")
+    user.insert()
+
+    # The confirmation email shouldn't be sent for updates unrelated to account approval
+    user.update(changes={"first_n": "foo"})
+    confirm_account_approval.assert_not_called()
+
+    # The confirmation email should be sent for updates related to account approval
+    user.update(changes={"approval_date": datetime.now()})
+    confirm_account_approval.assert_called_once_with(user, send_email=True)

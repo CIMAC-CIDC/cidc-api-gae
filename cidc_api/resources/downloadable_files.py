@@ -1,9 +1,10 @@
+from io import BytesIO
 from typing import List
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, send_file
 from webargs import fields
 from webargs.flaskparser import use_args
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import NotFound, Unauthorized
 
 
 from ..models import (
@@ -11,15 +12,12 @@ from ..models import (
     DownloadableFileSchema,
     DownloadableFileListSchema,
     Permissions,
+    facets,
 )
 from ..shared import gcloud_client
 from ..shared.auth import get_current_user, requires_auth
-from ..shared.rest_utils import (
-    lookup,
-    marshal_response,
-    unmarshal_request,
-    use_args_with_pagination,
-)
+from ..shared.rest_utils import with_lookup, marshal_response, use_args_with_pagination
+from ..config.settings import GOOGLE_DATA_BUCKET, MAX_PAGINATION_PAGE_SIZE
 
 downloadable_files_bp = Blueprint("downloadable_files", __name__)
 
@@ -27,16 +25,15 @@ downloadable_files_schema = DownloadableFileSchema()
 downloadable_files_list_schema = DownloadableFileListSchema()
 
 
-file_filter_params = {
-    "trial_ids": fields.DelimitedList(fields.Str(), default=[]),
-    "upload_types": fields.DelimitedList(fields.Str(), default=[]),
-    "analysis_friendly": fields.Bool(default=False),
+file_filter_schema = {
+    "trial_ids": fields.DelimitedList(fields.Str),
+    "facets": fields.DelimitedList(fields.DelimitedList(fields.Str, delimiter="|")),
 }
 
 
 @downloadable_files_bp.route("/", methods=["GET"])
 @requires_auth("downloadable_files")
-@use_args_with_pagination(file_filter_params, downloadable_files_schema)
+@use_args_with_pagination(file_filter_schema, downloadable_files_schema)
 @marshal_response(downloadable_files_list_schema)
 def list_downloadable_files(args, pagination_args):
     """List downloadable files that the current user is allowed to view."""
@@ -52,7 +49,7 @@ def list_downloadable_files(args, pagination_args):
 
 @downloadable_files_bp.route("/<int:downloadable_file>", methods=["GET"])
 @requires_auth("downloadable_files")
-@lookup(DownloadableFiles, "downloadable_file")
+@with_lookup(DownloadableFiles, "downloadable_file")
 @marshal_response(downloadable_files_schema)
 def get_downloadable_file(downloadable_file: DownloadableFiles) -> DownloadableFiles:
     """Get a single file by ID if the current user is allowed to view it."""
@@ -68,9 +65,66 @@ def get_downloadable_file(downloadable_file: DownloadableFiles) -> DownloadableF
     )
 
     if not perm:
-        raise NotFound()
+        raise Unauthorized()
 
     return downloadable_file
+
+
+@downloadable_files_bp.route("/<int:downloadable_file>/related_files", methods=["GET"])
+@requires_auth("downloadable_files")
+@with_lookup(DownloadableFiles, "downloadable_file")
+@marshal_response(downloadable_files_list_schema)
+def get_related_files(downloadable_file: DownloadableFiles):
+    """Get files related to the given `downloadable_file`."""
+    user = get_current_user()
+
+    if not user.is_admin() and not Permissions.find_for_user_trial_type(
+        user.id, downloadable_file.trial_id, downloadable_file.upload_type
+    ):
+        raise Unauthorized()
+
+    return {"_items": downloadable_file.get_related_files()}
+
+
+@downloadable_files_bp.route("/filelist", methods=["GET"])
+@requires_auth("filelist")
+@use_args(
+    {"file_ids": fields.DelimitedList(fields.Int, required=True)}, location="query"
+)
+def get_filelist(args):
+    """
+    Return a file `filelist.tsv` mapping GCS URIs to flat filenames for the
+    provided set of file ids.
+    """
+    # Build the permissions filter
+    current_user = get_current_user()
+    user_perms_filter = DownloadableFiles.build_file_filter(user=current_user)
+
+    # Get request object_urls
+    urls = DownloadableFiles.list_object_urls(
+        args["file_ids"], filter_=user_perms_filter
+    )
+
+    # If the query returned no files, respond with 404
+    if len(urls) == 0:
+        raise NotFound()
+
+    # Build TSV mapping GCS URIs to flat filenames
+    # (bytes because that's what send_file knows how to send)
+    tsv = b""
+    for url in urls:
+        flat_url = url.replace("/", "_")
+        full_gcs_uri = f"gs://{GOOGLE_DATA_BUCKET}/{url}"
+        tsv += bytes(f"{full_gcs_uri}\t{flat_url}\n", "utf-8")
+
+    buffer = BytesIO(tsv)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        attachment_filename="filelist.tsv",
+        mimetype="text/tsv",
+    )
 
 
 @downloadable_files_bp.route("/download_url", methods=["GET"])
@@ -115,16 +169,6 @@ def get_filter_facets():
         ...
     }
     """
-    user = get_current_user()
+    trial_ids = DownloadableFiles.get_distinct("trial_id")
 
-    if user.is_admin():
-        # Admins can facet on every trial or upload type
-        trial_ids = DownloadableFiles.get_distinct("trial_id")
-        upload_types = DownloadableFiles.get_distinct("upload_type")
-    else:
-        # Non-admins can only facet on what they have permission to view
-        user_filter = lambda q: q.filter(Permissions.granted_to_user == user.id)
-        trial_ids = Permissions.get_distinct("trial_id", filter_=user_filter)
-        upload_types = Permissions.get_distinct("upload_type", filter_=user_filter)
-
-    return jsonify({"trial_id": trial_ids, "upload_type": upload_types})
+    return jsonify({"trial_ids": trial_ids, "facets": facets.get_facet_info()})

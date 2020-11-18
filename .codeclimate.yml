@@ -2,7 +2,6 @@ version: "2"
 exclude_patterns:
   - "migrations/"
   - "tests/"
-  
 plugins:
   bandit:
     enabled: true
@@ -11,4 +10,7 @@ plugins:
     config:
       tests_patterns:
         - tests/**
-    
+checks:
+  method-complexity:
+    config:
+      threshold: 10

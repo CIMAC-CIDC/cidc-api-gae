@@ -29,11 +29,17 @@ ALLOWED_CLIENT_URL = environ.get("ALLOWED_CLIENT_URL")
 
 ### Configure miscellaneous constants ###
 TEMPLATES_DIR = path.join("/tmp", "templates")
-MIN_CLI_VERSION = "0.8.4"
+MIN_CLI_VERSION = "0.9.5"
 PAGINATION_PAGE_SIZE = 25
 MAX_PAGINATION_PAGE_SIZE = 200
 INACTIVE_USER_DAYS = 60
 
+### Configure prism encrypt ###
+if not TESTING:
+    secret_manager = get_secrets_manager()
+    PRISM_ENCRYPT_KEY = secret_manager.get("PRISM_ENCRYPT_KEY")
+else:
+    PRISM_ENCRYPT_KEY = environ.get("PRISM_ENCRYPT_KEY")
 
 ### Configure Flask-SQLAlchemy ###
 SQLALCHEMY_DATABASE_URI = get_sqlalchemy_database_uri(TESTING)
@@ -53,9 +59,14 @@ GOOGLE_UPLOAD_BUCKET = environ.get("GOOGLE_UPLOAD_BUCKET")
 GOOGLE_UPLOAD_TOPIC = environ.get("GOOGLE_UPLOAD_TOPIC")
 GOOGLE_DATA_BUCKET = environ.get("GOOGLE_DATA_BUCKET")
 GOOGLE_UPLOAD_ROLE = environ.get("GOOGLE_UPLOAD_ROLE")
+GOOGLE_DOWNLOAD_ROLE = "roles/storage.objectViewer"  # same across environments
 GOOGLE_PATIENT_SAMPLE_TOPIC = environ.get("GOOGLE_PATIENT_SAMPLE_TOPIC")
 GOOGLE_EMAILS_TOPIC = environ.get("GOOGLE_EMAILS_TOPIC")
 GOOGLE_ARTIFACT_UPLOAD_TOPIC = environ.get("GOOGLE_ARTIFACT_UPLOAD_TOPIC")
+# This is a limit set by GCP - there will never be more than this many
+# conditional bindings for a single member-role combo.
+# See: https://cloud.google.com/iam/docs/conditions-overview
+GOOGLE_MAX_DOWNLOAD_PERMISSIONS = 20
 
 ### File paths ###
 this_directory = path.dirname(path.abspath(__file__))
