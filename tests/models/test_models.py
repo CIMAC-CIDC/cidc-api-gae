@@ -474,7 +474,7 @@ def test_assay_upload_merge_extra_metadata(clean_db, monkeypatch):
 
 
 @db_test
-def test_assay_upload_ingestion_success(clean_db, monkeypatch, capsys):
+def test_assay_upload_ingestion_success(clean_db, monkeypatch, caplog):
     """Check that the ingestion success method works as expected"""
     new_user = Users.create(PROFILE)
     trial = TrialMetadata.create(TRIAL_ID, METADATA)
@@ -500,13 +500,17 @@ def test_assay_upload_ingestion_success(clean_db, monkeypatch, capsys):
     # Check that status was updated and email wasn't sent by default
     db_record = UploadJobs.find_by_id(assay_upload.id)
     assert db_record.status == UploadJobStatus.MERGE_COMPLETED.value
-    assert (
-        "Would send email with subject '[UPLOAD SUCCESS]" not in capsys.readouterr()[0]
+    assert all(
+        "Would send email with subject '[UPLOAD SUCCESS]" not in log_record.message
+        for log_record in caplog.records
     )
 
     # Check that email gets sent when specified
     assay_upload.ingestion_success(trial, send_email=True)
-    assert "Would send email with subject '[UPLOAD SUCCESS]" in capsys.readouterr()[0]
+    assert any(
+        "Would send email with subject '[UPLOAD SUCCESS]" in log_record.message
+        for log_record in caplog.records
+    )
 
 
 @db_test
@@ -779,7 +783,7 @@ def test_assay_upload_status():
 
 
 @db_test
-def test_permissions_insert(clean_db, monkeypatch, capsys):
+def test_permissions_insert(clean_db, monkeypatch, caplog):
     gcloud_client = mock_gcloud_client(monkeypatch)
     user = Users(email="test@user.com")
     user.insert()
@@ -831,15 +835,15 @@ def test_permissions_insert(clean_db, monkeypatch, capsys):
     )
     perm.insert()
     _insert.assert_called_once()
-    captured = capsys.readouterr()
-    assert (
-        captured.out.strip()
+    assert any(
+        log_record.message.strip()
         == f"admin-action: {user.email} gave {user.email} the permission wes on {trial.trial_id}"
+        for log_record in caplog.records
     )
 
 
 @db_test
-def test_permissions_delete(clean_db, monkeypatch, capsys):
+def test_permissions_delete(clean_db, monkeypatch, caplog):
     gcloud_client = mock_gcloud_client(monkeypatch)
     user = Users(email="test@user.com")
     user.insert()
@@ -851,8 +855,7 @@ def test_permissions_delete(clean_db, monkeypatch, capsys):
         upload_type="wes",
         granted_by_user=user.id,
     )
-    with capsys.disabled():
-        perm.insert()
+    perm.insert()
 
     # Deleting a record by a user doesn't exist leads to an error
     gcloud_client.reset_mocks()
@@ -864,10 +867,10 @@ def test_permissions_delete(clean_db, monkeypatch, capsys):
     perm.delete(deleted_by=user.id)
     gcloud_client.revoke_download_access.assert_called_once()
     gcloud_client.grant_download_access.assert_not_called()
-    captured = capsys.readouterr()
-    assert (
-        captured.out.strip()
+    assert any(
+        log_record.message.strip()
         == f"admin-action: {user.email} removed from {user.email} the permission wes on {trial.trial_id}"
+        for log_record in caplog.records
     )
 
     # Deleting an already-deleted record is idempotent

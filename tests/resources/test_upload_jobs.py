@@ -603,7 +603,7 @@ def test_admin_upload(cidc_api, clean_db, monkeypatch):
     assert res.status_code == 200
 
 
-def test_upload_manifest(cidc_api, clean_db, monkeypatch, capsys):
+def test_upload_manifest(cidc_api, clean_db, monkeypatch, caplog):
     """Ensure the upload_manifest endpoint follows the expected execution flow"""
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
     mocks = UploadMocks(monkeypatch)
@@ -618,7 +618,10 @@ def test_upload_manifest(cidc_api, clean_db, monkeypatch, capsys):
     assert res.status_code == 200
 
     # Check that upload alert email was "sent"
-    assert "Would send email with subject '[UPLOAD SUCCESS]" in capsys.readouterr()[0]
+    assert any(
+        "Would send email with subject '[UPLOAD SUCCESS]" in log_record.message
+        for log_record in caplog.records
+    )
 
     # Check that we tried to publish a patient/sample update
     mocks.publish_patient_sample_update.assert_called_once()
