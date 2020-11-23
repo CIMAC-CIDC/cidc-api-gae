@@ -7,7 +7,6 @@ FilePurpose = Literal["source", "analysis", "clinical", "miscellaneous"]
 
 class FileDetails(NamedTuple):
     file_purpose: FilePurpose
-    # long term, all files should have descriptions
     short_description: str
     long_description: str
 
@@ -316,7 +315,10 @@ details_dict = {
         "multi-image tiff of region-of-interest holding all of the individual component signals",
         "A multi-image TIFF of the region-of-interest that contains all of the individual components, one for each marker. Exported from inForm (PerkinElmer).",
     ),
-    "/mif/roi_/multispectral.im3": FileDetails("source", "", ""),
+    "/mif/roi_/multispectral.im3": FileDetails("source",
+        "a multispectral image in the PerkinElmer IM3 file",
+        "A multispectral image of the region-of-interest taken by Mantra, in the PerkinElmer IM3 file format. Used as input for inForm."
+    ),
     "/mif/roi_/binary_seg_maps.tif": FileDetails(
         "analysis",
         "multi-image tiff of region-of-interest holding all maps as binary in/out, from inForm",
