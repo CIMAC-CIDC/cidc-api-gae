@@ -231,7 +231,7 @@ def validate(template, xlsx):
         logger.info(f"validate passed")
         return jsonify(json)
     else:
-        logger.info(f"{len(error_list)} validation errors: [{error_list[0]!r}, ...]")
+        logger.error(f"{len(error_list)} validation errors: [{error_list[0]!r}, ...]")
         # The spreadsheet is invalid
         json["errors"] = error_list
         return jsonify(json)
@@ -252,7 +252,7 @@ def check_permissions(user, trial_id, template_type):
     if user.is_nci_user() and template_type in prism.SUPPORTED_MANIFESTS:
         return
     if not perm:
-        logger.info(
+        logger.error(
             f"Unauthorized attempt to access trial {trial_id} by {user.email!r}"
         )
         raise Unauthorized(
@@ -341,8 +341,7 @@ def upload_handler(allowed_types: List[str]):
             except prism.InvalidMergeTargetException as e:
                 # we have an invalid MD stored in db - users can't do anything about it.
                 # So we log it
-                logger.info(f"Internal error with trial {trial_id!r}", file=sys.stderr)
-                logger.info(e, file=sys.stderr)
+                logger.error(f"Internal error with trial {trial_id!r}\n{e}")
                 # and return an error. Though it's not BadRequest but rather an
                 # Internal Server error we report it like that, so it will be displayed
                 raise BadRequest(

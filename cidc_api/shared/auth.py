@@ -294,7 +294,10 @@ def _log_user_and_request_details(is_authorized: bool):
     user = get_current_user()
     log_msg += f" (user:{user.id}:{user.email})"
 
-    logger.info(log_msg)
+    if is_authorized:
+        logger.info(log_msg)
+    else:
+        logger.error(log_msg)
 
 
 def _enforce_cli_version():
@@ -311,7 +314,7 @@ def _enforce_cli_version():
     try:
         client, client_version = user_agent.split("/", 1)
     except ValueError:
-        logger.info(f"Unrecognized user-agent string format: {user_agent}")
+        logger.error(f"Unrecognized user-agent string format: {user_agent}")
         raise BadRequest("could not parse User-Agent string")
 
     # Old CLI versions don't update the User-Agent header, so we (perhaps dangerously)
