@@ -32,8 +32,6 @@ init_db(app)
 register_resources(app)
 
 # Check that its auth configuration is validate
-from .shared.auth import validate_api_auth
-
 validate_api_auth(app)
 
 
@@ -49,7 +47,7 @@ def handle_errors(e: Exception):
             _error["message"] = e.description
 
         # general HTTP error log
-        logger.info(f"HTTP {status_code}: {_error['message']}")
+        logger.error(f"HTTP {status_code}: {_error['message']}")
     else:
         status_code = 500
         # This is an internal server error, so log the traceback for debugging purposes.
