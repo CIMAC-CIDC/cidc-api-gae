@@ -1,5 +1,4 @@
 import sys
-import os
 import logging
 
 from flask import Flask, current_app, has_app_context
@@ -16,7 +15,7 @@ def init_logger(app: Flask):
 
 # Configure root logger as a fallback when no current_app is available
 defaultLogger = logging.getLogger()
-defaultLogger.setLevel(logging.DEBUG if ENV == "dev" else logging.INFO)
+defaultLogger.setLevel(logging.DEBUG if ENV == "dev" or TESTING else logging.INFO)
 
 
 def logger():

@@ -1,4 +1,5 @@
 import io
+import logging
 from copy import deepcopy
 from functools import wraps
 from datetime import datetime, timedelta
@@ -476,6 +477,8 @@ def test_assay_upload_merge_extra_metadata(clean_db, monkeypatch):
 @db_test
 def test_assay_upload_ingestion_success(clean_db, monkeypatch, caplog):
     """Check that the ingestion success method works as expected"""
+    caplog.set_level(logging.DEBUG)
+
     new_user = Users.create(PROFILE)
     trial = TrialMetadata.create(TRIAL_ID, METADATA)
     assay_upload = UploadJobs.create(
@@ -500,17 +503,11 @@ def test_assay_upload_ingestion_success(clean_db, monkeypatch, caplog):
     # Check that status was updated and email wasn't sent by default
     db_record = UploadJobs.find_by_id(assay_upload.id)
     assert db_record.status == UploadJobStatus.MERGE_COMPLETED.value
-    assert all(
-        "Would send email with subject '[UPLOAD SUCCESS]" not in log_record.message
-        for log_record in caplog.records
-    )
+    assert "Would send email with subject '[UPLOAD SUCCESS]" not in caplog.text
 
     # Check that email gets sent when specified
     assay_upload.ingestion_success(trial, send_email=True)
-    assert any(
-        "Would send email with subject '[UPLOAD SUCCESS]" in log_record.message
-        for log_record in caplog.records
-    )
+    assert "Would send email with subject '[UPLOAD SUCCESS]" in caplog.text
 
 
 @db_test
@@ -833,7 +830,8 @@ def test_permissions_insert(clean_db, monkeypatch, caplog):
         upload_type="wes",
         granted_by_user=user.id,
     )
-    perm.insert()
+    with caplog.at_level(logging.DEBUG):
+        perm.insert()
     _insert.assert_called_once()
     assert any(
         log_record.message.strip()
@@ -864,7 +862,8 @@ def test_permissions_delete(clean_db, monkeypatch, caplog):
 
     # Deletion of an existing permission leads to no error
     gcloud_client.reset_mocks()
-    perm.delete(deleted_by=user.id)
+    with caplog.at_level(logging.DEBUG):
+        perm.delete(deleted_by=user.id)
     gcloud_client.revoke_download_access.assert_called_once()
     gcloud_client.grant_download_access.assert_not_called()
     assert any(
