@@ -19,8 +19,8 @@ def init_db(app: Flask):
     db.init_app(app)
     db.Model = BaseModel
     Migrate(app, db, app.config["MIGRATIONS_PATH"])
-    with app.app_context():
-        upgrade(app.config["MIGRATIONS_PATH"])
+    # with app.app_context():
+    #     upgrade(app.config["MIGRATIONS_PATH"])
 
 
 def get_sqlalchemy_database_uri(testing: bool = False) -> str:

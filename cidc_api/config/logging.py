@@ -1,25 +1,17 @@
-import sys
 import logging
+from typing import Optional
 
-from flask import Flask, current_app, has_app_context
-
-from .settings import ENV, TESTING
-
-
-def init_logger(app: Flask):
-    """Configure `app`'s loggers."""
-    gunicorn_logger = logging.getLogger("gunicorn.error")
-    app.logger.handlers = gunicorn_logger.handlers
-    app.logger.setLevel(gunicorn_logger.level)
+from .settings import IS_GUNICORN, ENV
 
 
-# Configure root logger as a fallback when no current_app is available
-defaultLogger = logging.getLogger()
-defaultLogger.setLevel(logging.DEBUG if ENV == "dev" or TESTING else logging.INFO)
-
-
-def logger():
-    """The current logger, depending on whether a flask app_context has been pushed."""
-    if has_app_context() and not TESTING:
-        return current_app.logger
-    return defaultLogger
+def get_logger(name: Optional[str]) -> logging.Logger:
+    """Get a configured logger with the given `name`."""
+    # If the app is running in gunicorn, connect to gunicorn's loggers
+    logger = logging.getLogger(name)
+    if IS_GUNICORN:
+        gunicorn_logger = logging.getLogger("gunicorn.error")
+        logger.handlers = gunicorn_logger.handlers
+        logger.setLevel(gunicorn_logger.level)
+    else:
+        logger.setLevel(logging.DEBUG if ENV == "dev" else logging.INFO)
+    return logger
