@@ -11,6 +11,7 @@ from cidc_schemas.template import generate_all_templates
 from .config.db import init_db
 from .config.settings import SETTINGS
 from .config.logging import get_logger
+from .shared.auth import validate_api_auth
 from .resources import register_resources
 
 logger = get_logger(__name__)
