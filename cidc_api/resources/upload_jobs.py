@@ -261,6 +261,11 @@ def check_permissions(user, trial_id, template_type):
         )
 
 
+def log_multiple_errors(errors: list):
+    if errors != []:
+        logger.error("\n".join(errors))
+
+
 def upload_handler(allowed_types: List[str]):
     """
     Extracts and validates the xlsx file from the request form body,
@@ -283,23 +288,20 @@ def upload_handler(allowed_types: List[str]):
 
             xlsx, errors = XlTemplateReader.from_excel(xlsx_file)
             logger.info(f"xlsx parsed: {len(errors)} errors")
-            for e in errors:
-                logger.info(f"\t{e}")
+            log_multiple_errors(errors)
             errors_so_far.extend(errors)
 
             # Run basic validations on the provided Excel file
             validations = validate(template, xlsx)
             logger.info(f"xlsx validated: {len(validations.json['errors'])} errors")
-            for e in validations.json["errors"]:
-                logger.info(f"\t{e}")
+            log_multiple_errors(validations.json["errors"])
             errors_so_far.extend(validations.json["errors"])
 
             md_patch, file_infos, errors = prism.prismify(xlsx, template)
             logger.info(
                 f"prismified: {len(errors)} errors, {len(file_infos)} file_infos"
             )
-            for e in errors:
-                logger.info(f"\t{e}")
+            log_multiple_errors(errors)
             errors_so_far.extend(errors)
 
             try:
@@ -347,8 +349,7 @@ def upload_handler(allowed_types: List[str]):
                     f"Internal error with {trial_id!r}. Please contact a CIDC Administrator."
                 ) from e
             logger.info(f"merged: {len(errors)} errors")
-            for e in errors:
-                logger.info(f"\t{e}")
+            log_multiple_errors(errors)
             errors_so_far.extend(errors)
 
             if errors_so_far:
