@@ -26,10 +26,11 @@ DEBUG = environ.get("DEBUG") == "True"
 assert ENV == "dev" if DEBUG else True, "DEBUG mode is only allowed when ENV='dev'"
 TESTING = environ.get("TESTING") == "True"
 ALLOWED_CLIENT_URL = environ.get("ALLOWED_CLIENT_URL")
+IS_GUNICORN = "gunicorn" in environ.get("SERVER_SOFTWARE", "")
 
 ### Configure miscellaneous constants ###
 TEMPLATES_DIR = path.join("/tmp", "templates")
-MIN_CLI_VERSION = "0.9.5"
+MIN_CLI_VERSION = "0.9.6"
 PAGINATION_PAGE_SIZE = 25
 MAX_PAGINATION_PAGE_SIZE = 200
 INACTIVE_USER_DAYS = 60
