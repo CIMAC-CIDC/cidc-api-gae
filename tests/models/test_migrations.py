@@ -141,3 +141,27 @@ def test_migrations_failures(use_upload_jobs_table, monkeypatch):
         call(GOOGLE_DATA_BUCKET, "a_old_url", "a_new_url"),
         call(GOOGLE_DATA_BUCKET, "b_old_url", "b_new_url"),
     ]
+
+
+def test_upload_job_selection():
+    """Check that the upload_job selection helper functions selects from the correct table"""
+    session = MagicMock()
+    session.query.return_value = MagicMock()
+
+    migrations._select_successful_assay_uploads(True, session)
+    session.query.assert_called_with(UploadJobs)
+
+    session.query.clear_mock()
+
+    migrations._select_successful_assay_uploads(False, session)
+    session.query.assert_called_with(migrations.AssayUploads)
+
+    session.query.clear_mock()
+
+    migrations._select_manifest_uploads(True, session)
+    session.query.assert_called_with(UploadJobs)
+
+    session.query.clear_mock()
+
+    migrations._select_manifest_uploads(False, session)
+    session.query.assert_called_with(migrations.ManifestUploads)
