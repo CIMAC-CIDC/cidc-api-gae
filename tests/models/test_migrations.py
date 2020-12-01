@@ -50,7 +50,7 @@ def test_rollbackable_queue():
 
 
 @pytest.mark.parametrize("use_upload_jobs_table", [(True,), (False,)])
-def test_migrations_rollback(use_upload_jobs_table, monkeypatch):
+def test_migrations_failures(use_upload_jobs_table, monkeypatch):
     """Test that changes get rolled back in potential failure scenarios."""
     # Mock alembic
     monkeypatch.setattr(migrations, "op", MagicMock())
@@ -85,7 +85,12 @@ def test_migrations_rollback(use_upload_jobs_table, monkeypatch):
 
     mock_migration = MagicMock()
     mock_migration.return_value = MigrationResult(
-        {"a": {"upload_placeholder": "foo"}, "b": {"upload_placeholder": "bar"}},
+        {
+            "some_assay": {
+                "extra": "metadata",
+                "files": [{"upload_placeholder": "foo"}, {"upload_placeholder": "bar"}],
+            }
+        },
         {
             "a_old_url": {"object_url": "a_new_url", "upload_placeholder": "foo"},
             "b_old_url": {"object_url": "b_new_url", "upload_placeholder": "bar"},
@@ -105,7 +110,7 @@ def test_migrations_rollback(use_upload_jobs_table, monkeypatch):
     rename_gcs_obj.side_effect = [None, Exception("gcs failure"), None]
 
     with pytest.raises(Exception, match="gcs failure"):
-        run_metadata_migration(mock_migration, False)
+        run_metadata_migration(mock_migration, use_upload_jobs_table)
     # Called 3 times - task 1 succeeds, task 2 fails, task 1 rolls back
     assert len(rename_gcs_obj.call_args_list) == 3
     mock_session.commit.assert_not_called()
@@ -119,7 +124,7 @@ def test_migrations_rollback(use_upload_jobs_table, monkeypatch):
     select_assay_uploads.side_effect = Exception("sql failure")
 
     with pytest.raises(Exception, match="sql failure"):
-        run_metadata_migration(mock_migration, False)
+        run_metadata_migration(mock_migration, use_upload_jobs_table)
     mock_session.commit.assert_not_called()
     mock_session.rollback.assert_called_once()
     mock_session.close.assert_called_once()
@@ -130,7 +135,7 @@ def test_migrations_rollback(use_upload_jobs_table, monkeypatch):
 
     # No failures
     select_assay_uploads.side_effect = None
-    run_metadata_migration(mock_migration, False)
+    run_metadata_migration(mock_migration, use_upload_jobs_table)
     # Ensure we renamed the right objects
     assert rename_gcs_obj.call_args_list == [
         call(GOOGLE_DATA_BUCKET, "a_old_url", "a_new_url"),
