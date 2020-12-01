@@ -132,12 +132,3 @@ def test_migrations_rollback(monkeypatch):
         call(GOOGLE_DATA_BUCKET, "a_old_url", "a_new_url"),
         call(GOOGLE_DATA_BUCKET, "b_old_url", "b_new_url"),
     ]
-
-    # reset_mocks()
-
-    # # "Empty" migration (no changes) should raise no errors
-    # empty_migration = MagicMock()
-    # empty_migration.return_value = MigrationResult({}, {})
-    # run_metadata_migration(mock_migration, False)
-
-    # assert 0
