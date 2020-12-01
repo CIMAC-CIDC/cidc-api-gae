@@ -194,7 +194,7 @@ def _run_metadata_migration(
             artifact_path = uuid_path_map[artifact["upload_placeholder"]]
             df.additional_metadata = get_source(
                 migration.result, artifact_path, skip_last=True
-            )
+            )[1]
 
             # If the GCS URI has changed, rename the blob
             new_gcs_uri = artifact["object_url"]

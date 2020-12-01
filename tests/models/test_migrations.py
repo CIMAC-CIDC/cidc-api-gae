@@ -62,16 +62,20 @@ def test_migrations_failures(use_upload_jobs_table, monkeypatch):
     monkeypatch.setattr(migrations, "Session", mock_session_builder)
 
     # Mock cidc_api and prism functions
+    trial_record = MagicMock()
     select_trials = MagicMock()
-    select_trials.return_value = [MagicMock()]
+    select_trials.return_value = [trial_record]
     monkeypatch.setattr(migrations, "_select_trials", select_trials)
 
+    df_record = MagicMock()
     select_df = MagicMock()
-    select_df.return_value = MagicMock()
+    select_df.return_value = df_record
     monkeypatch.setattr(DownloadableFiles, "get_by_object_url", select_df)
 
     select_assay_uploads = MagicMock()
-    select_assay_uploads.return_value = [MagicMock()]
+    select_assay_uploads.return_value = [
+        UploadJobs(gcs_file_map={"a_old_url/ts": "foo", "b_old_url/ts": "bar"})
+    ]
     monkeypatch.setattr(
         migrations, "_select_successful_assay_uploads", select_assay_uploads
     )
@@ -83,14 +87,15 @@ def test_migrations_failures(use_upload_jobs_table, monkeypatch):
             migrations, "_select_manifest_uploads", select_manifest_uploads
         )
 
+    new_metadata = {
+        "some_assay": {
+            "extra": "metadata",
+            "files": [{"upload_placeholder": "foo"}, {"upload_placeholder": "bar"}],
+        }
+    }
     mock_migration = MagicMock()
     mock_migration.return_value = MigrationResult(
-        {
-            "some_assay": {
-                "extra": "metadata",
-                "files": [{"upload_placeholder": "foo"}, {"upload_placeholder": "bar"}],
-            }
-        },
+        new_metadata,
         {
             "a_old_url": {"object_url": "a_new_url", "upload_placeholder": "foo"},
             "b_old_url": {"object_url": "b_new_url", "upload_placeholder": "bar"},
@@ -136,6 +141,11 @@ def test_migrations_failures(use_upload_jobs_table, monkeypatch):
     # No failures
     select_assay_uploads.side_effect = None
     run_metadata_migration(mock_migration, use_upload_jobs_table)
+    # Ensure we updated trials as expected
+    assert trial_record.metadata_json == new_metadata
+    # Ensure we updated files as expected
+    assert df_record.object_url == "b_new_url"
+    assert df_record.additional_metadata == {"some_assay.extra": "metadata"}
     # Ensure we renamed the right objects
     assert rename_gcs_obj.call_args_list == [
         call(GOOGLE_DATA_BUCKET, "a_old_url", "a_new_url"),
