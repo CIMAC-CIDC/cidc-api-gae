@@ -79,8 +79,6 @@ def test_migrations_rollback(monkeypatch):
     select_manifest_uploads.return_value = [MagicMock()]
     monkeypatch.setattr(migrations, "_select_manifest_uploads", select_manifest_uploads)
 
-    monkeypatch.setattr(migrations, "_get_uuid_path_map", MagicMock())
-
     mock_migration = MagicMock()
     mock_migration.return_value = MigrationResult(
         {},
@@ -134,3 +132,12 @@ def test_migrations_rollback(monkeypatch):
         call(GOOGLE_DATA_BUCKET, "a_old_url", "a_new_url"),
         call(GOOGLE_DATA_BUCKET, "b_old_url", "b_new_url"),
     ]
+
+    # reset_mocks()
+
+    # # "Empty" migration (no changes) should raise no errors
+    # empty_migration = MagicMock()
+    # empty_migration.return_value = MigrationResult({}, {})
+    # run_metadata_migration(mock_migration, False)
+
+    # assert 0
