@@ -160,7 +160,6 @@ def _run_metadata_migration(
 ):
     # Migrate all trial records
     trials = _select_trials(session)
-    print(trials)
     for trial in trials:
         print(f"Running metadata migration for trial: {trial.trial_id}")
         migration = metadata_migration(trial.metadata_json)
