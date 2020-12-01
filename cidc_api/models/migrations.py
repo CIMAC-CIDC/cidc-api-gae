@@ -172,6 +172,10 @@ def _run_metadata_migration(
         # in the model doesn't seem to help.
         flag_modified(trial, "metadata_json")
 
+        # If this trial has no file updates, move on to the next one
+        if len(migration.file_updates) == 0:
+            continue
+
         # Update the relevant downloadable files and GCS objects
         uuid_path_map = _get_uuid_path_map(migration.result)
         for old_gcs_uri, artifact in migration.file_updates.items():
