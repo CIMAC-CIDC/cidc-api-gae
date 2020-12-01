@@ -81,10 +81,10 @@ def test_migrations_rollback(monkeypatch):
 
     mock_migration = MagicMock()
     mock_migration.return_value = MigrationResult(
-        {},
+        {"a": {"upload_placeholder": "foo"}, "b": {"upload_placeholder": "bar"}},
         {
-            "a_old_url": {"object_url": "a_new_url", "upload_placeholder": ""},
-            "b_old_url": {"object_url": "b_new_url", "upload_placeholder": ""},
+            "a_old_url": {"object_url": "a_new_url", "upload_placeholder": "foo"},
+            "b_old_url": {"object_url": "b_new_url", "upload_placeholder": "bar"},
         },
     )
 
