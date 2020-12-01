@@ -10,7 +10,7 @@ from sqlalchemy.orm.attributes import flag_modified
 from google.cloud import storage
 
 from cidc_schemas.migrations import MigrationResult
-from cidc_schemas.prism.merger import _get_uuid_path_map
+from cidc_schemas.prism.merger import _get_uuid_path_map, get_source
 
 from .models import (
     TrialMetadata,
@@ -191,7 +191,10 @@ def _run_metadata_migration(
             print(
                 f"Regenerating additional metadata for artifact with uuid {artifact['upload_placeholder']}"
             )
-            df.additional_metadata = uuid_path_map[artifact["upload_placeholder"]]
+            artifact_path = uuid_path_map[artifact["upload_placeholder"]]
+            df.additional_metadata = get_source(
+                migration.result, artifact_path, skip_last=True
+            )
 
             # If the GCS URI has changed, rename the blob
             new_gcs_uri = artifact["object_url"]
