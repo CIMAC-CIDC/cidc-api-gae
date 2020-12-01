@@ -49,7 +49,8 @@ def test_rollbackable_queue():
     t2.assert_called_once()
 
 
-def test_migrations_rollback(monkeypatch):
+@pytest.mark.parametrize("use_upload_jobs_table", [(True,), (False,)])
+def test_migrations_rollback(use_upload_jobs_table, monkeypatch):
     """Test that changes get rolled back in potential failure scenarios."""
     # Mock alembic
     monkeypatch.setattr(migrations, "op", MagicMock())
@@ -75,9 +76,12 @@ def test_migrations_rollback(monkeypatch):
         migrations, "_select_successful_assay_uploads", select_assay_uploads
     )
 
-    select_manifest_uploads = MagicMock()
-    select_manifest_uploads.return_value = [MagicMock()]
-    monkeypatch.setattr(migrations, "_select_manifest_uploads", select_manifest_uploads)
+    if not use_upload_jobs_table:
+        select_manifest_uploads = MagicMock()
+        select_manifest_uploads.return_value = [MagicMock()]
+        monkeypatch.setattr(
+            migrations, "_select_manifest_uploads", select_manifest_uploads
+        )
 
     mock_migration = MagicMock()
     mock_migration.return_value = MigrationResult(
