@@ -43,7 +43,7 @@ jobs:
           chmod +x ./cc-test-reporter
           ./cc-test-reporter before-build
       - name: Setup test database
-        run: >
+        run: |
           docker exec ${{ job.services.postgres.id }} psql cidctest -c "
             grant all privileges on database cidctest to cidcdev; 
             create extension citext; 
@@ -110,15 +110,15 @@ jobs:
           export_default_credentials: true
       - name: Deploy to App Engine (Prod)
         if: ${{ github.ref == 'refs/heads/production' }}
-        run: >
-          gcloud beta app deploy app.prod.yaml 
-            --project cidc-dfci 
-            --version "githubactions-${GITHUB_SHA:0:7}-$GITHUB_RUN_NUMBER"
+        run: |
+          gcloud beta app deploy app.prod.yaml \
+            --project cidc-dfci \
+            --version "githubactions-${GITHUB_SHA:0:7}-$GITHUB_RUN_NUMBER" \
             --no-cache
       - name: Deploy to App Engine (Staging)
         if: ${{ github.ref == 'refs/heads/production' }}
-        run: >
-          gcloud beta app deploy app.staging.yaml 
-            --project cidc-dfci-staging
-            --version "githubactions-${GITHUB_SHA:0:7}-$GITHUB_RUN_NUMBER"
+        run: |
+          gcloud beta app deploy app.staging.yaml \
+            --project cidc-dfci-staging \
+            --version "githubactions-${GITHUB_SHA:0:7}-$GITHUB_RUN_NUMBER" \
             --no-cache
