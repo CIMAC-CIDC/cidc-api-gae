@@ -20,7 +20,7 @@ jobs:
           pip install pytest-cov
       - name: Check code format with black
         run: |
-          black --check cidc_schemas tests docs --target-version=py37
+          black --check cidc_api tests --target-version=py37
       - name: Setup codeclimate test coverage reporter
         run: |
           curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
