@@ -10,8 +10,13 @@ jobs:
     services:
       postgres:
         # Docker Hub image
-        image: "postgres:9.6"
-        ports: [5432:5432]
+        image: postgres:9.6
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: cidcdev
+          POSTGRES_PASSWORD: 1234
+          POSTGRES_DB: cidctest
         # Set health checks to wait until postgres has started
         options: >-
           --health-cmd pg_isready
@@ -39,8 +44,6 @@ jobs:
           ./cc-test-reporter before-build
       - name: Setup test database
         run: |
-          psql -c "create user cidcdev with password '1234'"
-          psql -c "create database cidctest"
           psql -c "grant all privileges on database cidctest to cidcdev"
           psql cidctest -c "create extension citext"
           psql cidctest -c "create extension pgcrypto"
