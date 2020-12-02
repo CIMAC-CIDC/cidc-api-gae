@@ -19,7 +19,6 @@ jobs:
           POSTGRES_USER: cidcdev
           POSTGRES_PASSWORD: 1234
           POSTGRES_DB: cidctest
-          POSTGRES_EXTENSIONS: citext pgcrypto
         # Set health checks to wait until postgres has started
         options: >-
           --health-cmd pg_isready
@@ -45,6 +44,12 @@ jobs:
           curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
           chmod +x ./cc-test-reporter
           ./cc-test-reporter before-build
+      - name: Setup test database
+        run: |
+          docker exec -e PGPASSWORD=1234 ${{ job.services.postgres.id }} psql cidctest -U cidcdev -c "
+            create extension citext;
+            create extension pgcrypto;
+          "
       - name: Test with pytest
         run: |
           pytest --cov=cidc_api -v
