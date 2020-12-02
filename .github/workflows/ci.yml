@@ -10,7 +10,7 @@ jobs:
     services:
       postgres:
         # Docker Hub image
-        image: postgres:9.6
+        image: "postgres:9.6"
         ports: [5432:5432]
         # Set health checks to wait until postgres has started
         options: >-
