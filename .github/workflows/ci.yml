@@ -44,10 +44,9 @@ jobs:
           ./cc-test-reporter before-build
       - name: Setup test database
         run: |
-          docker exec ${{ job.services.postgres.id }} psql cidctest -c "
-            grant all privileges on database cidctest to cidcdev; 
+          docker exec ${{ job.services.postgres.id }} PGPASSWORD=1234 psql cidctest -U cidcdev -c "
             create extension citext; 
-            create extension pgcrypto
+            create extension pgcrypto;
           "
       - name: Test with pytest
         run: |
