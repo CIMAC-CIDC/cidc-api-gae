@@ -261,6 +261,14 @@ def test_get_filelist(cidc_api, clean_db, monkeypatch):
         f"gs://{GOOGLE_DATA_BUCKET}/{trial_id}/wes/.../reads_123.bam\t{trial_id}_wes_..._reads_123.bam\n"
     )
 
+    make_admin(user_id, cidc_api)
+    res = client.post(url, json=short_file_list)
+    assert res.status_code == 200
+    assert res.data.decode("utf-8") == (
+        f"gs://{GOOGLE_DATA_BUCKET}/{trial_id}/wes/.../reads_123.bam\t{trial_id}_wes_..._reads_123.bam\n"
+        f"gs://{GOOGLE_DATA_BUCKET}/{trial_id}/cytof/.../analysis.zip\t{trial_id}_cytof_..._analysis.zip\n"
+    )
+
     # Clear inserted file records
     with cidc_api.app_context():
         clean_db.query(DownloadableFiles).delete()
@@ -280,8 +288,6 @@ def test_get_filelist(cidc_api, clean_db, monkeypatch):
                 file_size_bytes=0,
                 uploaded_timestamp=datetime.now(),
             ).insert()
-
-    make_admin(user_id, cidc_api)
 
     res = client.post(url, json={"file_ids": long_file_list})
     assert res.status_code == 200
