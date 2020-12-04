@@ -6,6 +6,11 @@ checks:
   method-complexity:
     config:
       threshold: 10
+  # Duplicate code check seems to be broken for python3
+  similar-code:
+    enabled: false
+  identical-code:
+    enabled: false
   # Don't complain if files are too long
   file-lines:
     enabled: false
