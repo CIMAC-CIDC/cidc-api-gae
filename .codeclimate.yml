@@ -9,3 +9,7 @@ checks:
   # Don't complain if files are too long
   file-lines:
     enabled: false
+config:
+  languages:
+    python:
+      python_version: 3
