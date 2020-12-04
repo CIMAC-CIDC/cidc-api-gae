@@ -261,6 +261,7 @@ def test_get_filelist(cidc_api, clean_db, monkeypatch):
         f"gs://{GOOGLE_DATA_BUCKET}/{trial_id}/wes/.../reads_123.bam\t{trial_id}_wes_..._reads_123.bam\n"
     )
 
+    # Admins don't need permissions to get files
     make_admin(user_id, cidc_api)
     res = client.post(url, json=short_file_list)
     assert res.status_code == 200
@@ -273,8 +274,7 @@ def test_get_filelist(cidc_api, clean_db, monkeypatch):
     with cidc_api.app_context():
         clean_db.query(DownloadableFiles).delete()
 
-    # Filelists don't get paginated, and admins can get a filelist containing
-    # any files they want
+    # Filelists don't get paginated
     long_file_list = list(range(1000, 2000))
     with cidc_api.app_context():
         for id in long_file_list:
