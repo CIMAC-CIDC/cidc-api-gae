@@ -1067,11 +1067,11 @@ class DownloadableFiles(CommonColumns):
     def file_purpose(self):
         return details_dict.get(self.facet_group).file_purpose
 
-    @hybrid_property
+    @property
     def short_description(self):
         return details_dict.get(self.facet_group).short_description
 
-    @hybrid_property
+    @property
     def long_description(self):
         return details_dict.get(self.facet_group).long_description
 
