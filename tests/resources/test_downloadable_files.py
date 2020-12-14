@@ -362,10 +362,12 @@ def test_log_multiple_errors(caplog):
 
     # Multiple data types
     log_multiple_errors([0, {"some": "error"}, "uh oh"])
-    assert caplog.text == '0\n{"some": "error"}\nuh oh'
+    assert "0" in caplog.text
+    assert "{'some': 'error'}" in caplog.text
+    assert "uh oh" in caplog.text
     caplog.clear()
 
     # Non-list
     log_multiple_errors("some error")
-    assert caplog.text == "some error"
+    assert "some error" in caplog.text
     caplog.clear()
