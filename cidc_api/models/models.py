@@ -1005,9 +1005,6 @@ class UploadJobs(CommonColumns):
             self.alert_upload_success(trial)
 
 
-import time
-
-
 class DownloadableFiles(CommonColumns):
     """
     Store required fields from:
