@@ -1,7 +1,4 @@
-from unittest.mock import MagicMock
-
 import pytest
-from sqlalchemy.util.langhelpers import NoneType
 from werkzeug.exceptions import BadRequest
 
 from cidc_api.models.files.facets import (
@@ -12,18 +9,17 @@ from cidc_api.models.files.facets import (
 )
 
 
-def assert_expected_facet_structure(config: dict):
-    assert isinstance(config.get("label"), str)
-    assert isinstance(config.get("description"), (str, NoneType))
-    assert isinstance(config.get("count"), int)
-
-
 def test_build_data_category_facets():
     """Ensure build_data_category_facets works as expected."""
 
     wes_count = 5
     sample_count = 12
     data_category_file_counts = {"WES|Source": wes_count, "Samples Info": sample_count}
+
+    def assert_expected_facet_structure(config: dict, count: int = 0):
+        assert "label" in config
+        assert "description" in config
+        assert config["count"] == count
 
     facet_specs = build_data_category_facets(data_category_file_counts)
     for value in facet_specs.values():
@@ -32,14 +28,16 @@ def test_build_data_category_facets():
                 assert isinstance(subvalue, list)
                 for config in subvalue:
                     if value_key == "WES" and config["label"] == "Source":
-                        assert config["count"] == wes_count
-                    assert_expected_facet_structure(config)
+                        assert_expected_facet_structure(config, wes_count)
+                    else:
+                        assert_expected_facet_structure(config)
         else:
             assert isinstance(value, list)
             for config in value:
                 if config["label"] == "Samples Info":
-                    assert config["count"] == sample_count
-                assert_expected_facet_structure(config)
+                    assert_expected_facet_structure(config, sample_count)
+                else:
+                    assert_expected_facet_structure(config)
 
 
 def test_build_trial_facets():
