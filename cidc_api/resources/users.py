@@ -118,7 +118,7 @@ def update_user(user: Users, user_updates: Users):
     # refresh their IAM download permissions.
     if user.disabled and user_updates.get("disabled") == False:
         user_updates["_accessed"] = datetime.now()
-        Permissions.refresh_iam_permissions(user)
+        Permissions.grant_iam_permissions(user)
 
     user.update(changes=user_updates)
 

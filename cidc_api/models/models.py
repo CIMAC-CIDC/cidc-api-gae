@@ -493,10 +493,10 @@ class Permissions(CommonColumns):
 
     @staticmethod
     @with_default_session
-    def refresh_iam_permissions(user: Users, session: Session):
+    def grant_iam_permissions(user: Users, session: Session):
         """
-        Regrant each of the given `user`'s IAM permissions to extend
-        their expiry date.
+        Grant each of the given `user`'s IAM permissions. If the permissions
+        have already been granted, calling this will extend their expiry date.
         """
         filter_for_user = lambda q: q.filter(Permissions.granted_to_user == user.id)
         perms = Permissions.list(
