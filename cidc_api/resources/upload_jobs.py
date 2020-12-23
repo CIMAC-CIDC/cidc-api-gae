@@ -618,3 +618,15 @@ def extra_assay_metadata():
 
     # TODO: return something here?
     return jsonify({})
+
+
+@ingestion_bp.route("/intake_bucket", methods=["GET"])
+@requires_auth(
+    "intake_bucket",
+    [CIDCRole.ADMIN.value, CIDCRole.CIDC_BIOFX_USER.value, CIDCRole.CIMAC_BIOFX_USER],
+)
+def get_intake_bucket():
+    """
+    
+    """
+    user = get_current_user()

@@ -14,7 +14,7 @@ from cidc_api.shared.gcloud_client import (
     _xlsx_gcs_uri_format,
     upload_xlsx_to_gcs,
     _pseudo_blob,
-    _build_download_binding,
+    _build_binding_with_expiry,
 )
 from cidc_api.config.settings import (
     GOOGLE_UPLOAD_ROLE,
@@ -87,15 +87,17 @@ def test_grant_download_access(monkeypatch):
         assert binding["members"] == {f"user:{EMAIL}"}
         assert binding["role"] == GOOGLE_DOWNLOAD_ROLE
         condition = binding["condition"]
-        assert condition["title"] == f"Conditional download access for {EMAIL}"
+        assert f"{GOOGLE_DOWNLOAD_ROLE} access on 10021/wes until" in condition["title"]
         assert "updated by the CIDC API" in condition["description"]
         assert "10021/wes" in condition["expression"]
 
     _mock_gcloud_storage([], set_iam_policy, monkeypatch)
     grant_download_access(EMAIL, "10021", "wes_analysis")
 
-    matching_prefix = 'resource.name.startsWith("projects/_/buckets/cidc-data-staging/objects/10021/wes")'
-    matching_binding = _build_download_binding(EMAIL, matching_prefix)
+    matching_prefix = "10021/wes"
+    matching_binding = _build_binding_with_expiry(
+        GOOGLE_DATA_BUCKET, matching_prefix, GOOGLE_DOWNLOAD_ROLE, EMAIL
+    )
 
     def set_iam_policy(policy):
         bindings = policy.bindings
@@ -128,18 +130,17 @@ def test_grant_download_access(monkeypatch):
 
 def test_revoke_download_access(monkeypatch):
     bindings = [
-        _build_download_binding(
-            EMAIL,
-            'resource.name.startsWith("projects/_/buckets/cidc-data-staging/objects/10021/wes")',
+        _build_binding_with_expiry(
+            GOOGLE_DATA_BUCKET, "10021/wes", GOOGLE_DOWNLOAD_ROLE, EMAIL
         ),
-        _build_download_binding(
-            EMAIL,
-            'resource.name.startsWith("projects/_/buckets/cidc-data-staging/objects/10021/cytof")',
+        _build_binding_with_expiry(
+            GOOGLE_DATA_BUCKET, "10021/cytof", GOOGLE_DOWNLOAD_ROLE, EMAIL
         ),
         {"role": "some-other-role", "members": {f"user:JohnDoe"}},
     ]
 
     def set_iam_policy(policy):
+        print(policy.bindings)
         assert len(policy.bindings) == 2
         assert not any(
             "10021/wes" in binding["condition"]["expression"]
@@ -157,17 +158,14 @@ def test_revoke_download_access(monkeypatch):
 
     # revocation when target binding is duplicated
     bindings = [
-        _build_download_binding(
-            EMAIL,
-            'resource.name.startsWith("projects/_/buckets/cidc-data-staging/objects/10021/wes")',
+        _build_binding_with_expiry(
+            GOOGLE_DATA_BUCKET, "10021/wes", GOOGLE_DOWNLOAD_ROLE, EMAIL
         ),
-        _build_download_binding(
-            EMAIL,
-            'resource.name.startsWith("projects/_/buckets/cidc-data-staging/objects/10021/wes")',
+        _build_binding_with_expiry(
+            GOOGLE_DATA_BUCKET, "10021/wes", GOOGLE_DOWNLOAD_ROLE, EMAIL
         ),
-        _build_download_binding(
-            EMAIL,
-            'resource.name.startsWith("projects/_/buckets/cidc-data-staging/objects/10021/cytof")',
+        _build_binding_with_expiry(
+            GOOGLE_DATA_BUCKET, "10021/cytof", GOOGLE_DOWNLOAD_ROLE, EMAIL
         ),
         {"role": "some-other-role", "members": {f"user:JohnDoe"}},
     ]
