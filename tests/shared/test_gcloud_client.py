@@ -1,12 +1,16 @@
 import json
 from io import BytesIO
+from tests.utils import mock_gcloud_client
 from unittest.mock import MagicMock, call
 from datetime import datetime
 
 from cidc_api.shared import gcloud_client
 from cidc_api.config import settings
 from cidc_api.shared.gcloud_client import (
+    grant_intake_access,
     grant_upload_access,
+    list_intake_access,
+    revoke_intake_access,
     revoke_upload_access,
     grant_download_access,
     revoke_download_access,
@@ -17,6 +21,7 @@ from cidc_api.shared.gcloud_client import (
     _build_binding_with_expiry,
 )
 from cidc_api.config.settings import (
+    GOOGLE_INTAKE_BUCKET,
     GOOGLE_UPLOAD_ROLE,
     GOOGLE_UPLOAD_BUCKET,
     GOOGLE_DATA_BUCKET,
@@ -70,6 +75,64 @@ def test_revoke_upload_access(monkeypatch):
     )
 
     revoke_upload_access(EMAIL)
+
+
+def test_grant_intake_access(monkeypatch):
+    grant_gcs_access = MagicMock()
+    monkeypatch.setattr(
+        "cidc_api.shared.gcloud_client.grant_conditional_gcs_access", grant_gcs_access
+    )
+
+    grant_intake_access(123, "test.user@email.com", "test-trial", "upload-type")
+
+    grant_gcs_access.assert_called_once_with(
+        GOOGLE_INTAKE_BUCKET,
+        "test-trial/upload-type/testuser-123",
+        GOOGLE_UPLOAD_ROLE,
+        "test.user@email.com",
+    )
+
+
+def test_revoke_intake_access(monkeypatch):
+    revoke_gcs_access = MagicMock()
+    monkeypatch.setattr(
+        "cidc_api.shared.gcloud_client.revoke_conditional_gcs_access", revoke_gcs_access
+    )
+
+    revoke_intake_access(123, "test.user@email.com", "test-trial", "upload-type")
+
+    revoke_gcs_access.assert_called_once_with(
+        GOOGLE_INTAKE_BUCKET,
+        "test-trial/upload-type/testuser-123",
+        GOOGLE_UPLOAD_ROLE,
+        "test.user@email.com",
+    )
+
+
+def test_list_intake_access(monkeypatch):
+    email = "test.user@email.com"
+
+    def build_intake_binding(trial_id: str, upload_type: str):
+        return _build_binding_with_expiry(
+            GOOGLE_INTAKE_BUCKET,
+            f"{trial_id}/{upload_type}/testuser-123",
+            GOOGLE_UPLOAD_ROLE,
+            email,
+        )
+
+    bindings = [
+        build_intake_binding("test-trial-1", "upload-type-1"),
+        build_intake_binding("test-trial-2", "upload-type-2"),
+        build_intake_binding("test-trial-3", "upload-type-3"),
+    ]
+    _mock_gcloud_storage(bindings, lambda i: i, monkeypatch)
+
+    uris = list_intake_access(email)
+    assert uris == [
+        f"gs://{GOOGLE_INTAKE_BUCKET}/test-trial-1/upload-type-1/testuser-123",
+        f"gs://{GOOGLE_INTAKE_BUCKET}/test-trial-2/upload-type-2/testuser-123",
+        f"gs://{GOOGLE_INTAKE_BUCKET}/test-trial-3/upload-type-3/testuser-123",
+    ]
 
 
 def test_grant_download_access(monkeypatch):

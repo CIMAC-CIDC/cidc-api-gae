@@ -1,6 +1,7 @@
 """Utilities for interacting with the Google Cloud Platform APIs."""
 import json
 import datetime
+import re
 import warnings
 from collections import namedtuple
 from concurrent.futures import Future
@@ -121,6 +122,15 @@ def revoke_upload_access(user_email: str):
     bucket.set_iam_policy(policy)
 
 
+def _build_intake_prefix(
+    user_id: int, user_email: str, trial_id: str, upload_type: str
+) -> str:
+    usernameish = user_email.split("@")[0].replace(".", "")
+    return (
+        f"{_build_trial_upload_prefix(trial_id, upload_type)}/{usernameish}-{user_id}"
+    )
+
+
 def grant_intake_access(
     user_id: int, user_email: str, trial_id: str, upload_type: str
 ) -> str:
@@ -130,7 +140,7 @@ def grant_intake_access(
 
     Return the GCS URI to which access has been granted.
     """
-    prefix = f"{_build_trial_upload_prefix(trial_id, upload_type)}/{user_email.split('@')[0]}-{user_id}"
+    prefix = _build_intake_prefix(user_id, user_email, trial_id, upload_type)
 
     logger.info(f"Granting intake access on {prefix} to {user_email}")
 
@@ -148,13 +158,42 @@ def revoke_intake_access(
 
     Return the GCS URI from which access has been revoked.
     """
-    prefix = f"{_build_trial_upload_prefix(trial_id, upload_type)}/{user_email.split('@')[0]}-{user_id}"
+    prefix = _build_intake_prefix(user_id, user_email, trial_id, upload_type)
 
     logger.info(f"Granting intake access on {prefix} to {user_email}")
 
     return revoke_conditional_gcs_access(
         GOOGLE_INTAKE_BUCKET, prefix, GOOGLE_UPLOAD_ROLE, user_email
     )
+
+
+user_member = lambda email: f"user:{email}"
+
+intake_subdir_regex = re.compile(
+    f'resource.name.startsWith\("projects/_/buckets/{GOOGLE_INTAKE_BUCKET}/objects/(.*?)"\)'
+)
+
+
+def list_intake_access(user_email: str) -> List[str]:
+    """
+    List the GCS URIs in the intake bucket to which this user has access.
+    """
+    bucket = _get_bucket(GOOGLE_INTAKE_BUCKET)
+    policy = bucket.get_iam_policy(requested_policy_version=3)
+    policy.version = 3
+
+    user_uris = []
+    for binding in policy.bindings:
+        expression = binding.get("condition", {}).get("expression", "")
+        subdir_match = intake_subdir_regex.match(expression)
+        if (
+            binding["members"] == {user_member(user_email)}
+            and binding["role"] == GOOGLE_UPLOAD_ROLE
+            and subdir_match
+        ):
+            user_uris.append(f"gs://{GOOGLE_INTAKE_BUCKET}/{subdir_match.group(1)}")
+
+    return user_uris
 
 
 def grant_download_access(user_email: str, trial_id: str, upload_type: str) -> str:
@@ -197,7 +236,7 @@ def _build_trial_upload_prefix(trial_id: str, upload_type: str) -> str:
 def grant_conditional_gcs_access(
     bucket_name: str, prefix: str, role: str, user_email: str
 ) -> str:
-    # get the current IAM policy for the data bucket
+    # get the current IAM policy for the provided bucket
     bucket = _get_bucket(bucket_name)
     # see https://cloud.google.com/storage/docs/access-control/using-iam-permissions#code-samples_3
     policy = bucket.get_iam_policy(requested_policy_version=3)
@@ -262,9 +301,6 @@ def revoke_all_download_access(user_email: str):
             break
 
     bucket.set_iam_policy(policy)
-
-
-user_member = lambda email: f"user:{email}"
 
 
 def _build_binding_with_expiry(
