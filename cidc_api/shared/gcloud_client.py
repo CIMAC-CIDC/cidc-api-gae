@@ -196,6 +196,17 @@ def list_intake_access(user_email: str) -> List[str]:
     return user_uris
 
 
+def refresh_intake_access(user_id: int, user_email: str):
+    """
+    Re-grant access to all GCS URIs in the intake bucket to which this user has access.
+    """
+    gcs_uris = list_intake_access(user_email)
+    for uri in gcs_uris:
+        # Renew the user's upload permission for the relevant trial_id and upload_type
+        trial_id, upload_type = uri.split("/")[-3:-1]
+        grant_intake_access(user_id, user_email, trial_id, upload_type)
+
+
 def grant_download_access(user_email: str, trial_id: str, upload_type: str) -> str:
     """
     Give a user download access to all objects in a trial of a particular upload type.

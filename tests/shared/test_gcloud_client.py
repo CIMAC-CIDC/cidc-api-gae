@@ -1,8 +1,9 @@
 import json
 from io import BytesIO
-from tests.utils import mock_gcloud_client
 from unittest.mock import MagicMock, call
 from datetime import datetime
+
+import pytest
 
 from cidc_api.shared import gcloud_client
 from cidc_api.config import settings
@@ -10,6 +11,7 @@ from cidc_api.shared.gcloud_client import (
     grant_intake_access,
     grant_upload_access,
     list_intake_access,
+    refresh_intake_access,
     revoke_intake_access,
     revoke_upload_access,
     grant_download_access,
@@ -28,7 +30,8 @@ from cidc_api.config.settings import (
     GOOGLE_DOWNLOAD_ROLE,
 )
 
-EMAIL = "test@email.com"
+ID = 123
+EMAIL = "test.user@email.com"
 
 
 def _mock_gcloud_storage(bindings, set_iam_policy_fn, monkeypatch):
@@ -109,29 +112,49 @@ def test_revoke_intake_access(monkeypatch):
     )
 
 
-def test_list_intake_access(monkeypatch):
-    email = "test.user@email.com"
-
-    def build_intake_binding(trial_id: str, upload_type: str):
-        return _build_binding_with_expiry(
-            GOOGLE_INTAKE_BUCKET,
-            f"{trial_id}/{upload_type}/testuser-123",
-            GOOGLE_UPLOAD_ROLE,
-            email,
-        )
-
-    bindings = [
-        build_intake_binding("test-trial-1", "upload-type-1"),
-        build_intake_binding("test-trial-2", "upload-type-2"),
-        build_intake_binding("test-trial-3", "upload-type-3"),
+@pytest.fixture
+def trial_ids_upload_types():
+    return [
+        ("test-trial-1", "upload-type-1"),
+        ("test-trial-2", "upload-type-2"),
+        ("test-trial-3", "upload-type-3"),
     ]
-    _mock_gcloud_storage(bindings, lambda i: i, monkeypatch)
 
-    uris = list_intake_access(email)
+
+@pytest.fixture
+def intake_bindings(trial_ids_upload_types):
+    return [
+        _build_binding_with_expiry(
+            GOOGLE_INTAKE_BUCKET,
+            f"{trial_id}/{upload_type}/testuser-{ID}",
+            GOOGLE_UPLOAD_ROLE,
+            EMAIL,
+        )
+        for trial_id, upload_type in trial_ids_upload_types
+    ]
+
+
+def test_list_intake_access(intake_bindings, trial_ids_upload_types, monkeypatch):
+    _mock_gcloud_storage(intake_bindings, lambda i: i, monkeypatch)
+
+    uris = list_intake_access(EMAIL)
     assert uris == [
-        f"gs://{GOOGLE_INTAKE_BUCKET}/test-trial-1/upload-type-1/testuser-123",
-        f"gs://{GOOGLE_INTAKE_BUCKET}/test-trial-2/upload-type-2/testuser-123",
-        f"gs://{GOOGLE_INTAKE_BUCKET}/test-trial-3/upload-type-3/testuser-123",
+        f"gs://{GOOGLE_INTAKE_BUCKET}/{t}/{u}/testuser-{ID}"
+        for t, u in trial_ids_upload_types
+    ]
+
+
+def test_refresh_intake_access(intake_bindings, trial_ids_upload_types, monkeypatch):
+    _mock_gcloud_storage(intake_bindings, lambda i: i, monkeypatch)
+
+    grant_intake_access_mock = MagicMock()
+    monkeypatch.setattr(
+        "cidc_api.shared.gcloud_client.grant_intake_access", grant_intake_access_mock
+    )
+
+    refresh_intake_access(ID, EMAIL)
+    assert grant_intake_access_mock.call_args_list == [
+        call(ID, EMAIL, t, u) for t, u in trial_ids_upload_types
     ]
 
 
