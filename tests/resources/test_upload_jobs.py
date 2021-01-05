@@ -1139,3 +1139,34 @@ def test_list_intake_gcs_uris(cidc_api, clean_db, monkeypatch):
         else:
             assert res.status_code == 401
         gcloud_client.grant_intake_access.reset_mock()
+
+
+def test_send_intake_metadata(cidc_api, clean_db, monkeypatch):
+    user_id = setup_trial_and_user(cidc_api, monkeypatch)
+
+    intake_metadata_email = MagicMock()
+    monkeypatch.setattr("cidc_api.shared.emails.intake_metadata", intake_metadata_email)
+
+    client = cidc_api.test_client()
+
+    form_data = {
+        "trial_id": "test-trial",
+        "assay_type": "wes",
+        "description": "a test description",
+    }
+
+    for role in ROLES:
+        make_role(user_id, role, cidc_api)
+        # do this here to recreate the BytesIO object each time
+        form_data["xlsx"] = (io.BytesIO(b"test metadata"), "test_metadata.xlsx")
+        res = client.post("/ingestion/intake_metadata", data=form_data)
+        if role in INTAKE_ROLES:
+            assert res.status_code == 200
+            args, kwargs = intake_metadata_email.call_args
+            assert args[0].id == user_id
+            assert kwargs.pop("xlsx").filename == form_data.pop("xlsx")[1]
+            assert kwargs.pop("send_email") == True
+            assert kwargs == form_data
+        else:
+            assert res.status_code == 401
+        intake_metadata_email.reset_mock()

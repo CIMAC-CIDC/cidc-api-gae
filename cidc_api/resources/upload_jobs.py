@@ -19,7 +19,7 @@ from cidc_schemas.template_reader import (
     ValidationError as SchemasValidationError,
 )
 
-from ..shared import gcloud_client
+from ..shared import gcloud_client, emails
 from ..shared.auth import requires_auth, get_current_user, authenticate_and_get_user
 from ..shared.rest_utils import (
     with_lookup,
@@ -658,3 +658,32 @@ def list_intake_gcs_uris():
     gcs_uris = gcloud_client.list_intake_access(user.email)
 
     return jsonify({"_items": gcs_uris, "_meta": {"total": len(gcs_uris)}})
+
+
+@ingestion_bp.route("/intake_metadata", methods=["POST"])
+@requires_auth("intake_metadata", INTAKE_ROLES)
+@use_args(
+    {
+        "trial_id": fields.Str(required=True),
+        "assay_type": fields.Str(required=True),
+        "description": fields.Str(required=True),
+    },
+    location="form",
+)
+@use_args(
+    {
+        "xlsx": fields.Field(
+            required=True,
+            # Check that this is an XLSX file
+            validate=lambda file: file.mimetype
+            == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            error_messages={"validator_failed": "must be a .xlsx file"},
+        )
+    },
+    location="files",
+)
+def send_metadata_message(form_args, file_args):
+    emails.intake_metadata(
+        get_current_user(), **form_args, **file_args, send_email=True
+    )
+    return jsonify("ok")

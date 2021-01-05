@@ -1,8 +1,8 @@
 """Template functions for CIDC email bodies."""
 import base64
 from functools import wraps
-from typing import Union
 
+from werkzeug.datastructures import FileStorage
 from cidc_schemas.prism import generate_analysis_configs_from_upload_patch
 
 from . import gcloud_client
@@ -110,5 +110,39 @@ def new_upload_alert(upload, full_metadata) -> dict:
             }
             for conf_name, conf in pipeline_configs.items()
         ]
+
+    return email
+
+
+@sendable
+def intake_metadata(
+    user, trial_id: str, assay_type: str, description: str, xlsx: FileStorage
+) -> dict:
+    """
+    Send an email containing a metadata xlsx file and description of that file to the
+    CIDC Admin mailing list.
+    """
+    subject = (
+        f"[METADATA SUBMISSION]({ENV}) {user.email} submitted {trial_id}/{assay_type}"
+    )
+    html_content = f"""
+    <p><strong>user:</strong> {user.first_n} {user.last_n} ({user.email})</p>
+    <p><strong>contact email:</strong> {user.contact_email}</p>
+    <p><strong>protocol identifier:</strong> {trial_id}</p>
+    <p><strong>assay type:</strong> {assay_type}</p>
+    <p><strong>description:</strong> {description}</p>
+    """
+    xlsx_attachment = {
+        "content": base64.b64encode(xlsx.read()).decode(),
+        "type": xlsx.mimetype,
+        "filename": xlsx.filename,
+    }
+
+    email = {
+        "to_emails": [CIDC_MAILING_LIST],
+        "subject": subject,
+        "html_content": html_content,
+        "attachments": [xlsx_attachment],
+    }
 
     return email
