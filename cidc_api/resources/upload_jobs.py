@@ -687,10 +687,10 @@ def send_intake_metadata(form_args, file_args):
     Send an email to the CIDC Admin mailing list with the provided metadata attached.
     """
     user = get_current_user()
-    xlsx_gcs_uri = gcloud_client.upload_xlsx_to_intake_bucket(
+    xlsx_gcp_url = gcloud_client.upload_xlsx_to_intake_bucket(
         user, form_args["trial_id"], form_args["assay_type"], file_args["xlsx"]
     )
     emails.intake_metadata(
-        user, **form_args, xlsx_gcs_uri=xlsx_gcs_uri, send_email=True
+        user, **form_args, xlsx_gcp_url=xlsx_gcp_url, send_email=True
     )
     return jsonify("ok")

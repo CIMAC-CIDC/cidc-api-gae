@@ -101,14 +101,13 @@ def upload_xlsx_to_intake_bucket(
     user, trial_id: str, assay_type: str, xlsx: FileStorage
 ) -> str:
     """
-    Upload a metadata spreadsheet file to the GCS intake bucket, returning the object URI.
+    Upload a metadata spreadsheet file to the GCS intake bucket, 
+    returning the URL to the bucket in the GCP console.
     """
     # get the intake bucket subdirectory for this upload
     blob_prefix = _build_intake_prefix(user.id, user.email, trial_id, assay_type)
     # add a timestamp to the metadata file name to avoid overwriting previous versions
-    filename_with_timestamp = (
-        f'{xlsx.filename.rsplit(".xlsx", 1)[0]}_{datetime.datetime.now()}.xlsx'
-    )
+    filename_with_timestamp = f'{xlsx.filename.rsplit(".xlsx", 1)[0]}_{datetime.datetime.now().isoformat()}.xlsx'
     blob_name = f"{blob_prefix}/{filename_with_timestamp}"
 
     # upload the metadata spreadsheet to the intake bucket
@@ -116,7 +115,7 @@ def upload_xlsx_to_intake_bucket(
     blob = bucket.blob(blob_name)
     blob.upload_from_file(xlsx)
 
-    return f"gs://{GOOGLE_INTAKE_BUCKET}/{blob_name}"
+    return f"https://console.cloud.google.com/storage/browser/_details/{GOOGLE_INTAKE_BUCKET}/{blob_name}"
 
 
 def grant_upload_access(user_email: str):
