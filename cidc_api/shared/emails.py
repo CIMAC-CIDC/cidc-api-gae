@@ -116,7 +116,7 @@ def new_upload_alert(upload, full_metadata) -> dict:
 
 @sendable
 def intake_metadata(
-    user, trial_id: str, assay_type: str, description: str, xlsx: FileStorage
+    user, trial_id: str, assay_type: str, description: str, xlsx_gcs_uri: str
 ) -> dict:
     """
     Send an email containing a metadata xlsx file and description of that file to the
@@ -130,19 +130,14 @@ def intake_metadata(
     <p><strong>contact email:</strong> {user.contact_email}</p>
     <p><strong>protocol identifier:</strong> {trial_id}</p>
     <p><strong>assay type:</strong> {assay_type}</p>
+    <p><strong>metadata spreadsheet GCS URI:</strong> {xlsx_gcs_uri}</p>
     <p><strong>description:</strong> {description}</p>
     """
-    xlsx_attachment = {
-        "content": base64.b64encode(xlsx.read()).decode(),
-        "type": xlsx.mimetype,
-        "filename": xlsx.filename,
-    }
 
     email = {
         "to_emails": [CIDC_MAILING_LIST],
         "subject": subject,
         "html_content": html_content,
-        "attachments": [xlsx_attachment],
     }
 
     return email

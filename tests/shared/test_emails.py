@@ -81,12 +81,12 @@ def test_intake_metadata():
     trial_id = "10021"
     assay_type = "wes"
     description = "a test description of this metadata"
-    xlsx = FileStorage(filename="test_metadata.xlsx")
+    xlsx_uri = "gs://fake/gcs/uri"
 
-    email = intake_metadata(user, trial_id, assay_type, description, xlsx)
+    email = intake_metadata(user, trial_id, assay_type, description, xlsx_uri)
     assert email["to_emails"] == [CIDC_MAILING_LIST]
     assert f"{user.first_n} {user.last_n}" in email["html_content"]
     assert f"{user.email}" in email["html_content"]
     assert f"{user.contact_email}" in email["html_content"]
     assert f"{description}" in email["html_content"]
-    assert email["attachments"][0]["filename"] == xlsx.filename
+    assert f"{xlsx_uri}" in email["html_content"]

@@ -1143,7 +1143,12 @@ def test_list_intake_gcs_uris(cidc_api, clean_db, monkeypatch):
 
 def test_send_intake_metadata(cidc_api, clean_db, monkeypatch):
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
+    xlsx_uri = "gs://same/fake/uri"
 
+    gcloud_client = MagicMock()
+    gcloud_client.upload_xlsx_to_intake_bucket = MagicMock()
+    gcloud_client.upload_xlsx_to_intake_bucket.return_value = xlsx_uri
+    monkeypatch.setattr("cidc_api.resources.upload_jobs.gcloud_client", gcloud_client)
     intake_metadata_email = MagicMock()
     monkeypatch.setattr("cidc_api.shared.emails.intake_metadata", intake_metadata_email)
 
@@ -1164,8 +1169,9 @@ def test_send_intake_metadata(cidc_api, clean_db, monkeypatch):
             assert res.status_code == 200
             args, kwargs = intake_metadata_email.call_args
             assert args[0].id == user_id
-            assert kwargs.pop("xlsx").filename == form_data.pop("xlsx")[1]
+            assert kwargs.pop("xlsx_gcs_uri") == xlsx_uri
             assert kwargs.pop("send_email") == True
+            form_data.pop("xlsx")
             assert kwargs == form_data
         else:
             assert res.status_code == 401
