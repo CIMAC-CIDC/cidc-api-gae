@@ -682,7 +682,10 @@ def list_intake_gcs_uris():
     },
     location="files",
 )
-def send_metadata_message(form_args, file_args):
+def send_intake_metadata(form_args, file_args):
+    """
+    Send an email to the CIDC Admin mailing list with the provided metadata attached.
+    """
     emails.intake_metadata(
         get_current_user(), **form_args, **file_args, send_email=True
     )
