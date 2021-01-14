@@ -145,7 +145,9 @@ def requires_upload_token_auth(endpoint):
 @upload_jobs_bp.route("/<int:upload_job>", methods=["PATCH"])
 @requires_upload_token_auth
 @unmarshal_request(
-    UploadJobSchema(only=["status", "token"]), "upload_job_updates", load_sqla=False
+    UploadJobSchema(only=["status", "gcs_file_map", "token"]),
+    "upload_job_updates",
+    load_sqla=False,
 )
 @marshal_response(upload_job_schema, 200)
 def update_upload_job(upload_job: UploadJobs, upload_job_updates: UploadJobs):
@@ -497,6 +499,7 @@ def upload_data_files(
     upload_moment = datetime.datetime.now().isoformat()
     uri2uuid = {}
     url_mapping = {}
+    optional_files = []
     files_with_extra_md = {}
     for file_info in file_infos:
         uuid = file_info.upload_placeholder
@@ -517,6 +520,9 @@ def upload_data_files(
         if file_info.metadata_availability:
             files_with_extra_md[file_info.local_path] = file_info.upload_placeholder
 
+        if file_info.allow_empty:
+            optional_files.append(file_info.local_path)
+
     gcs_blob = gcloud_client.upload_xlsx_to_gcs(
         trial.trial_id, "assays", template_type, xlsx_file, upload_moment
     )
@@ -535,6 +541,8 @@ def upload_data_files(
         "url_mapping": url_mapping,
         "gcs_bucket": GOOGLE_UPLOAD_BUCKET,
         "extra_metadata": None,
+        "gcs_file_map": uri2uuid,
+        "optional_files": optional_files,
         "token": job.token,
     }
     if bool(files_with_extra_md):
