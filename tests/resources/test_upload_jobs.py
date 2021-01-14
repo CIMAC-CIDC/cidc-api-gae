@@ -258,7 +258,10 @@ def test_update_upload_job(cidc_api, clean_db, monkeypatch):
     client = cidc_api.test_client()
 
     # Possible patches
-    upload_success = {"status": UploadJobStatus.UPLOAD_COMPLETED.value}
+    upload_success = {
+        "status": UploadJobStatus.UPLOAD_COMPLETED.value,
+        "gcs_file_map": {"foo": "bar"},
+    }
     upload_failure = {"status": UploadJobStatus.UPLOAD_FAILED.value}
     invalid_update = {"status": UploadJobStatus.MERGE_COMPLETED.value}
 
@@ -312,6 +315,8 @@ def test_update_upload_job(cidc_api, clean_db, monkeypatch):
     assert res.status_code == 200
     publish_success.assert_called_once_with(user_job)
     revoke_upload_access.assert_called_once()
+    with cidc_api.app_context():
+        assert UploadJobs.find_by_id(user_job).gcs_file_map == {"foo": "bar"}
     publish_success.reset_mock()
     revoke_upload_access.reset_mock()
 
