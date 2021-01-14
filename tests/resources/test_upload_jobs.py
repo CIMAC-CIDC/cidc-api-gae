@@ -19,7 +19,6 @@ from cidc_api.resources.upload_jobs import (
     INTAKE_ROLES,
     extract_schema_and_xlsx,
     requires_upload_token_auth,
-    upload_data_files,
 )
 from cidc_api.models import (
     TrialMetadata,
@@ -258,10 +257,7 @@ def test_update_upload_job(cidc_api, clean_db, monkeypatch):
     client = cidc_api.test_client()
 
     # Possible patches
-    upload_success = {
-        "status": UploadJobStatus.UPLOAD_COMPLETED.value,
-        "gcs_file_map": {"foo": "bar"},
-    }
+    upload_success = {"status": UploadJobStatus.UPLOAD_COMPLETED.value}
     upload_failure = {"status": UploadJobStatus.UPLOAD_FAILED.value}
     invalid_update = {"status": UploadJobStatus.MERGE_COMPLETED.value}
 
