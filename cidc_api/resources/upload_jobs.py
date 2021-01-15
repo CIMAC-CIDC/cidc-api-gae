@@ -164,7 +164,6 @@ def update_upload_job(upload_job: UploadJobs, upload_job_updates: dict):
                     )
 
         upload_job.update(changes=upload_job_updates)
-        logger.info(str(upload_job.metadata_patch))
     except ValueError as e:
         raise BadRequest(str(e))
 
@@ -185,16 +184,17 @@ def _remove_optional_uuid_recursive(target: dict, uuid: str):
     If no such item is found, continues recursively as depth first search
     If the uuid is never found, returns the target unchanged
     """
-    if target is None:
-        return None
-    found = False
-    for k, v in target.items():
-        if isinstance(v, dict):
-            logger.info(str(k) + ":" + str(v))
-            if "upload_placeholder" in v and v["upload_placeholder"] == uuid:
+    if isinstance(target, dict):
+        if "upload_placeholder" in target and target["upload_placeholder"] == uuid:
+            return {}
+
+        for k, v in target.items():
+            if (
+                isinstance(v, dict)
+                and "upload_placeholder" in v
+                and v["upload_placeholder"] == uuid
+            ):
                 target.pop(k)
-                logger.info("pop")
-                logger.info(target)
                 return target
             else:
                 temp = _remove_optional_uuid_recursive(v, uuid)
@@ -205,6 +205,14 @@ def _remove_optional_uuid_recursive(target: dict, uuid: str):
                     # drop completely if empty
                     target.pop(k)
                     return target
+
+    elif isinstance(target, list):
+        logger.info("target list")
+        temp = [_remove_optional_uuid_recursive(i, uuid) for i in target]
+        temp = [t for t in temp if t]  # remove None or empty
+
+        if temp != target:
+            return temp
 
     return target
 

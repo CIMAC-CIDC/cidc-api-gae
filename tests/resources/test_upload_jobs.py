@@ -89,9 +89,10 @@ def setup_upload_jobs(cidc_api) -> Tuple[int, int]:
             uploader_email=other_user.email,
             trial_id=trial_id,
             status=UploadJobStatus.STARTED.value,
-            metadata_patch={},
+            metadata_patch={"array": [{"upload_placeholder": "baz"}, {"test2": "foo"}]},
             upload_type="",
             gcs_xlsx_uri="",
+            gcs_file_map={"bip": "baz"},
             multifile=False,
         )
 
@@ -293,7 +294,7 @@ def test_update_upload_job(cidc_api, clean_db, monkeypatch):
     res = client.patch(
         f"/upload_jobs/{other_job}?token={other_job_record.token}",
         headers={"if-match": other_job_record._etag},
-        json=upload_failure,
+        json={"gcs_file_map": {"foo": "bar"}, **upload_failure},
     )
     assert res.status_code == 200
     publish_success.assert_not_called()
@@ -301,9 +302,10 @@ def test_update_upload_job(cidc_api, clean_db, monkeypatch):
     revoke_upload_access.reset_mock()
 
     with cidc_api.app_context():
+        modified_job = UploadJobs.find_by_id(other_job)
+        assert modified_job.metadata_patch == {"array": [{"test2": "foo"}]}
         user_job_record._set_status_no_validation(UploadJobStatus.STARTED.value)
         user_job_record.update()
-        print(user_job_record.gcs_file_map)
 
     # A user can update a job to be a success
     # Also allows for updating the gcs_file_map and thereby the metadata_patch
