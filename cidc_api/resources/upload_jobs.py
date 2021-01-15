@@ -150,10 +150,21 @@ def requires_upload_token_auth(endpoint):
     load_sqla=False,
 )
 @marshal_response(upload_job_schema, 200)
-def update_upload_job(upload_job: UploadJobs, upload_job_updates: UploadJobs):
+def update_upload_job(upload_job: UploadJobs, upload_job_updates: dict):
     """Update an upload_job."""
     try:
+        if "gcs_file_map" in upload_job_updates and upload_job.gcs_file_map is not None:
+            upload_job_updates["metadata_patch"] = upload_job.metadata_patch.copy()
+            for uri, uuid in upload_job.gcs_file_map.items():
+                if uri not in upload_job_updates["gcs_file_map"]:
+                    upload_job_updates[
+                        "metadata_patch"
+                    ] = _remove_optional_uuid_recursive(
+                        upload_job_updates["metadata_patch"], uuid
+                    )
+
         upload_job.update(changes=upload_job_updates)
+        logger.info(str(upload_job.metadata_patch))
     except ValueError as e:
         raise BadRequest(str(e))
 
@@ -166,6 +177,36 @@ def update_upload_job(upload_job: UploadJobs, upload_job_updates: UploadJobs):
     gcloud_client.revoke_upload_access(upload_job.uploader_email)
 
     return upload_job
+
+
+def _remove_optional_uuid_recursive(target: dict, uuid: str):
+    """
+    If target contains an item : dict with {"upload_placeholder":uuid}, removes that item and returns the modified target
+    If no such item is found, continues recursively as depth first search
+    If the uuid is never found, returns the target unchanged
+    """
+    if target is None:
+        return None
+    found = False
+    for k, v in target.items():
+        if isinstance(v, dict):
+            logger.info(str(k) + ":" + str(v))
+            if "upload_placeholder" in v and v["upload_placeholder"] == uuid:
+                target.pop(k)
+                logger.info("pop")
+                logger.info(target)
+                return target
+            else:
+                temp = _remove_optional_uuid_recursive(v, uuid)
+                if temp != v and len(temp):
+                    target[k] = temp
+                    return target
+                elif temp != v:
+                    # drop completely if empty
+                    target.pop(k)
+                    return target
+
+    return target
 
 
 ### Ingestion endpoints ###

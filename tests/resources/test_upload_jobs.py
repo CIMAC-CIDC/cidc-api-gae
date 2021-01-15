@@ -19,6 +19,7 @@ from cidc_api.resources.upload_jobs import (
     INTAKE_ROLES,
     extract_schema_and_xlsx,
     requires_upload_token_auth,
+    upload_data_files,
 )
 from cidc_api.models import (
     TrialMetadata,
@@ -78,9 +79,10 @@ def setup_upload_jobs(cidc_api) -> Tuple[int, int]:
             uploader_email=user_email,
             trial_id=trial_id,
             status=UploadJobStatus.STARTED.value,
-            metadata_patch={},
+            metadata_patch={"test": {"upload_placeholder": "baz"}, "test2": "foo"},
             upload_type="",
             gcs_xlsx_uri="",
+            gcs_file_map={"bip": "baz"},
             multifile=False,
         )
         job2 = UploadJobs(
@@ -301,18 +303,23 @@ def test_update_upload_job(cidc_api, clean_db, monkeypatch):
     with cidc_api.app_context():
         user_job_record._set_status_no_validation(UploadJobStatus.STARTED.value)
         user_job_record.update()
+        print(user_job_record.gcs_file_map)
 
     # A user can update a job to be a success
+    # Also allows for updating the gcs_file_map and thereby the metadata_patch
     res = client.patch(
         f"/upload_jobs/{user_job}?token={user_job_record.token}",
         headers={"if-match": user_job_record._etag},
-        json=upload_success,
+        json={"gcs_file_map": {"foo": "bar"}, **upload_success},
     )
     assert res.status_code == 200
     publish_success.assert_called_once_with(user_job)
     revoke_upload_access.assert_called_once()
     with cidc_api.app_context():
-        assert UploadJobs.find_by_id(user_job).gcs_file_map == {"foo": "bar"}
+        modified_job = UploadJobs.find_by_id(user_job)
+        assert modified_job.gcs_file_map == {"foo": "bar"}
+        assert modified_job.metadata_patch == {"test2": "foo"}
+
     publish_success.reset_mock()
     revoke_upload_access.reset_mock()
 
