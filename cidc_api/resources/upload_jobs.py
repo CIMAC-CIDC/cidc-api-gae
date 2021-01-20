@@ -184,7 +184,7 @@ def _remove_optional_uuid_recursive(target: dict, uuid: str):
     If the uuid is never found, returns the target unchanged
     """
     if isinstance(target, dict):
-        if "upload_placeholder" in target and target["upload_placeholder"] == uuid:
+        if target.get("upload_placeholder") == uuid:
             return {}
 
         for k, v in target.items():
