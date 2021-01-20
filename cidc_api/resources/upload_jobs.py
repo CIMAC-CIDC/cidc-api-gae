@@ -197,21 +197,16 @@ def _remove_optional_uuid_recursive(target: dict, uuid: str):
                 return target
             else:
                 temp = _remove_optional_uuid_recursive(v, uuid)
-                if temp != v and len(temp):
+                if len(temp):
                     target[k] = temp
-                    return target
-                elif temp != v:
+                else:
                     # drop completely if empty
                     target.pop(k)
                     return target
 
     elif isinstance(target, list):
-        logger.info("target list")
         temp = [_remove_optional_uuid_recursive(i, uuid) for i in target]
-        temp = [t for t in temp if t]  # remove None or empty
-
-        if temp != target:
-            return temp
+        target = [t for t in temp if t]  # remove None or empty
 
     return target
 

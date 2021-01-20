@@ -20,6 +20,7 @@ from cidc_api.resources.upload_jobs import (
     extract_schema_and_xlsx,
     requires_upload_token_auth,
     upload_data_files,
+    _remove_optional_uuid_recursive,
 )
 from cidc_api.models import (
     TrialMetadata,
@@ -1287,3 +1288,77 @@ def test_upload_data_files(cidc_api, monkeypatch):
         "localfile4.ext",
     ]
     assert "token" in json and json["token"] == "token"
+
+
+def test_remove_optional_uuid_recursive():
+    test = {
+        "foo": {"upload_placeholder": "one-deep"},
+        "bar": {
+            "foo": {"upload_placeholder": "two-deep"},
+            "baz": [{"upload_placeholder": "two-deep array"}],
+        },
+        "baz": [
+            {"upload_placeholder": "one-deep array"},
+            {"upload_placeholder": "second item"},
+        ],
+    }
+
+    this_test = deepcopy(test)
+    del this_test["foo"]
+    assert not DeepDiff(
+        this_test, _remove_optional_uuid_recursive(deepcopy(test), "one-deep")
+    )
+
+    this_test = deepcopy(test)
+    del this_test["bar"]["foo"]
+    assert not DeepDiff(
+        this_test, _remove_optional_uuid_recursive(deepcopy(test), "two-deep")
+    )
+
+    this_test = deepcopy(test)
+    del this_test["bar"]["baz"]
+    assert not DeepDiff(
+        this_test, _remove_optional_uuid_recursive(deepcopy(test), "two-deep array")
+    )
+
+    this_test = deepcopy(test)
+    del this_test["baz"][0]
+    assert not DeepDiff(
+        this_test, _remove_optional_uuid_recursive(deepcopy(test), "one-deep array")
+    )
+
+    this_test = deepcopy(test)
+    del this_test["baz"][1]
+    assert not DeepDiff(
+        this_test, _remove_optional_uuid_recursive(deepcopy(test), "second item")
+    )
+
+    this_test = deepcopy(test)
+    del this_test["baz"]
+    temp = _remove_optional_uuid_recursive(deepcopy(test), "one-deep array")
+    assert not DeepDiff(
+        _remove_optional_uuid_recursive(deepcopy(temp), "second item"), this_test
+    )
+
+    this_test = deepcopy(test)
+    del this_test["bar"]
+    temp = _remove_optional_uuid_recursive(deepcopy(test), "two-deep array")
+    assert not DeepDiff(
+        _remove_optional_uuid_recursive(deepcopy(temp), "two-deep"), this_test
+    )
+
+    this_test = deepcopy(test)
+    del this_test["foo"]
+    temp = _remove_optional_uuid_recursive(deepcopy(test), "one-deep")
+    assert not DeepDiff(temp, this_test)
+    del this_test["bar"]["foo"]
+    temp = _remove_optional_uuid_recursive(temp, "two-deep")
+    assert not DeepDiff(temp, this_test)
+    del this_test["bar"]
+    temp = _remove_optional_uuid_recursive(temp, "two-deep array")
+    assert not DeepDiff(temp, this_test)
+    del this_test["baz"][0]
+    temp = _remove_optional_uuid_recursive(temp, "one-deep array")
+    assert not DeepDiff(temp, this_test)
+    temp = _remove_optional_uuid_recursive(temp, "second item")
+    assert not temp
