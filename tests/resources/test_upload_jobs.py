@@ -2,6 +2,8 @@ from cidc_api.models.models import ROLES
 from cidc_api.shared import gcloud_client
 import io
 import logging
+from copy import deepcopy
+from deepdiff import DeepDiff
 from datetime import datetime
 from contextlib import contextmanager
 from collections import namedtuple
