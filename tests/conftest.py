@@ -2,8 +2,11 @@ import os
 import importlib
 
 import pytest
+from webdriver_manager.chrome import ChromeDriverManager
 from flask import Flask
 
+# The below imports depend on this environment variable,
+# so set it before importing them.
 os.environ["TESTING"] = "True"
 
 from cidc_api.app import app
@@ -14,6 +17,10 @@ from cidc_api.models import (
     TrialMetadata,
     Permissions,
 )
+
+# Install the Chrome web driver and add it to the PATH env variable
+chromedriver_dir = os.path.dirname(ChromeDriverManager().install())
+os.environ["PATH"] = f"{os.environ['PATH']}:{chromedriver_dir}"
 
 
 @pytest.fixture

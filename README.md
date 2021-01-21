@@ -49,7 +49,9 @@ To do so, first install and start PostgreSQL:
 brew install postgresql
 brew services start postgresql # launches the postgres service whenever your computer launches
 ```
+
 or for Ubuntu/Debian
+
 ```bash
 sudo apt install postgresql
 service postgresql start
