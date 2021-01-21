@@ -28,6 +28,7 @@ from cidc_api.shared.gcloud_client import (
 from cidc_api.config.settings import (
     GOOGLE_INTAKE_BUCKET,
     GOOGLE_UPLOAD_ROLE,
+    GOOGLE_INTAKE_ROLE,
     GOOGLE_UPLOAD_BUCKET,
     GOOGLE_DATA_BUCKET,
     GOOGLE_DOWNLOAD_ROLE,
@@ -94,7 +95,7 @@ def test_grant_intake_access(monkeypatch):
     grant_gcs_access.assert_called_once_with(
         GOOGLE_INTAKE_BUCKET,
         "test-trial/upload-type/testuser-123",
-        GOOGLE_UPLOAD_ROLE,
+        GOOGLE_INTAKE_ROLE,
         "test.user@email.com",
     )
 
@@ -110,7 +111,7 @@ def test_revoke_intake_access(monkeypatch):
     revoke_gcs_access.assert_called_once_with(
         GOOGLE_INTAKE_BUCKET,
         "test-trial/upload-type/testuser-123",
-        GOOGLE_UPLOAD_ROLE,
+        GOOGLE_INTAKE_ROLE,
         "test.user@email.com",
     )
 
