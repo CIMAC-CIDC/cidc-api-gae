@@ -1105,7 +1105,7 @@ def test_merge_extra_metadata(cidc_api, clean_db, monkeypatch):
         assert "extra_md" in au.metadata_patch["whatever"]["hierarchy"][1]
 
 
-def test_create_intake_gcs_uri(cidc_api, clean_db, monkeypatch):
+def test_create_intake_bucket(cidc_api, clean_db, monkeypatch):
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
     bucket_name = "test-intake-bucket"
 
@@ -1121,7 +1121,7 @@ def test_create_intake_gcs_uri(cidc_api, clean_db, monkeypatch):
     for role in ROLES:
         make_role(user_id, role, cidc_api)
         res = client.post(
-            "/ingestion/intake_gcs_uri",
+            "/ingestion/intake_bucket",
             json={"trial_id": "test-trial", "upload_type": "test-upload"},
         )
         if role in INTAKE_ROLES:

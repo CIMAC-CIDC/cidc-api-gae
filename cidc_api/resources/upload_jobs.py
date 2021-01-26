@@ -677,17 +677,16 @@ INTAKE_ROLES = [
 ]
 
 
-@ingestion_bp.route("/intake_gcs_uri", methods=["POST"])
-@requires_auth("intake_gcs_uri", INTAKE_ROLES)
+@ingestion_bp.route("/intake_bucket", methods=["POST"])
+@requires_auth("intake_bucket", INTAKE_ROLES)
 @use_args(
     {"trial_id": fields.Str(required=True), "upload_type": fields.Str(required=True)}
 )
-def create_intake_gcs_uri(args):
+def create_intake_bucket(args):
     """
-    Grant upload access to the current user for the provided trial and upload types,
-    returning the GCS URI the user now has permission to upload to.
-    NOTE: we don't verify that the user has permission to upload data for this trial-upload 
-    type combo because they won't be able to overwrite any other user's uploaded data.
+    Create an intake bucket for the current user if one doesn't exist yet, and return
+    both the `gs://...` and web console URLs to the subdirectory in this bucket that we
+    want the user to upload to (for the given trial / upload type combination).
     """
     user = get_current_user()
     intake_bucket = gcloud_client.create_intake_bucket(user.email)
