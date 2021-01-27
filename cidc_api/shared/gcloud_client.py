@@ -323,7 +323,7 @@ def _build_binding_with_expiry(
     condition = f'request.time < timestamp("{expiry_date.isoformat()}T00:00:00Z")'
     # Add an object URL prefix to the condition if a prefix was specified
     if prefix:
-        condition += f'&& resource.name.startsWith("projects/_/buckets/{bucket}/objects/{prefix}")&&'
+        condition += f' && resource.name.startsWith("projects/_/buckets/{bucket}/objects/{prefix}")'
 
     return {
         "role": role,
