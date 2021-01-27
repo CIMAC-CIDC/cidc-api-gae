@@ -152,8 +152,6 @@ def create_intake_bucket(user_email: str) -> storage.Bucket:
     Grant the user GCS object admin permissions on the bucket, or refresh those
     permissions if they've already been granted.
     """
-    print("HELLO!", storage)
-
     storage_client = _get_storage_client()
     bucket_name = get_intake_bucket_name(user_email)
     bucket = storage_client.bucket(bucket_name)
