@@ -10,16 +10,21 @@ from cidc_api.models import (
     CIDCRole,
     TrialMetadata,
 )
-from cidc_api.dashboards.upload_jobs_table import upload_jobs_table, UPLOAD_JOB_TABLE_ID
+from cidc_api.dashboards.shipments import shipments_dashboard, TRIAL_DROPDOWN
 
 from ..utils import make_role, mock_current_user
 
 
-def test_upload_jobs_table(cidc_api, clean_db, monkeypatch, dash_duo: DashComposite):
-    """Check that only CIDC Admins can view data in the upload jobs table dashboard."""
+def test_shipments_dashboard(cidc_api, clean_db, monkeypatch, dash_duo: DashComposite):
+    """
+    Check that only CIDC Admins can view data in the upload jobs table dashboard.
+    NOTE: this is a non-exhaustive smoketest. It does not test the functionality of
+    the shipments dashboard.
+    """
+    trial_id = "test-trial"
     user = Users(email="test@email.com", approval_date=datetime.now())
     trial = TrialMetadata(
-        trial_id="test-trial",
+        trial_id=trial_id,
         metadata_json={
             "protocol_identifier": "test-trial",
             "participants": [],
@@ -30,7 +35,7 @@ def test_upload_jobs_table(cidc_api, clean_db, monkeypatch, dash_duo: DashCompos
     upload_job = UploadJobs(
         uploader_email=user.email,
         trial_id=trial.trial_id,
-        upload_type="wes",
+        upload_type="pbmc",
         gcs_xlsx_uri="",
         metadata_patch={},
         multifile=False,
@@ -49,19 +54,12 @@ def test_upload_jobs_table(cidc_api, clean_db, monkeypatch, dash_duo: DashCompos
         make_role(user.id, role, cidc_api)
         mock_current_user(user, monkeypatch)
 
-        dash_duo.server(upload_jobs_table)
+        dash_duo.server(shipments_dashboard)
         dash_duo.wait_for_page(f"{dash_duo.server.url}/dashboards/upload_jobs/")
 
         if CIDCRole(role) == CIDCRole.ADMIN:
-            dash_duo.wait_for_contains_text(
-                f"#{UPLOAD_JOB_TABLE_ID}", upload_job.uploader_email
-            )
-            dash_duo.wait_for_contains_text(
-                f"#{UPLOAD_JOB_TABLE_ID}", upload_job.trial_id
-            )
-            dash_duo.wait_for_contains_text(
-                f"#{UPLOAD_JOB_TABLE_ID}", upload_job.upload_type
-            )
+            dash_duo.click_at_coord_fractions(f"#{TRIAL_DROPDOWN}", 0.1, 0.1)
+            dash_duo.wait_for_contains_text(f"#{TRIAL_DROPDOWN}", trial_id)
         else:
             dash_duo._wait_for_callbacks()
             assert any(
