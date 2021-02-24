@@ -5,13 +5,14 @@ import dash_table as dt
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Output, Input
+from sqlalchemy.sql.expression import column
 
 from .dash_utils import create_new_dashboard
 from ..models import UploadJobStatus, UploadJobs, CIDCRole, TrialMetadata
 from ..shared.auth import requires_auth
 
 
-def get_manifest_samples(trial_id: str, manifest_id: str) -> pd.DataFrame:
+def get_manifest_samples(trial_id: str, manifest_id: str) -> Optional[pd.DataFrame]:
     """Return a list of sample metadata associated with the given manifest upload."""
     # Get the most recent manifest upload with the given trial and manifest ids.
     # Although we're only querying for a single record, the UploadJobs.list method
@@ -32,7 +33,7 @@ def get_manifest_samples(trial_id: str, manifest_id: str) -> pd.DataFrame:
 
     # Return an empty list if no matching manifests were found
     if len(upload_records) == 0:
-        return []
+        return None
 
     upload_record = upload_records[0]
 
@@ -49,13 +50,13 @@ def get_manifest_samples(trial_id: str, manifest_id: str) -> pd.DataFrame:
     return samples_df
 
 
-def get_trial_shipments(trial_id: str) -> List[dict]:
+def get_trial_shipments(trial_id: str) -> Optional[List[dict]]:
     """Return a list of distinct shipments associated with the given trial."""
     trial_record = TrialMetadata.find_by_trial_id(trial_id)
 
     # Return an empty list of shipments if the trial doesn't exist
     if trial_record is None:
-        return []
+        return None
 
     # Extract and deduplicate shipments
     seen = set()
@@ -126,6 +127,9 @@ def populate_manifest_ids(trial_id):
         return []
 
     shipments = get_trial_shipments(trial_id)
+    if shipments is None:
+        return []
+
     return [
         {"label": shipment["manifest_id"], "value": shipment["manifest_id"]}
         for shipment in shipments
@@ -153,6 +157,9 @@ def get_shipments_for_trial(trial_id):
         return [], []
 
     shipments = get_trial_shipments(trial_id)
+    if shipments is None:
+        return columns, []
+
     return columns, shipments
 
 
@@ -176,4 +183,6 @@ def get_samples_for_manifest(trial_id, manifest_id):
         return [], []
 
     samples = get_manifest_samples(trial_id, manifest_id)
+    if samples is None:
+        return columns, []
     return columns, samples.to_dict("records")
