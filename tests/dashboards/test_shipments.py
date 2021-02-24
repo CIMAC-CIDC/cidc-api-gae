@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from dash.testing.composite import DashComposite
+from selenium.webdriver.common.by import By
 
 from cidc_api.models import (
     Users,
@@ -15,6 +16,9 @@ from cidc_api.dashboards.shipments import (
     get_trial_shipments,
     shipments_dashboard,
     TRIAL_DROPDOWN,
+    SHIPMENTS_TABLE_ID,
+    MANIFEST_DROPDOWN,
+    SAMPLES_TABLE_ID,
 )
 
 from ..utils import make_role, mock_current_user
@@ -97,9 +101,7 @@ def setup_data(cidc_api, clean_db):
 
 def test_shipments_dashboard(cidc_api, clean_db, monkeypatch, dash_duo: DashComposite):
     """
-    Check that only CIDC Admins can view data in the upload jobs table dashboard.
-    NOTE: this is a non-exhaustive smoketest. It does not test the functionality of
-    the shipments dashboard.
+    Check that the shipments dashboard behaves as expected.
     """
     user, _, _ = setup_data(cidc_api, clean_db)
 
@@ -111,8 +113,24 @@ def test_shipments_dashboard(cidc_api, clean_db, monkeypatch, dash_duo: DashComp
         dash_duo.wait_for_page(f"{dash_duo.server.url}/dashboards/upload_jobs/")
 
         if CIDCRole(role) == CIDCRole.ADMIN:
+            # open trial dropdown
             dash_duo.click_at_coord_fractions(f"#{TRIAL_DROPDOWN}", 0.1, 0.1)
             dash_duo.wait_for_contains_text(f"#{TRIAL_DROPDOWN}", trial_id)
+            # select the first trial
+            trial_select = dash_duo.find_elements(".VirtualizedSelectOption")[0]
+            dash_duo.click_at_coord_fractions(trial_select, 0.1, 0.1)
+            # click off dropdown to close it
+            dash_duo.click_at_coord_fractions(f"#{SHIPMENTS_TABLE_ID}", 0.1, 0.1)
+            # ensure the shipments table loads
+            dash_duo.wait_for_contains_text(f"#{SHIPMENTS_TABLE_ID}", manifest_id)
+            # open manifest dropdown
+            dash_duo.click_at_coord_fractions(f"#{MANIFEST_DROPDOWN}", 0.1, 0.1)
+            dash_duo.wait_for_contains_text(f"#{TRIAL_DROPDOWN}", trial_id)
+            # select the first manifest
+            manifest = dash_duo.find_elements(".VirtualizedSelectOption")[0]
+            dash_duo.click_at_coord_fractions(manifest, 0.1, 0.1)
+            # ensure the samples table loads
+            dash_duo.wait_for_contains_text(f"#{SAMPLES_TABLE_ID}", "CTTTPP1SS.01")
         else:
             dash_duo._wait_for_callbacks()
             assert any(
