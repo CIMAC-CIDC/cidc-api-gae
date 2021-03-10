@@ -252,6 +252,7 @@ class CIDCRole(EnumBaseClass):
     DEVELOPER = "developer"
     DEVOPS = "devops"
     NCI_BIOBANK_USER = "nci-biobank-user"
+    NETWORK_VIEWER = "network-viewer"
 
 
 ROLES = [role.value for role in CIDCRole]
