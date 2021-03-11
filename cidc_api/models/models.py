@@ -437,7 +437,7 @@ class Permissions(CommonColumns):
         # Always commit, because we don't want to grant IAM download unless this insert succeeds.
         super().insert(session=session, commit=True, compute_etag=compute_etag)
 
-        # Don't make an GCS changes if this user doesn't have download access
+        # Don't make any GCS changes if this user doesn't have download access
         if is_network_viewer:
             return
 
@@ -510,7 +510,7 @@ class Permissions(CommonColumns):
         Grant each of the given `user`'s IAM permissions. If the permissions
         have already been granted, calling this will extend their expiry date.
         """
-        # Don't make an GCS changes if this user doesn't have download access
+        # Don't make any GCS changes if this user doesn't have download access
         if user.role == CIDCRole.NETWORK_VIEWER.value:
             return
 
