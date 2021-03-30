@@ -945,6 +945,10 @@ def test_permissions_insert(clean_db, monkeypatch, caplog):
     _insert = MagicMock()
     monkeypatch.setattr(CommonColumns, "insert", _insert)
 
+    # if upload_type is invalid
+    with pytest.raises(ValueError, match="invalid upload type"):
+        Permissions(upload_type="foo", granted_to_user=user.id, trial_id=trial.trial_id)
+
     # if don't give granted_by_user
     perm = Permissions(
         granted_to_user=user.id, trial_id=trial.trial_id, upload_type="wes"
@@ -1009,6 +1013,63 @@ def test_permissions_insert(clean_db, monkeypatch, caplog):
     perm.insert()
     _insert.assert_called_once()
     gcloud_client.grant_download_access.assert_not_called()
+
+
+@db_test
+def test_permissions_broad_perms(clean_db, monkeypatch):
+    gcloud_client = mock_gcloud_client(monkeypatch)
+    user = Users(email="test@user.com")
+    user.insert()
+    trial = TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA)
+    trial.insert()
+    other_trial = TrialMetadata(
+        trial_id="other-trial",
+        metadata_json={**METADATA, "protocol_identifier": "other-trial"},
+    )
+    other_trial.insert()
+    for ut in ["wes_fastq", "olink"]:
+        for tid in [trial.trial_id, other_trial.trial_id]:
+            Permissions(
+                granted_to_user=user.id,
+                trial_id=tid,
+                upload_type=ut,
+                granted_by_user=user.id,
+            ).insert()
+
+    # Can't insert a permission for access to all trials and assays
+    with pytest.raises(ValueError, match="must have a trial id or upload type"):
+        Permissions(granted_to_user=user.id, granted_by_user=user.id).insert()
+
+    # Inserting a trial-level permission should delete other more specific related perms.
+    trial_query = clean_db.query(Permissions).filter(
+        Permissions.trial_id == trial.trial_id
+    )
+    assert trial_query.count() == 2
+    Permissions(
+        trial_id=trial.trial_id, granted_to_user=user.id, granted_by_user=user.id
+    ).insert()
+    assert trial_query.count() == 1
+    perm = trial_query.one()
+    assert perm.trial_id == trial.trial_id
+    assert perm.upload_type is None
+
+    # Inserting an upload-level permission should delete other more specific related perms.
+    olink_query = clean_db.query(Permissions).filter(Permissions.upload_type == "olink")
+    assert olink_query.count() == 1
+    assert olink_query.one().trial_id == other_trial.trial_id
+    Permissions(
+        upload_type="olink", granted_to_user=user.id, granted_by_user=user.id
+    ).insert()
+    assert olink_query.count() == 1
+    perm = olink_query.one()
+    assert perm.trial_id is None
+    assert perm.upload_type == "olink"
+
+    # Getting perms for a particular user-trial-type returns broader perms
+    perm = Permissions.find_for_user_trial_type(user.id, trial.trial_id, "cytof")
+    assert perm is not None and perm.upload_type is None
+    perm = Permissions.find_for_user_trial_type(user.id, "some random trial", "olink")
+    assert perm is not None and perm.trial_id is None
 
 
 @db_test
