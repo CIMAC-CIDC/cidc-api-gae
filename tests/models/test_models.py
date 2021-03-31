@@ -1,3 +1,4 @@
+from cidc_api.models.schemas import TrialMetadataListSchema
 import io
 import logging
 from copy import deepcopy
@@ -370,13 +371,14 @@ def test_partial_patch_trial_metadata(clean_db):
 def test_trial_metadata_get_summaries(clean_db, monkeypatch):
     """Check that trial data summaries are computed as expected"""
     monkeypatch.setattr(
-        "cidc_api.models.models.DISABLE_METADATA_VALIDATION_ON_INSERT", True
+        TrialMetadata, "_validate_metadata_json", staticmethod(lambda m: m)
     )
 
     # Add some trials
     records = [{"fake": "record"}]
     tm1 = {
         **METADATA,
+        # deliberately override METADATA['protocol_identifier']
         "protocol_identifier": "tm1",
         "assays": {
             "wes": [{"records": records * 3}],
@@ -389,6 +391,7 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
     }
     tm2 = {
         **METADATA,
+        # deliberately override METADATA['protocol_identifier']
         "protocol_identifier": "tm1",
         "assays": {
             "cytof": [{"records": records * 4}],

@@ -63,7 +63,6 @@ from ..config.settings import (
     TESTING,
     INACTIVE_USER_DAYS,
     GOOGLE_MAX_DOWNLOAD_PERMISSIONS,
-    DISABLE_METADATA_VALIDATION_ON_INSERT,
 )
 from ..shared import emails
 from ..shared.gcloud_client import (
@@ -631,8 +630,10 @@ class TrialMetadata(CommonColumns):
 
     @validates("metadata_json")
     def validate_metadata_json(self, key, metadata_json):
-        if DISABLE_METADATA_VALIDATION_ON_INSERT:
-            return metadata_json
+        return self._validate_metadata_json(metadata_json)
+
+    @staticmethod
+    def _validate_metadata_json(metadata_json):
         errs = trial_metadata_validator.iter_error_messages(metadata_json)
         messages = list(f"'metadata_json': {err}" for err in errs)
         if messages:

@@ -325,7 +325,7 @@ def test_get_trial_metadata_summaries(cidc_api, clean_db, monkeypatch):
     user_id = setup_user(cidc_api, monkeypatch)
 
     monkeypatch.setattr(
-        "cidc_api.models.models.DISABLE_METADATA_VALIDATION_ON_INSERT", True
+        TrialMetadata, "_validate_metadata_json", staticmethod(lambda m: m)
     )
 
     result = {"some": "json"}

@@ -27,8 +27,6 @@ assert ENV == "dev" if DEBUG else True, "DEBUG mode is only allowed when ENV='de
 TESTING = environ.get("TESTING") == "True"
 ALLOWED_CLIENT_URL = environ.get("ALLOWED_CLIENT_URL")
 IS_GUNICORN = "gunicorn" in environ.get("SERVER_SOFTWARE", "")
-# DO NOT CHANGE - used only for mocking in tests that need to bypass this feature
-DISABLE_METADATA_VALIDATION_ON_INSERT = False
 
 ### Configure miscellaneous constants ###
 TEMPLATES_DIR = path.join("/tmp", "templates")
