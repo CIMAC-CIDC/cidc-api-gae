@@ -926,7 +926,12 @@ class TrialMetadata(CommonColumns):
         """
 
         # Compute the number of samples associated with olink uploads.
-
+        # Unlike other assays, olink metadata is an object at the top level
+        # rather than an array of batches. This object has a "batches"
+        # property that points to an array of batches, and each batch contains
+        # an array of records. These records are *not* sample-level; rather,
+        # the number of samples corresponding to a given record is stored
+        # like: record["files"]["assay_npx"]["number_of_samples"].
         olink_subquery = """
             select
                 trial_id,
