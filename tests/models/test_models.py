@@ -1182,4 +1182,4 @@ def test_user_get_data_access_report(clean_db, monkeypatch):
         if user == admin_user:
             assert set(["*"]) == set(user_df.permissions)
         else:
-            assert set(user_df.permissions) - set(["wes,cytof", "cytof,wes"]) == set()
+            assert set(user_df.permissions).issubset(["wes,cytof", "cytof,wes"])
