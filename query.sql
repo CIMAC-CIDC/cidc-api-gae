@@ -1,3 +1,0 @@
-SELECT trial_metadata._created AS trial_metadata__created, trial_metadata._updated AS trial_metadata__updated, trial_metadata._etag AS trial_metadata__etag, trial_metadata.id AS trial_metadata_id, trial_metadata.trial_id AS trial_metadata_trial_id, ((jsonb_set(trial_metadata.metadata_json, %(jsonb_set_1)s, '[]'::jsonb) - %(jsonb_set_2)s) - %(param_1)s) - %(param_2)s AS metadata_json 
-FROM trial_metadata 
- LIMIT %(param_3)s OFFSET %(param_4)s
