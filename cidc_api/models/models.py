@@ -935,29 +935,26 @@ class TrialMetadata(CommonColumns):
         compute_etag: bool = True,
         validate_metadata: bool = True,
     ):
-        """Add the current instance to the session. Validate metadata_json, if any, if validate_metadata=True."""
+        """Add the current instance to the session. Skip JSON metadata validation validate_metadata=False."""
         if self.metadata_json is not None and validate_metadata:
             self.validate_metadata_json(self.metadata_json)
 
         return super().insert(session=session, commit=commit, compute_etag=compute_etag)
 
     @with_default_session
-    def update(self, session: Session, changes: dict = None, commit: bool = True):
+    def update(
+        self,
+        session: Session,
+        changes: dict = None,
+        commit: bool = True,
+        validate_metadata: bool = True,
+    ):
         """
         Update the current TrialMetadata instance if it exists. `changes` should be
-        a dictionary mapping column names to updated values.
-
-        NOTE: if `changes` contains a metadata_json update, only values with provided keys
-        will be updated - e.g., an update that looks like {'nct_id': 'foo'} will update
-        only the 'nct_id' key in the `metadata_json` blob, not overwrite the entire blob.
-        This only works for top-level keys, not nested keys like sample-level metadata.
+        a dictionary mapping column names to updated values. Skip JSON metadata validation 
+        validate_metadata=False.
         """
-        # Do what's described in the docstring note
-        if "metadata_json" in changes:
-            changes["metadata_json"] = {
-                **self.metadata_json,
-                **changes["metadata_json"],
-            }
+        if "metadata_json" in changes and validate_metadata:
             self.validate_metadata_json(changes["metadata_json"])
 
         return super().update(session=session, changes=changes, commit=commit)
