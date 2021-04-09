@@ -748,7 +748,6 @@ class TrialMetadata(CommonColumns):
 
         logger.info(f"Creating new trial metadata with id {trial_id}")
         trial = TrialMetadata(trial_id=trial_id)
-        trial.safely_set_metadata_json(metadata_json)
         trial.insert(session=session, commit=commit)
 
         return trial
