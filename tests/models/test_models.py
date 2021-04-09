@@ -370,10 +370,6 @@ def test_partial_patch_trial_metadata(clean_db):
 @db_test
 def test_trial_metadata_get_summaries(clean_db, monkeypatch):
     """Check that trial data summaries are computed as expected"""
-    monkeypatch.setattr(
-        TrialMetadata, "_validate_metadata_json", staticmethod(lambda m: m)
-    )
-
     # Add some trials
     records = [{"fake": "record"}]
     tm1 = {
@@ -408,8 +404,8 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
             },
         },
     }
-    TrialMetadata(trial_id="tm1", metadata_json=tm1).insert()
-    TrialMetadata(trial_id="tm2", metadata_json=tm2).insert()
+    TrialMetadata(trial_id="tm1", metadata_json=tm1).insert(validate_metadata=False)
+    TrialMetadata(trial_id="tm2", metadata_json=tm2).insert(validate_metadata=False)
 
     # Add some files
     for i, (tid, fs) in enumerate([("tm1", 3), ("tm1", 2), ("tm2", 4), ("tm2", 6)]):

@@ -60,7 +60,8 @@ def list_trial_metadata(args, pagination_args):
 def create_trial_metadata(trial):
     """Create a new trial metadata record."""
     try:
-        trial.insert()
+        # metadata was already validated by unmarshal_request
+        trial.insert(validate_metadata=False)
     except IntegrityError as e:
         raise BadRequest(str(e.orig))
 

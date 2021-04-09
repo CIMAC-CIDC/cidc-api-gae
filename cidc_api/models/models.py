@@ -247,6 +247,10 @@ class CommonColumns(BaseModel):  # type: ignore
 
         return list(v[0] for v in distinct_query)
 
+    def validate(self):
+        """Run custom validations on attributes set on this instance."""
+        pass
+
 
 class CIDCRole(EnumBaseClass):
     ADMIN = "cidc-admin"
@@ -628,17 +632,26 @@ class TrialMetadata(CommonColumns):
     # Create a GIN index on the metadata JSON blobs
     _metadata_idx = Index("metadata_idx", metadata_json, postgresql_using="gin")
 
-    @validates("metadata_json")
-    def validate_metadata_json(self, key, metadata_json):
-        return self._validate_metadata_json(metadata_json)
-
     @staticmethod
-    def _validate_metadata_json(metadata_json):
+    def validate_metadata_json(metadata_json: dict) -> dict:
         errs = trial_metadata_validator.iter_error_messages(metadata_json)
         messages = list(f"'metadata_json': {err}" for err in errs)
         if messages:
             raise ValidationMultiError(messages)
         return metadata_json
+
+    def validate(self):
+        """Run custom validations on attributes set on this instance."""
+        if self.metadata_json is not None:
+            self.validate_metadata_json(self.metadata_json)
+
+    def safely_set_metadata_json(self, metadata_json: dict):
+        """
+        Validate `metadata_json` according to the trial metadata schema before setting
+        the `TrialMetadata.metadata_json` attribute.
+        """
+        self.validate_metadata_json(metadata_json)
+        self.metadata_json = metadata_json
 
     @staticmethod
     @with_default_session
@@ -715,7 +728,7 @@ class TrialMetadata(CommonColumns):
         if errs:
             raise ValidationMultiError(errs)
         # Save updates to trial record
-        trial.metadata_json = updated_metadata
+        trial.safely_set_metadata_json(updated_metadata)
         trial._etag = make_etag([trial.trial_id, updated_metadata])
 
         session.add(trial)
@@ -734,7 +747,8 @@ class TrialMetadata(CommonColumns):
         """
 
         logger.info(f"Creating new trial metadata with id {trial_id}")
-        trial = TrialMetadata(trial_id=trial_id, metadata_json=metadata_json)
+        trial = TrialMetadata(trial_id=trial_id)
+        trial.safely_set_metadata_json(metadata_json)
         trial.insert(session=session, commit=commit)
 
         return trial
@@ -803,9 +817,7 @@ class TrialMetadata(CommonColumns):
         "shipments", and "participants" properties removed.
         """
         return (
-            func.jsonb_set(
-                cls.metadata_json, "{participants}", literal_column("'[]'::jsonb")
-            )
+            cls.metadata_json.op("-")("participants")
             .op("-")("assays")
             .op("-")("analysis")
             .op("-")("shipments")
@@ -914,6 +926,41 @@ class TrialMetadata(CommonColumns):
             trials.append(trial)
 
         return trials
+
+    @with_default_session
+    def insert(
+        self,
+        session: Session,
+        commit: bool = True,
+        compute_etag: bool = True,
+        validate_metadata: bool = True,
+    ):
+        """Add the current instance to the session. Validate metadata_json, if any, if validate_metadata=True."""
+        if self.metadata_json is not None and validate_metadata:
+            self.validate_metadata_json(self.metadata_json)
+
+        return super().insert(session=session, commit=commit, compute_etag=compute_etag)
+
+    @with_default_session
+    def update(self, session: Session, changes: dict = None, commit: bool = True):
+        """
+        Update the current TrialMetadata instance if it exists. `changes` should be
+        a dictionary mapping column names to updated values.
+
+        NOTE: if `changes` contains a metadata_json update, only values with provided keys
+        will be updated - e.g., an update that looks like {'nct_id': 'foo'} will update
+        only the 'nct_id' key in the `metadata_json` blob, not overwrite the entire blob.
+        This only works for top-level keys, not nested keys like sample-level metadata.
+        """
+        # Do what's described in the docstring note
+        if "metadata_json" in changes:
+            changes["metadata_json"] = {
+                **self.metadata_json,
+                **changes["metadata_json"],
+            }
+            self.validate_metadata_json(changes["metadata_json"])
+
+        return super().update(session=session, changes=changes, commit=commit)
 
     @classmethod
     def build_trial_filter(cls, user: Users, trial_ids: List[str] = []):

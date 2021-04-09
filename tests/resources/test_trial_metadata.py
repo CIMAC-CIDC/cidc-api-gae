@@ -191,7 +191,7 @@ def test_list_trials(cidc_api, clean_db, monkeypatch):
     res = client.get("/trial_metadata")
     assert res.status_code == 200
     metadata_json = res.json["_items"][0]["metadata_json"]
-    assert metadata_json["participants"] == []
+    assert metadata_json.get("participants") is None
     assert metadata_json.get("assays") is None
     assert metadata_json.get("analysis") is None
     assert metadata_json.get("shipments") is None
@@ -363,10 +363,6 @@ def test_update_trial(cidc_api, clean_db, monkeypatch):
 def test_get_trial_metadata_summaries(cidc_api, clean_db, monkeypatch):
     """Check that the /trial_metadata/summaries endpoint behaves as expected"""
     user_id = setup_user(cidc_api, monkeypatch)
-
-    monkeypatch.setattr(
-        TrialMetadata, "_validate_metadata_json", staticmethod(lambda m: m)
-    )
 
     result = {"some": "json"}
     TrialMetadataMock = MagicMock()
