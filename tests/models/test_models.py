@@ -1,3 +1,4 @@
+from jsonschema.validators import validate
 from cidc_api.models.schemas import TrialMetadataListSchema
 import io
 import logging
@@ -299,6 +300,53 @@ def test_create_trial_metadata(clean_db):
 
     with pytest.raises(ValidationMultiError, match="'buzz' was unexpected"):
         TrialMetadata(trial_id="foo", metadata_json={"buzz": "bazz"}).insert()
+
+
+@db_test
+def test_trial_metadata_insert(clean_db):
+    """Test that metadata validation on insert works as expected"""
+    # No error with valid metadata
+    trial = TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA)
+    trial.insert()
+
+    # Error with invalid metadata
+    trial.metadata_json = {"foo": "bar"}
+    with pytest.raises(ValidationMultiError):
+        trial.insert()
+
+    # No error if validate_metadata=False
+    trial.insert(validate_metadata=False)
+
+
+@db_test
+def test_trial_metadata_update(clean_db):
+    """Test that metadata validation on update works as expected"""
+    trial = TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA)
+    trial.insert()
+
+    # No error on valid `changes` update
+    trial.update(changes={"metadata_json": {**METADATA, "nct_id": "foo"}})
+
+    # No error on valid attribute update
+    trial.metadata_json = {**METADATA, "nct_id": "bar"}
+    trial.update()
+
+    bad_json = {"metadata_json": {"foo": "bar"}}
+
+    # Error on invalid `changes` update
+    with pytest.raises(ValidationMultiError):
+        trial.update(changes=bad_json)
+
+    # No error on invalid `changes` update if validate_metadata=False
+    trial.update(changes=bad_json, validate_metadata=False)
+
+    # Error on invalid attribute update
+    trial.metadata_json = bad_json
+    with pytest.raises(ValidationMultiError):
+        trial.update()
+
+    # No error on invalid attribute update if validate_metadata=False
+    trial.update(validate_metadata=False)
 
 
 @db_test

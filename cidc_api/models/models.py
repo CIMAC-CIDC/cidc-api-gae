@@ -6,6 +6,7 @@ from enum import Enum as EnumBaseClass
 from functools import wraps
 from io import BytesIO
 from typing import BinaryIO, Dict, Optional, List, Union, Callable, Tuple
+from jsonschema.validators import validate
 
 import pandas as pd
 from flask import current_app as app
@@ -747,7 +748,7 @@ class TrialMetadata(CommonColumns):
         """
 
         logger.info(f"Creating new trial metadata with id {trial_id}")
-        trial = TrialMetadata(trial_id=trial_id)
+        trial = TrialMetadata(trial_id=trial_id, metadata_json=metadata_json)
         trial.insert(session=session, commit=commit)
 
         return trial
@@ -951,12 +952,19 @@ class TrialMetadata(CommonColumns):
         """
         Update the current TrialMetadata instance if it exists. `changes` should be
         a dictionary mapping column names to updated values. Skip JSON metadata validation 
-        validate_metadata=False.
+        if validate_metadata=False.
         """
-        if "metadata_json" in changes and validate_metadata:
-            self.validate_metadata_json(changes["metadata_json"])
+        # Since commit=False, this will only apply changes to the in-memory
+        # TrialMetadata instance, not the corresponding db record
+        super().update(session=session, changes=changes, commit=False)
 
-        return super().update(session=session, changes=changes, commit=commit)
+        # metadata_json was possibly updated in above method call,
+        # so check that it's still valid if validate_metadata=True
+        if validate_metadata:
+            self.validate_metadata_json(self.metadata_json)
+
+        if commit:
+            session.commit()
 
     @classmethod
     def build_trial_filter(cls, user: Users, trial_ids: List[str] = []):
