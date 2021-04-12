@@ -342,6 +342,8 @@ def test_update_trial(cidc_api, clean_db, monkeypatch):
             metadata = trial.metadata_json.copy()
             if field == "participants":
                 metadata["participants"] = []
+            elif field == "protocol_identifier":
+                metadata["protocol_identifier"] = "uh oh!"
             else:
                 metadata.pop(field)
             res = client.patch(

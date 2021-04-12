@@ -810,9 +810,14 @@ class TrialMetadata(CommonColumns):
     num_participants: Optional[int]
     num_samples: Optional[int]
 
-    # List of metadata JSON fields that a) should not be sent to clients
-    # by TrialMetadata.list and b) should not accept updates via the API.
-    PROTECTED_FIELDS = ["participants", "assays", "analysis", "shipments"]
+    # List of metadata JSON fields that should not be sent to clients
+    # in queries that list trial metadata, because they may contain a lot
+    # of data.
+    PRUNED_FIELDS = ["participants", "assays", "analysis", "shipments"]
+
+    # List of metadata JSON fields that should only be settable via
+    # manifest and metadata templates.
+    PROTECTED_FIELDS = [*PRUNED_FIELDS, "protocol_identifier"]
 
     @classmethod
     def _pruned_metadata_json(cls):
@@ -821,7 +826,7 @@ class TrialMetadata(CommonColumns):
         "shipments", and "participants" properties removed.
         """
         query = cls.metadata_json
-        for field in cls.PROTECTED_FIELDS:
+        for field in cls.PRUNED_FIELDS:
             query = query.op("-")(field)
 
         return query.label("metadata_json")
