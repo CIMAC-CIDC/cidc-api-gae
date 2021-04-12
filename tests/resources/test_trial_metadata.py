@@ -337,6 +337,24 @@ def test_update_trial(cidc_api, clean_db, monkeypatch):
         assert res.status_code == 422
         assert res.json["_error"]["message"] == bad_trial_error_message
 
+        # No protected fields on a trial's metadata can be updated
+        for field in TrialMetadata.PROTECTED_FIELDS:
+            metadata = trial.metadata_json.copy()
+            if field == "participants":
+                metadata["participants"] = []
+            else:
+                metadata.pop(field)
+            res = client.patch(
+                f"/trial_metadata/{trial.trial_id}",
+                headers={"If-Match": trial._etag},
+                json={"metadata_json": metadata},
+            )
+            assert res.status_code == 400
+            assert (
+                res.json["_error"]["message"]
+                == f"updating metadata_json['{field}'] via the API is prohibited"
+            )
+
         # An admin can successfully update a trial
         new_metadata_json = {
             **trial.metadata_json,

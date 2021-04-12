@@ -810,19 +810,21 @@ class TrialMetadata(CommonColumns):
     num_participants: Optional[int]
     num_samples: Optional[int]
 
+    # List of metadata JSON fields that a) should not be sent to clients
+    # by TrialMetadata.list and b) should not accept updates via the API.
+    PROTECTED_FIELDS = ["participants", "assays", "analysis", "shipments"]
+
     @classmethod
     def _pruned_metadata_json(cls):
         """
         Builds a modified metadata_json column selector with the "assays", "analysis",
         "shipments", and "participants" properties removed.
         """
-        return (
-            cls.metadata_json.op("-")("participants")
-            .op("-")("assays")
-            .op("-")("analysis")
-            .op("-")("shipments")
-            .label("metadata_json")
-        )
+        query = cls.metadata_json
+        for field in cls.PROTECTED_FIELDS:
+            query = query.op("-")(field)
+
+        return query.label("metadata_json")
 
     @classmethod
     @with_default_session
