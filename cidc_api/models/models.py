@@ -1169,7 +1169,7 @@ class TrialMetadata(CommonColumns):
                 jsonb_array_elements(batches->'participants') participant
         """
 
-        # All the subqueries produce the same set of columns, so `UNION`
+        # All the subqueries produce the same set of columns, so `UNION ALL`
         # them together into a single query, aggregating results into
         # trial-level JSON dictionaries with the shape described in the docstring.
         combined_query = f"""
@@ -1182,19 +1182,19 @@ class TrialMetadata(CommonColumns):
                     sum(value) as value
                 from (
                     {participants_subquery}
-                    union
+                    union all
                     {samples_subquery}
-                    union
+                    union all
                     {files_subquery}
-                    union
+                    union all
                     {clinical_subquery}
-                    union
+                    union all
                     {generic_assay_subquery}
-                    union
+                    union all
                     {nanostring_subquery}
-                    union
+                    union all
                     {olink_subquery}
-                    union
+                    union all
                     {elisa_subquery}
                     union all
                     {cytof_e4412_subquery}
