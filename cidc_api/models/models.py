@@ -169,7 +169,6 @@ class CommonColumns(BaseModel):  # type: ignore
         """List records in this table, with pagination support."""
         query = session.query(cls)
         query = cls._add_pagination_filters(query, **pagination_args)
-        print(query)
         return query.all()
 
     @classmethod
