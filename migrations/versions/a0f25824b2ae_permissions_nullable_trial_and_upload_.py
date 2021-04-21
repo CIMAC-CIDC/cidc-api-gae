@@ -1,8 +1,8 @@
 """permissions nullable trial and upload type
 
-Revision ID: 40d16813c5dd
-Revises: 509970372467
-Create Date: 2021-03-29 12:08:35.146241
+Revision ID: a0f25824b2ae
+Revises: 7d3ad965db30
+Create Date: 2021-04-20 14:57:14.708607
 
 """
 from alembic import op
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = "40d16813c5dd"
-down_revision = "509970372467"
+revision = "a0f25824b2ae"
+down_revision = "7d3ad965db30"
 branch_labels = None
 depends_on = None
 

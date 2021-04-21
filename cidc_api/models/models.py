@@ -6,6 +6,7 @@ from enum import Enum as EnumBaseClass
 from functools import wraps
 from io import BytesIO
 from typing import BinaryIO, Dict, Optional, List, Union, Callable, Tuple
+from jsonschema.exceptions import ValidationError
 from jsonschema.validators import validate
 
 import pandas as pd
@@ -168,6 +169,7 @@ class CommonColumns(BaseModel):  # type: ignore
         """List records in this table, with pagination support."""
         query = session.query(cls)
         query = cls._add_pagination_filters(query, **pagination_args)
+        print(query)
         return query.all()
 
     @classmethod
@@ -458,6 +460,12 @@ class Permissions(CommonColumns):
     # easier to interpret.
     EVERY = None
 
+    @validates("upload_type")
+    def validate_upload_type(self, key, value):
+        if value not in ALL_UPLOAD_TYPES and value != self.EVERY:
+            raise ValueError(f"cannot grant permission on invalid upload type: {value}")
+        return value
+
     @with_default_session
     def insert(self, session: Session, commit: bool = True, compute_etag: bool = True):
         """
@@ -474,11 +482,6 @@ class Permissions(CommonColumns):
         """
         if self.upload_type == self.EVERY and self.trial_id == self.EVERY:
             raise ValueError("A permission must have a trial id or upload type.")
-
-        if self.upload_type not in ALL_UPLOAD_TYPES and self.upload_type != self.EVERY:
-            raise ValueError(
-                "cannot grant permission on invalid upload type:", self.upload_type
-            )
 
         grantee = Users.find_by_id(self.granted_to_user)
         if grantee is None:
@@ -540,7 +543,7 @@ class Permissions(CommonColumns):
                 # upload type-specific perms for deletion.
                 Permissions.upload_type != self.EVERY
                 if self.upload_type == self.EVERY
-                else Permissions.upload_type,
+                else Permissions.upload_type == self.upload_type,
             )
             .all()
         )
@@ -552,7 +555,6 @@ class Permissions(CommonColumns):
             perm.delete(deleted_by=self.granted_by_user, commit=False)
 
         # Always commit, because we don't want to grant IAM download unless this insert succeeds.
-        print(self.__dict__)
         super().insert(session=session, commit=True, compute_etag=compute_etag)
 
         # Don't make any GCS changes if this user doesn't have download access
@@ -629,12 +631,17 @@ class Permissions(CommonColumns):
             session.query(Permissions)
             .filter(
                 Permissions.granted_to_user == user_id,
-                tuple_(Permissions.trial_id, Permissions.upload_type).in_(
-                    [
-                        (trial_id, upload_type),
-                        (trial_id, Permissions.EVERY),
-                        (Permissions.EVERY, upload_type),
-                    ]
+                (
+                    (Permissions.trial_id == trial_id)
+                    & (Permissions.upload_type == upload_type)
+                )
+                | (
+                    (Permissions.trial_id == Permissions.EVERY)
+                    & (Permissions.upload_type == upload_type)
+                )
+                | (
+                    (Permissions.trial_id == trial_id)
+                    & (Permissions.upload_type == Permissions.EVERY)
                 ),
             )
             .first()
@@ -1711,11 +1718,11 @@ class DownloadableFiles(CommonColumns):
             full_trial_perms, full_type_perms, trial_type_perms = [], [], []
             for perm in permissions:
                 if perm.upload_type is None:
-                    full_trial_perms.append(perm.trial)
+                    full_trial_perms.append(perm.trial_id)
                 elif perm.trial_id is None:
                     full_type_perms.append(perm.upload_type)
                 else:
-                    trial_type_perms.append((perm.trial_id, perm.upoad_type))
+                    trial_type_perms.append((perm.trial_id, perm.upload_type))
             df_tuples = tuple_(
                 DownloadableFiles.trial_id, DownloadableFiles.upload_type
             )
