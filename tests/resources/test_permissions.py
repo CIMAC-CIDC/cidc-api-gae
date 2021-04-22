@@ -174,15 +174,13 @@ def test_create_permission(cidc_api, clean_db, monkeypatch):
     gcloud_client.grant_download_access.assert_called_once()
     gcloud_client.revoke_download_access.assert_not_called()
 
-    # Re-insertion refreshes IAM permissions and doesn't create
-    # a duplicate record in the database
+    # Re-insertion is not allowed
     gcloud_client.reset_mocks()
     res = client.post("permissions", json=perm)
-    assert res.status_code == 201
-    gcloud_client.grant_download_access.assert_called()
-    gcloud_client.revoke_download_access.assert_called()
-    with cidc_api.app_context():
-        assert clean_db.query(Permissions).filter_by(**perm).count() == 1
+    assert res.status_code == 400
+    assert "unique constraint" in res.json["_error"]["message"]
+    gcloud_client.grant_download_access.assert_not_called()
+    gcloud_client.revoke_download_access.assert_not_called()
 
     # The permission grantee must exist
     gcloud_client.reset_mocks()
