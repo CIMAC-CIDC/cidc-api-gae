@@ -569,9 +569,9 @@ class Permissions(CommonColumns):
         except Exception as e:
             # Add back deleted permissions, if any
             for perm in perms_to_delete:
-                perm.insert()
+                perm.insert(session=session)
             # Delete the just-created permissions record
-            super().delete()
+            super().delete(session=session)
             raise IAMException("IAM grant failed.") from e
 
     @with_default_session
