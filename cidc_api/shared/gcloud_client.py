@@ -231,7 +231,7 @@ def revoke_download_access(
     """
     prefix = _build_trial_upload_prefix(trial_id, upload_type)
 
-    logger.info(f"Revoking download access on {prefix}* to {user_email}")
+    logger.info(f"Revoking download access on {prefix} from {user_email}")
 
     bucket = _get_bucket(GOOGLE_DATA_BUCKET)
     return revoke_expiring_gcs_access(bucket, GOOGLE_DOWNLOAD_ROLE, user_email, prefix)

@@ -551,7 +551,7 @@ class Permissions(CommonColumns):
         # If a delete operation fails, all other deletes and the insertion will
         # be rolled back.
         for perm in perms_to_delete:
-            perm.delete(deleted_by=self.granted_by_user, commit=False)
+            session.delete(perm)
 
         # Always commit, because we don't want to grant IAM download unless this insert succeeds.
         super().insert(session=session, commit=True, compute_etag=compute_etag)
