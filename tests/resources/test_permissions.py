@@ -191,11 +191,15 @@ def test_create_permission(cidc_api, clean_db, monkeypatch):
     gcloud_client.grant_download_access.assert_not_called()
     gcloud_client.revoke_download_access.assert_not_called()
 
+    with cidc_api.app_context():
+        clean_db.query(Permissions).delete()
+        clean_db.commit()
+
     # The permission grantee must have <= GOOGLE_MAX_DOWNLOAD_PERMISSIONS
     perm["granted_to_user"] = current_user_id
     inserts_fail_eventually = False
     upload_types = list(ALL_UPLOAD_TYPES)
-    for i in range(GOOGLE_MAX_DOWNLOAD_PERMISSIONS):
+    for i in range(GOOGLE_MAX_DOWNLOAD_PERMISSIONS + 1):
         gcloud_client.reset_mocks()
         perm["upload_type"] = upload_types[i]
         res = client.post("permissions", json=perm)
