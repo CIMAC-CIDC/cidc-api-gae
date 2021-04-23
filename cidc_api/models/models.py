@@ -1065,15 +1065,18 @@ class TrialMetadata(CommonColumns):
         if trial_ids:
             filters.append(cls.trial_id.in_(trial_ids))
         if not user.is_admin() and not user.is_nci_user():
-            has_broad_trial_perms = False
+            has_cross_trial_perms = False
             granular_trial_perms = []
             for perm in Permissions.find_for_user(user.id):
                 # If perm.trial_id is None, then the user has a cross-trial permission
                 if perm.trial_id is None:
-                    has_broad_trial_perms = True
+                    has_cross_trial_perms = True
                 else:
                     granular_trial_perms.append(perm.trial_id)
-            if not has_broad_trial_perms:
+            # If the user has a cross-trial permission, then they should be able
+            # to list all trials, so don't include granular permission filters
+            # in that case.
+            if not has_cross_trial_perms:
                 filters.append(cls.trial_id.in_(granular_trial_perms))
 
         # possible TODO: filter by assays in a trial
