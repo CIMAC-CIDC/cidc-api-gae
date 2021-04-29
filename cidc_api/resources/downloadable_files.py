@@ -145,11 +145,13 @@ def create_compressed_batch(args):
     # and to get automatic cleanup of all data we write once we're
     # done using the directory.
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Download all files in the batch to a temporary directory.
+        indir = os.path.join(tmpdir, "in")
+        os.mkdir(indir)
+        # Download all files in the batch to a subdirectory in the tmpdir.
         # Since this process is I/O-bound, not CPU-bound, we get a
         # performance benefit from multithreading it.
         with ThreadPoolExecutor(MAX_THREADPOOL_WORKERS) as pool:
-            filename = lambda url: os.path.join(tmpdir, url.replace("/", "_"))
+            filename = lambda url: os.path.join(indir, url.replace("/", "_"))
             download = lambda url: data_bucket.get_blob(url).download_to_filename(
                 filename(url)
             )
@@ -158,7 +160,7 @@ def create_compressed_batch(args):
         # Create a compressed file from the contents of the temporary directory
         random_filename = str(uuid4())
         outpath = shutil.make_archive(
-            os.path.join(tmpdir, random_filename), "gztar", tmpdir
+            os.path.join(tmpdir, random_filename), "gztar", indir
         )
 
         # Upload the compressed file to the ephemeral bucket, where
