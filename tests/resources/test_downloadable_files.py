@@ -284,22 +284,23 @@ def test_get_filelist(cidc_api, clean_db, monkeypatch):
         clean_db.query(DownloadableFiles).delete()
 
     # Filelists don't get paginated
-    long_file_list = list(range(1000, 2000))
+    ids = []
     with cidc_api.app_context():
-        for id in long_file_list:
-            DownloadableFiles(
-                id=id,
+        for id in range(1000):
+            df = DownloadableFiles(
                 trial_id=trial_id_1,
                 object_url=str(id),
                 upload_type="",
                 file_size_bytes=0,
                 uploaded_timestamp=datetime.now(),
-            ).insert()
+            )
+            df.insert()
+            ids.append(df.id)
 
-    res = client.post(url, json={"file_ids": long_file_list})
+    res = client.post(url, json={"file_ids": ids})
     assert res.status_code == 200
     # newly inserted files + EOF newline
-    assert len(res.data.decode("utf-8").split("\n")) == len(long_file_list) + 1
+    assert len(res.data.decode("utf-8").split("\n")) == len(ids) + 1
 
 
 def test_create_compressed_batch(cidc_api, clean_db, monkeypatch):
