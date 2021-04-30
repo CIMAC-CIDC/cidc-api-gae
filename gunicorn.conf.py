@@ -1,6 +1,5 @@
 """Configuration for the gunicorn WSGI server."""
 import os
-import multiprocessing
 
 from gevent.monkey import patch_all
 from psycogreen.gevent import patch_psycopg
@@ -12,12 +11,8 @@ from psycogreen.gevent import patch_psycopg
 patch_all()
 patch_psycopg()  # our postgres db driver needs to be patched directly
 
-# Instantiate the app before forking worker processes
-preload_app = True
 # Use async workers: https://docs.gunicorn.org/en/stable/design.html#async-workers
 worker_class = "gevent"
-# Recommended formula from docs: https://docs.gunicorn.org/en/stable/settings.html#threads
-threads = 4 * multiprocessing.cpu_count()
 # See https://docs.gunicorn.org/en/stable/settings.html
 port = os.environ.get("PORT", 8080)
 # Development mode - restart the server on code changes
