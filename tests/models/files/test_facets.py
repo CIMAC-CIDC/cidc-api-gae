@@ -37,9 +37,9 @@ def test_build_data_category_facets():
                 if isinstance(subvalue, list):
                     for config in subvalue:
                         if value_key == "WES" and config["label"] == "Source":
-                            assert_expected_facet_structure(
-                                config, wes_count_1 + wes_count_2
-                            )
+                            assert_expected_facet_structure(config, wes_count_1)
+                        elif value_key == "WES" and config["label"] == "Report":
+                            assert_expected_facet_structure(config, wes_count_2)
                         else:
                             assert_expected_facet_structure(config)
                 elif isinstance(subvalue, dict):
@@ -50,6 +50,8 @@ def test_build_data_category_facets():
             for config in value:
                 if config["label"] == "Samples Info":
                     assert_expected_facet_structure(config, sample_count)
+                elif config["label"] == "WES":  # Analysis-ready facet
+                    assert_expected_facet_structure(config, wes_count_2)
                 else:
                     assert_expected_facet_structure(config)
 
