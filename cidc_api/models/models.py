@@ -54,7 +54,7 @@ from .files import (
     build_trial_facets,
     build_data_category_facets,
     get_facet_groups_for_paths,
-    facet_groups_to_names,
+    facet_groups_to_categories,
     details_dict,
     FilePurpose,
     FACET_NAME_DELIM,
@@ -1617,7 +1617,7 @@ class DownloadableFiles(CommonColumns):
 
     @hybrid_property
     def data_category(self):
-        return facet_groups_to_names.get(self.facet_group)
+        return facet_groups_to_categories.get(self.facet_group)
 
     @data_category.expression
     def data_category(cls):
@@ -1983,7 +1983,10 @@ class DownloadableFiles(CommonColumns):
 # Query clause for computing a downloadable file's data category.
 # Used above in the DownloadableFiles.data_category computed property.
 DATA_CATEGORY_CASE_CLAUSE = case(
-    [(DownloadableFiles.facet_group == k, v) for k, v in facet_groups_to_names.items()]
+    [
+        (DownloadableFiles.facet_group == k, v)
+        for k, v in facet_groups_to_categories.items()
+    ]
 )
 
 # Query clause for computing a downloadable file's file purpose.
