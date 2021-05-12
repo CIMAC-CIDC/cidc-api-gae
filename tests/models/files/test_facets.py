@@ -15,15 +15,19 @@ def test_build_data_category_facets():
 
     wes_count = 5
     sample_count = 12
-    data_category_file_counts = {"WES|Source": wes_count, "Samples Info": sample_count}
+    facet_group_file_counts = {
+        "/wes/r1_L.fastq.gz": wes_count,
+        "csv|samples info": sample_count,
+    }
 
     def assert_expected_facet_structure(config: dict, count: int = 0):
         assert "label" in config
         assert "description" in config
         assert config["count"] == count
 
-    facet_specs = build_data_category_facets(data_category_file_counts)
+    facet_specs = build_data_category_facets(facet_group_file_counts)
     print(facet_specs)
+
     for value in facet_specs.values():
         if isinstance(value, dict):
             for value_key, subvalue in value.items():
