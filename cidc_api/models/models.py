@@ -1973,10 +1973,10 @@ class DownloadableFiles(CommonColumns):
     def get_data_category_facets(
         cls, session: Session, filter_: Callable[[Query], Query] = lambda q: q
     ):
-        data_category_file_counts = cls.count_by(
-            cls.data_category, session=session, filter_=filter_
+        facet_group_file_counts = cls.count_by(
+            cls.facet_group, session=session, filter_=filter_
         )
-        data_category_facets = build_data_category_facets(data_category_file_counts)
+        data_category_facets = build_data_category_facets(facet_group_file_counts)
         return data_category_facets
 
 

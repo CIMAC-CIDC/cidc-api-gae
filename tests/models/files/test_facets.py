@@ -70,9 +70,9 @@ def test_get_facet_groups_for_paths():
     ]
     facets_for_paths = get_facet_groups_for_paths(good_paths)
     assert facets_for_paths == [
-        *facets_dict["Assay Type"]["WES"]["Somatic"].match_clauses,
-        *facets_dict["Assay Type"]["RNA"]["Quality"].match_clauses,
-        *facets_dict["Clinical Type"]["Participants Info"].match_clauses,
+        *facets_dict["Assay Type"]["WES"]["Somatic"].facet_groups,
+        *facets_dict["Assay Type"]["RNA"]["Quality"].facet_groups,
+        *facets_dict["Clinical Type"]["Participants Info"].facet_groups,
     ]
 
     # Non-existent paths

@@ -5,11 +5,11 @@ from sqlalchemy.sql import ClauseElement
 
 
 class FacetConfig:
-    match_clauses: List[str]
+    facet_groups: List[str]
     description: Optional[str]
 
-    def __init__(self, match_clauses: List[str], description: Optional[str] = None):
-        self.match_clauses = match_clauses
+    def __init__(self, facet_groups: List[str], description: Optional[str] = None):
+        self.facet_groups = facet_groups
         self.description = description
 
 
@@ -323,13 +323,13 @@ def _build_facet_groups_to_names():
         for facet_name, subfacet in facet_dict.items():
             if isinstance(subfacet, dict):
                 for subfacet_name, subsubfacet in subfacet.items():
-                    for facet_group in subsubfacet.match_clauses:
+                    for facet_group in subsubfacet.facet_groups:
                         facet_names[facet_group] = path_to_name(
                             [facet_name, subfacet_name]
                         )
 
             elif isinstance(subfacet, FacetConfig):
-                for facet_group in subfacet.match_clauses:
+                for facet_group in subfacet.facet_groups:
                     facet_names[facet_group] = path_to_name([facet_name])
 
     return facet_names
@@ -338,7 +338,7 @@ def _build_facet_groups_to_names():
 facet_groups_to_names = _build_facet_groups_to_names()
 
 
-def build_data_category_facets(data_category_file_counts: Dict[str, int]):
+def build_data_category_facets(facet_group_file_counts: Dict[str, int]):
     """
     Add file counts by data category into the facets defined in the `facets_dict`,
     and reformat `FacetConfig`s as facet specification dictionaries with the following structure:
@@ -354,8 +354,9 @@ def build_data_category_facets(data_category_file_counts: Dict[str, int]):
         {
             "label": label,
             "description": config.description,
-            "count": data_category_file_counts.get(
-                FACET_NAME_DELIM.join([prefix, label]) if prefix else label, 0
+            "count": sum(
+                facet_group_file_counts.get(facet_group, 0)
+                for facet_group in config.facet_groups
             ),
         }
         for label, config in facet_config_entries.items()
@@ -392,6 +393,6 @@ def get_facet_groups_for_paths(paths: List[List[str]]) -> List[str]:
             assert isinstance(facet_config, FacetConfig)
         except Exception as e:
             raise BadRequest(f"no facet for path {path}")
-        facet_groups.extend(facet_config.match_clauses)
+        facet_groups.extend(facet_config.facet_groups)
 
     return facet_groups
