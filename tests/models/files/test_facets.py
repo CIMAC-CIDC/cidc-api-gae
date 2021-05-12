@@ -13,10 +13,12 @@ from cidc_api.models.files.facets import (
 def test_build_data_category_facets():
     """Ensure build_data_category_facets works as expected."""
 
-    wes_count = 5
+    wes_count_1 = 2
+    wes_count_2 = 3
     sample_count = 12
     facet_group_file_counts = {
-        "/wes/r1_L.fastq.gz": wes_count,
+        "/wes/r1_L.fastq.gz": wes_count_1,
+        "/wes/analysis/report.tar.gz": wes_count_2,
         "csv|samples info": sample_count,
     }
 
@@ -35,7 +37,9 @@ def test_build_data_category_facets():
                 if isinstance(subvalue, list):
                     for config in subvalue:
                         if value_key == "WES" and config["label"] == "Source":
-                            assert_expected_facet_structure(config, wes_count)
+                            assert_expected_facet_structure(
+                                config, wes_count_1 + wes_count_2
+                            )
                         else:
                             assert_expected_facet_structure(config)
                 elif isinstance(subvalue, dict):
