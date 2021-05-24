@@ -441,6 +441,13 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
             ],
             "hande": [{"records": records * 5}],
         },
+        "analysis": {
+            "wes_analysis": {"pair_runs": records * 5, "excluded_samples": records * 2},
+            "wes_tumor_only_analysis": {
+                "runs": records * 4,
+                "excluded_samples": records * 3,
+            },
+        },
         "clinical_data": {
             "records": [
                 {"clinical_file": {"participants": ["a", "b", "c"]}},
@@ -481,6 +488,15 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 ]
             },
         },
+        "analysis": {
+            "rna_analysis": {"level_1": records * 10, "excluded_samples": records * 2},
+            "tcr_analysis": {
+                "batches": [
+                    {"records": records * 4, "excluded_samples": records * 3},
+                    {"records": records * 2, "excluded_samples": records * 1},
+                ]
+            },
+        },
     }
     TrialMetadata(trial_id="tm1", metadata_json=tm1).insert(validate_metadata=False)
     TrialMetadata(trial_id="tm2", metadata_json=tm2).insert(validate_metadata=False)
@@ -515,6 +531,14 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "elisa": 0.0,
                 "h&e": 0.0,
                 "mif": 0.0,
+                "rna_level1_analysis": 10.0,
+                "rna_level1_analysis_excluded": 2.0,
+                "tcr_analysis": 6.0,
+                "tcr_analysis_excluded": 4.0,
+                "wes_analysis": 0.0,
+                "wes_analysis_excluded": 0.0,
+                "wes_tumor_only_analysis": 0.0,
+                "wes_tumor_only_analysis_excluded": 0.0,
             },
             {
                 "expected_assays": ["ihc", "olink"],
@@ -531,6 +555,14 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "nanostring": 3.0,
                 "h&e": 5.0,
                 "mif": 5.0,
+                "rna_level1_analysis": 0.0,
+                "rna_level1_analysis_excluded": 0.0,
+                "tcr_analysis": 0.0,
+                "tcr_analysis_excluded": 0.0,
+                "wes_analysis": 10.0,
+                "wes_analysis_excluded": 2.0,
+                "wes_tumor_only_analysis": 4.0,
+                "wes_tumor_only_analysis_excluded": 3.0,
             },
         ],
         key=sorter,

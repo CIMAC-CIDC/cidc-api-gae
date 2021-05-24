@@ -1267,6 +1267,72 @@ class TrialMetadata(CommonColumns):
                 jsonb_array_elements(batches->'participants') participant
         """
 
+        wes_analysis_subquery = """
+            select
+                trial_id,
+                'wes_analysis' as key,
+                2 * jsonb_array_length(metadata_json#>'{analysis,wes_analysis,pair_runs}') as value
+            from
+                trial_metadata
+            union all
+            select
+                trial_id,
+                'wes_analysis_excluded' as key,
+                jsonb_array_length(metadata_json#>'{analysis,wes_analysis,excluded_samples}') as value
+            from
+                trial_metadata
+        """
+
+        wes_tumor_only_analysis_subquery = """
+            select
+                trial_id,
+                'wes_tumor_only_analysis' as key,
+                jsonb_array_length(metadata_json#>'{analysis,wes_tumor_only_analysis,runs}') as value
+            from
+                trial_metadata
+            union all
+            select
+                trial_id,
+                'wes_tumor_only_analysis_excluded' as key,
+                jsonb_array_length(metadata_json#>'{analysis,wes_tumor_only_analysis,excluded_samples}') as value
+            from
+                trial_metadata
+        """
+
+        rna_level1_analysis_subquery = """
+            select
+                trial_id,
+                'rna_level1_analysis' as key,
+                jsonb_array_length(metadata_json#>'{analysis,rna_analysis,level_1}') as value
+            from
+                trial_metadata
+            union all
+            select
+                trial_id,
+                'rna_level1_analysis_excluded' as key,
+                jsonb_array_length(metadata_json#>'{analysis,rna_analysis,excluded_samples}') as value
+            from
+                trial_metadata
+        """
+
+        tcr_analysis_subquery = """
+            select
+                trial_id,
+                'tcr_analysis' as key,
+                jsonb_array_length(batches->'records') as value
+            from
+                trial_metadata,
+                jsonb_array_elements(metadata_json#>'{analysis,tcr_analysis,batches}') batches
+            union all
+            select
+                trial_id,
+                'tcr_analysis_excluded' as key,
+                jsonb_array_length(batches->'excluded_samples') as value
+            from
+                trial_metadata,
+                jsonb_array_elements(metadata_json#>'{analysis,tcr_analysis,batches}') batches
+        """
+
         # Extract an array of expected assays or an empty array if expected assays is null.
         expected_assays_subquery = """
             select
@@ -1309,6 +1375,14 @@ class TrialMetadata(CommonColumns):
                     {elisa_subquery}
                     union all
                     {cytof_e4412_subquery}
+                    union all
+                    {wes_analysis_subquery}
+                    union all
+                    {wes_tumor_only_analysis_subquery}
+                    union all
+                    {rna_level1_analysis_subquery}
+                    union all
+                    {tcr_analysis_subquery}
                 ) q1
                 group by trial_id, key
             ) q2
