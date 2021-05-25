@@ -1252,6 +1252,10 @@ class TrialMetadata(CommonColumns):
                 jsonb_array_elements(metadata_json#>'{assays,elisa}') entry
         """
 
+        # case
+        #     when sample->'output_files' is not null then 1 else 0
+        # end as value
+
         # Compute the number of samples associated with cytof_4412 uploads.
         # cytof_e4412 metadata has a slightly different structure than typical
         # assays, where each batch has an array of participants, and each participant has
@@ -1265,6 +1269,47 @@ class TrialMetadata(CommonColumns):
                 trial_metadata,
                 jsonb_array_elements(metadata_json#>'{assays,cytof_e4412}') batches,
                 jsonb_array_elements(batches->'participants') participant
+            union all
+            select
+                trial_id,
+                'cytof_analysis' as key,
+                case
+                    when sample->'output_files' is not null then 1 else 0
+                end as value
+            from
+                trial_metadata,
+                jsonb_array_elements(metadata_json#>'{assays,cytof_e4412}') batches,
+                jsonb_array_elements(batches->'participants') participant,
+                jsonb_array_elements(participant->'samples') sample               
+            union all
+            select
+                trial_id,
+                'cytof_analysis_excluded' as key,
+                jsonb_array_length(batches->'excluded_samples') as value
+            from
+                trial_metadata,
+                jsonb_array_elements(metadata_json#>'{assays,cytof_e4412}') batches
+        """
+
+        cytof_10021_analysis_subquery = """
+            select
+                trial_id,
+                'cytof_analysis' as key,
+                case
+                    when record->'output_files' is not null then 1 else 0
+                end as value
+            from
+                trial_metadata,
+                jsonb_array_elements(metadata_json#>'{assays,cytof_10021}') batch,
+                jsonb_array_elements(batch->'records') record
+            union all
+            select
+                trial_id,
+                'cytof_analysis_excluded' as key,
+                jsonb_array_length(batch->'excluded_samples')
+            from
+                trial_metadata,
+                jsonb_array_elements(metadata_json#>'{assays,cytof_10021}') batch
         """
 
         wes_analysis_subquery = """
@@ -1375,6 +1420,8 @@ class TrialMetadata(CommonColumns):
                     {elisa_subquery}
                     union all
                     {cytof_e4412_subquery}
+                    union all
+                    {cytof_10021_analysis_subquery}
                     union all
                     {wes_analysis_subquery}
                     union all

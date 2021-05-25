@@ -420,6 +420,7 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
     """Check that trial data summaries are computed as expected"""
     # Add some trials
     records = [{"fake": "record"}]
+    cytof_record_with_output = [{"output_files": {"foo": "bar"}}]
     tm1 = {
         **METADATA,
         # deliberately override METADATA['protocol_identifier']
@@ -463,7 +464,10 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
         "participants": [{"samples": []}],
         "assays": {
             "cytof_10021": [
-                {"records": records * 2},
+                {
+                    "records": cytof_record_with_output * 2,
+                    "excluded_samples": records * 2,
+                },
                 {"records": records * 2},
                 {"records": records},
             ],
@@ -471,9 +475,10 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 {
                     "participants": [
                         {"samples": records},
-                        {"samples": records},
+                        {"samples": cytof_record_with_output * 5},
                         {"samples": records * 2},
-                    ]
+                    ],
+                    "excluded_samples": records,
                 }
             ],
             "olink": {
@@ -518,7 +523,7 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
         [
             {
                 "expected_assays": [],
-                "cytof": 9.0,
+                "cytof": 13.0,
                 "olink": 8.0,
                 "trial_id": "tm2",
                 "file_size_bytes": 10,
@@ -531,6 +536,8 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "elisa": 0.0,
                 "h&e": 0.0,
                 "mif": 0.0,
+                "cytof_analysis": 7.0,
+                "cytof_analysis_excluded": 3.0,
                 "rna_level1_analysis": 10.0,
                 "rna_level1_analysis_excluded": 2.0,
                 "tcr_analysis": 6.0,
@@ -555,6 +562,8 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "nanostring": 3.0,
                 "h&e": 5.0,
                 "mif": 5.0,
+                "cytof_analysis": 0.0,
+                "cytof_analysis_excluded": 0.0,
                 "rna_level1_analysis": 0.0,
                 "rna_level1_analysis_excluded": 0.0,
                 "tcr_analysis": 0.0,
