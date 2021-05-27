@@ -421,7 +421,6 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
     # Add some trials
     records = [{"fake": "record"}]
     cytof_record_with_output = [{"output_files": {"foo": "bar"}}]
-    wes_pair_with_analysis = [{"report": {"report": "foo"}}]
     tm1 = {
         **METADATA,
         # deliberately override METADATA['protocol_identifier']
@@ -445,7 +444,27 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
         },
         "analysis": {
             "wes_analysis": {
-                "pair_runs": records * 2 + wes_pair_with_analysis * 5,
+                "pair_runs": [
+                    {
+                        "tumor": {"cimac_id": "t0"},
+                        "normal": {"cimac_id": "n0"},
+                    },  # no analysis data
+                    {
+                        "tumor": {"cimac_id": "t1"},
+                        "normal": {"cimac_id": "n1"},
+                        "report": {"report": "foo"},
+                    },
+                    {
+                        "tumor": {"cimac_id": "t1"},
+                        "normal": {"cimac_id": "n2"},
+                        "report": {"report": "foo"},
+                    },
+                    {
+                        "tumor": {"cimac_id": "t2"},
+                        "normal": {"cimac_id": "n3"},
+                        "report": {"report": "foo"},
+                    },
+                ],
                 "excluded_samples": records * 2,
             },
             "wes_tumor_only_analysis": {
@@ -569,7 +588,7 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "cytof_analysis": 0.0,
                 "rna_level1_analysis": 0.0,
                 "tcr_analysis": 0.0,
-                "wes_analysis": 10.0,
+                "wes_analysis": 5.0,
                 "wes_tumor_only_analysis": 4.0,
                 "excluded_samples": {
                     "wes_analysis": records * 2,

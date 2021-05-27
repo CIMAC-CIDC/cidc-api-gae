@@ -1292,18 +1292,20 @@ class TrialMetadata(CommonColumns):
                 jsonb_array_elements(batch->'records') record
         """
 
-        # Count 2 samples for every pair that has analysis data, since each
-        # pair contains a tumor and a normal sample.
+        # Count the distinct tumor and normal samples that have associated analysis data.
+        # Multiple normal samples might be paired with the same tumor sample, so we need
+        # to de-duplicate them before counting.
         wes_analysis_subquery = """
             select
                 trial_id,
                 'wes_analysis' as key,
-                2 as value
+                count(distinct pair#>'{tumor,cimac_id}') + count(distinct pair#>'{normal,cimac_id}') as value
             from
                 trial_metadata,
                 jsonb_array_elements(metadata_json#>'{analysis,wes_analysis,pair_runs}') pair
             where
                 pair#>'{report,report}' is not null
+            group by trial_id, key
         """
 
         wes_tumor_only_analysis_subquery = """
