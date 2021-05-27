@@ -1292,13 +1292,18 @@ class TrialMetadata(CommonColumns):
                 jsonb_array_elements(batch->'records') record
         """
 
+        # Count 2 samples for every pair that has analysis data, since each
+        # pair contains a tumor and a normal sample.
         wes_analysis_subquery = """
             select
                 trial_id,
                 'wes_analysis' as key,
-                2 * jsonb_array_length(metadata_json#>'{analysis,wes_analysis,pair_runs}') as value
+                2 as value
             from
-                trial_metadata
+                trial_metadata,
+                jsonb_array_elements(metadata_json#>'{analysis,wes_analysis,pair_runs}') pair
+            where
+                pair#>'{report,report}' is not null
         """
 
         wes_tumor_only_analysis_subquery = """

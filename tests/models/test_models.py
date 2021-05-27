@@ -421,6 +421,7 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
     # Add some trials
     records = [{"fake": "record"}]
     cytof_record_with_output = [{"output_files": {"foo": "bar"}}]
+    wes_pair_with_analysis = [{"report": {"report": "foo"}}]
     tm1 = {
         **METADATA,
         # deliberately override METADATA['protocol_identifier']
@@ -443,7 +444,10 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
             "hande": [{"records": records * 5}],
         },
         "analysis": {
-            "wes_analysis": {"pair_runs": records * 5, "excluded_samples": records * 2},
+            "wes_analysis": {
+                "pair_runs": records * 2 + wes_pair_with_analysis * 5,
+                "excluded_samples": records * 2,
+            },
             "wes_tumor_only_analysis": {
                 "runs": records * 4,
                 "excluded_samples": records * 3,
