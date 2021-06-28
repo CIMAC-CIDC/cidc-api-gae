@@ -1214,7 +1214,7 @@ class TrialMetadata(CommonColumns):
             select
                 trial_id,
                 case
-                    when key = 'cytof_10021_9204' then 'cytof'
+                    when key in ('cytof_10021_9204', 'cytof_s1609_gd2car', 'cytof_e4412') then 'cytof'
                     when key = 'hande' then 'h&e'
                     else key
                 end as key,
@@ -1223,7 +1223,7 @@ class TrialMetadata(CommonColumns):
                 trial_metadata,
                 jsonb_each(metadata_json->'assays') assays,
                 jsonb_array_elements(value) batches
-            where key not in ('olink', 'nanostring', 'elisa', 'cytof_e4412')
+            where key not in ('olink', 'nanostring', 'elisa')
         """
 
         # Compute the number of samples associated with nanostring uploads.
