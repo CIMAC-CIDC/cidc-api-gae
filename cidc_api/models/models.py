@@ -1214,7 +1214,7 @@ class TrialMetadata(CommonColumns):
             select
                 trial_id,
                 case
-                    when key in ('cytof_10021_9204', 'cytof_s1609_gd2car', 'cytof_e4412') then 'cytof'
+                    when key in ('cytof_10021_9204', 'cytof_s1609_gd2car') then 'cytof'
                     when key = 'hande' then 'h&e'
                     else key
                 end as key,
@@ -1223,7 +1223,7 @@ class TrialMetadata(CommonColumns):
                 trial_metadata,
                 jsonb_each(metadata_json->'assays') assays,
                 jsonb_array_elements(value) batches
-            where key not in ('olink', 'nanostring', 'elisa')
+            where key not in ('olink', 'nanostring', 'elisa', 'cytof_e4412')
         """
 
         # Compute the number of samples associated with nanostring uploads.
@@ -1310,6 +1310,19 @@ class TrialMetadata(CommonColumns):
             from
                 trial_metadata,
                 jsonb_array_elements(metadata_json#>'{assays,cytof_10021_9204}') batch,
+                jsonb_array_elements(batch->'records') record
+        """
+
+        cytof_s1609_gd2car_analysis_subquery = """
+            select
+                trial_id,
+                'cytof_analysis' as key,
+                case
+                    when record->'output_files' is not null then 1 else 0
+                end as value
+            from
+                trial_metadata,
+                jsonb_array_elements(metadata_json#>'{assays,cytof_s1609_gd2car') batch,
                 jsonb_array_elements(batch->'records') record
         """
 
@@ -1469,6 +1482,8 @@ class TrialMetadata(CommonColumns):
                     {cytof_e4412_subquery}
                     union all
                     {cytof_10021_9204_analysis_subquery}
+                    union all
+                    {cytof_s1609_gd2car_analysis_subquery}
                     union all
                     {wes_analysis_subquery}
                     union all
