@@ -77,12 +77,10 @@ assay_facets: Facets = {
                 "/cytof_10021_9204/processed.fcs",
                 "/cytof_10021_9204/control_.fcs",
                 "/cytof_10021_9204/control__spike_in.fcs",
-                
                 "/cytof_e4412/spike_in.fcs",
                 "/cytof_e4412/source_.fcs",
                 "/cytof_e4412/normalized_and_debarcoded.fcs",
                 "/cytof_e4412/processed.fcs",
-                
                 "/cytof_s1609_gd2car/spike_in.fcs",
                 "/cytof_s1609_gd2car/source_.fcs",
                 "/cytof_s1609_gd2car/normalized_and_debarcoded.fcs",
@@ -97,11 +95,9 @@ assay_facets: Facets = {
                 "/cytof_10021_9204_analysis/cell_counts_assignment.csv",
                 "/cytof_10021_9204_analysis/cell_counts_compartment.csv",
                 "/cytof_10021_9204_analysis/cell_counts_profiling.csv",
-                
                 "/cytof_e4412_analysis/cell_counts_assignment.csv",
                 "/cytof_e4412_analysis/cell_counts_compartment.csv",
                 "/cytof_e4412_analysis/cell_counts_profiling.csv",
-                
                 "/cytof_s1609_gd2car_analysis/cell_counts_assignment.csv",
                 "/cytof_s1609_gd2car_analysis/cell_counts_compartment.csv",
                 "/cytof_s1609_gd2car_analysis/cell_counts_profiling.csv",
@@ -113,11 +109,9 @@ assay_facets: Facets = {
                 "/cytof_10021_9204_analysis/combined_cell_counts_compartment.csv",
                 "/cytof_10021_9204_analysis/combined_cell_counts_assignment.csv",
                 "/cytof_10021_9204_analysis/combined_cell_counts_profiling.csv",
-                
                 "/cytof_e4412_analysis/combined_cell_counts_compartment.csv",
                 "/cytof_e4412_analysis/combined_cell_counts_assignment.csv",
                 "/cytof_e4412_analysis/combined_cell_counts_profiling.csv",
-                
                 "/cytof_s1609_gd2car_analysis/combined_cell_counts_compartment.csv",
                 "/cytof_s1609_gd2car_analysis/combined_cell_counts_assignment.csv",
                 "/cytof_s1609_gd2car_analysis/combined_cell_counts_profiling.csv",
@@ -136,12 +130,10 @@ assay_facets: Facets = {
             [
                 "/cytof_10021_9204_analysis/reports.zip",
                 "/cytof_10021_9204_analysis/analysis.zip"
-                
                 "/cytof_e4412_analysis/reports.zip",
                 "/cytof_e4412_analysis/analysis.zip"
-                
                 "/cytof_s1609_gd2car_analysis/reports.zip",
-                "/cytof_s1609_gd2car_analysis/analysis.zip"
+                "/cytof_s1609_gd2car_analysis/analysis.zip",
             ],
             "Results package from Astrolabe analysis",
         ),
@@ -150,11 +142,9 @@ assay_facets: Facets = {
                 "/cytof_10021_9204_analysis/assignment.csv",
                 "/cytof_10021_9204_analysis/compartment.csv",
                 "/cytof_10021_9204_analysis/profiling.csv",
-                
                 "/cytof_e4412_analysis/assignment.csv",
                 "/cytof_e4412_analysis/compartment.csv",
                 "/cytof_e4412_analysis/profiling.csv",
-                
                 "/cytof_s1609_gd2car_analysis/assignment.csv",
                 "/cytof_s1609_gd2car_analysis/compartment.csv",
                 "/cytof_s1609_gd2car_analysis/profiling.csv",
