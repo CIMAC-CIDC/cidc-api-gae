@@ -75,10 +75,14 @@ assay_facets: Facets = {
                 "/cytof_10021_9204/source_.fcs",
                 "/cytof_10021_9024/normalized_and_debarcoded.fcs",
                 "/cytof_10021_9204/processed.fcs",
+                "/cytof_10021_9204/control_.fcs",
+                "/cytof_10021_9204/control__spike_in.fcs",
+                
                 "/cytof_e4412/spike_in.fcs",
                 "/cytof_e4412/source_.fcs",
                 "/cytof_e4412/normalized_and_debarcoded.fcs",
                 "/cytof_e4412/processed.fcs",
+                
                 "/cytof_s1609_gd2car/spike_in.fcs",
                 "/cytof_s1609_gd2car/source_.fcs",
                 "/cytof_s1609_gd2car/normalized_and_debarcoded.fcs",
@@ -90,38 +94,73 @@ assay_facets: Facets = {
         ),
         "Cell Counts": FacetConfig(
             [
-                "/cytof_analysis/cell_counts_assignment.csv",
-                "/cytof_analysis/cell_counts_compartment.csv",
-                "/cytof_analysis/profiling.csv",
-                "/cytof_analysis/cell_counts_profiling.csv",
+                "/cytof_10021_9204_analysis/cell_counts_assignment.csv",
+                "/cytof_10021_9204_analysis/cell_counts_compartment.csv",
+                "/cytof_10021_9204_analysis/cell_counts_profiling.csv",
+                
+                "/cytof_e4412_analysis/cell_counts_assignment.csv",
+                "/cytof_e4412_analysis/cell_counts_compartment.csv",
+                "/cytof_e4412_analysis/cell_counts_profiling.csv",
+                
+                "/cytof_s1609_gd2car_analysis/cell_counts_assignment.csv",
+                "/cytof_s1609_gd2car_analysis/cell_counts_compartment.csv",
+                "/cytof_s1609_gd2car_analysis/cell_counts_profiling.csv",
             ],
             "Summary cell count expression of individual cell types in each sample",
         ),
         "Combined Cell Counts": FacetConfig(
             [
-                "/cytof_analysis/combined_cell_counts_compartment.csv",
-                "/cytof_analysis/combined_cell_counts_assignment.csv",
-                "/cytof_analysis/combined_cell_counts_profiling.csv",
+                "/cytof_10021_9204_analysis/combined_cell_counts_compartment.csv",
+                "/cytof_10021_9204_analysis/combined_cell_counts_assignment.csv",
+                "/cytof_10021_9204_analysis/combined_cell_counts_profiling.csv",
+                
+                "/cytof_e4412_analysis/combined_cell_counts_compartment.csv",
+                "/cytof_e4412_analysis/combined_cell_counts_assignment.csv",
+                "/cytof_e4412_analysis/combined_cell_counts_profiling.csv",
+                
+                "/cytof_s1609_gd2car_analysis/combined_cell_counts_compartment.csv",
+                "/cytof_s1609_gd2car_analysis/combined_cell_counts_assignment.csv",
+                "/cytof_s1609_gd2car_analysis/combined_cell_counts_profiling.csv",
             ],
             "Summary cell counts, combined across all samples in the trial",
         ),
         "Labeled Source": FacetConfig(
-            ["/cytof_analysis/source.fcs"],
+            [
+                "/cytof_10021_9204_analysis/source.fcs"
+                "/cytof_e4412_analysis/source.fcs"
+                "/cytof_s1609_gd2car_analysis/source.fcs"
+            ],
             "FCS file with enumerations for compartment, assignment and profiling cell labels",
         ),
         "Analysis Results": FacetConfig(
-            ["/cytof_analysis/reports.zip", "/cytof_analysis/analysis.zip"],
+            [
+                "/cytof_10021_9204_analysis/reports.zip",
+                "/cytof_10021_9204_analysis/analysis.zip"
+                
+                "/cytof_e4412_analysis/reports.zip",
+                "/cytof_e4412_analysis/analysis.zip"
+                
+                "/cytof_s1609_gd2car_analysis/reports.zip",
+                "/cytof_s1609_gd2car_analysis/analysis.zip"
+            ],
             "Results package from Astrolabe analysis",
         ),
         "Key": FacetConfig(
             [
-                "/cytof_analysis/assignment.csv",
-                "/cytof_analysis/compartment.csv",
-                "/cytof_analysis/profiling.csv",
+                "/cytof_10021_9204_analysis/assignment.csv",
+                "/cytof_10021_9204_analysis/compartment.csv",
+                "/cytof_10021_9204_analysis/profiling.csv",
+                
+                "/cytof_e4412_analysis/assignment.csv",
+                "/cytof_e4412_analysis/compartment.csv",
+                "/cytof_e4412_analysis/profiling.csv",
+                
+                "/cytof_s1609_gd2car_analysis/assignment.csv",
+                "/cytof_s1609_gd2car_analysis/compartment.csv",
+                "/cytof_s1609_gd2car_analysis/profiling.csv",
             ],
             "Keys for mapping from respective enumeration indices to the cell labels",
         ),
-        "Intermediates": FacetConfig(["/cytof_10021_9204/intermediate.fcs"]),
     },
     "WES": {
         "Source": FacetConfig(
