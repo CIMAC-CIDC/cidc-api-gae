@@ -9,6 +9,53 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.25.55` - 05 Jan 2022
+
+- `added` back IAM download functionality for production environment only, partially reverting commit 7504926685dcd00b0c20b41911ec8aba7f8b98b0
+- `change` version definition location from `setup.py` to `__init__.py` to match schemas/cli
+
+## Version `0.25.54` - 22 Dec 2021
+
+- `changed` admin grant all download permissions to run through cloud function
+
+## Version `0.25.53` - 16 Dec 2021
+
+- `removed` all IAM conditions on data bucket
+
+## Version `0.25.52` - 15 Dec 2021
+
+- `removed` all conditional IAM expressions on data bucket
+
+## Version `0.25.51` - 15 Dec 2021
+
+- `added` calls to ACL save, and smoketests
+- `added` back calls for adding/removing lister permissions, and smoketests
+
+## Version `0.25.50` - 14 Dec 2021
+
+- `fixed` ACL syntax again; see https://googleapis.dev/python/storage/latest/acl.html#google.cloud.storage.acl.ACL
+
+## Version `0.25.49` - 14 Dec 2021
+
+- `fixed` ACL syntax
+- `added` function to call to add permissions for particular upload job
+- `removed` GOOGLE_DATA_BUCKET entirely from API
+
+## Version `0.25.48` - 08 Dec 2021
+
+- `add` error logging in Permission.insert
+
+## Version `0.25.47` - 08 Dec 2021
+
+- `remove` all gcloud client logic associated with download logic ie conditional IAM permissions
+- `add` ACL gcloud client logic for downloads instead
+- `remove` all lister permission as no longer needed with ACL instead of IAM
+- `add` admin endpoint to call already existing function to grant all download permissions
+
+## Version `0.25.46` - 30 Nov 2021
+
+- `changed` schemas dependency (bump) for WES pipeline updates
+
 ## Version `0.25.45` - 23 Nov 2021
 
 - `changed` schemas dependency for WES paired analysis comments field

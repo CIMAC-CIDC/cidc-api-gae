@@ -84,6 +84,7 @@ GOOGLE_INTAKE_BUCKET = environ["GOOGLE_INTAKE_BUCKET"]
 GOOGLE_UPLOAD_BUCKET = environ["GOOGLE_UPLOAD_BUCKET"]
 GOOGLE_UPLOAD_TOPIC = environ["GOOGLE_UPLOAD_TOPIC"]
 GOOGLE_DATA_BUCKET = environ["GOOGLE_DATA_BUCKET"]
+GOOGLE_ACL_DATA_BUCKET = environ["GOOGLE_ACL_DATA_BUCKET"]
 GOOGLE_EPHEMERAL_BUCKET = environ["GOOGLE_EPHEMERAL_BUCKET"]
 GOOGLE_UPLOAD_ROLE = environ["GOOGLE_UPLOAD_ROLE"]
 GOOGLE_LISTER_ROLE = environ["GOOGLE_LISTER_ROLE"]
@@ -92,6 +93,9 @@ GOOGLE_DOWNLOAD_ROLE = "roles/storage.objectViewer"  # same across environments
 GOOGLE_PATIENT_SAMPLE_TOPIC = environ["GOOGLE_PATIENT_SAMPLE_TOPIC"]
 GOOGLE_EMAILS_TOPIC = environ["GOOGLE_EMAILS_TOPIC"]
 GOOGLE_ARTIFACT_UPLOAD_TOPIC = environ["GOOGLE_ARTIFACT_UPLOAD_TOPIC"]
+GOOGLE_GRANT_DOWNLOAD_PERMISSIONS_TOPIC = environ[
+    "GOOGLE_GRANT_DOWNLOAD_PERMISSIONS_TOPIC"
+]
 # This is a limit set by GCP - there will never be more than this many
 # conditional bindings for a single member-role combo.
 # See: https://cloud.google.com/iam/docs/conditions-overview
