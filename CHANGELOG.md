@@ -9,7 +9,17 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
-## Version `0.26.0` - 25 Jan 2022
+## Version `0.26.2` - 1 Feb 2022
+
+- `added` function to return user emails for given trial_id / upload_type
+- `fixed` pass session for when trial_id is None when building prefixes
+- `added` group handling flag to granting/revoking permissions for BioFX group
+
+## Version `0.26.1` - 31 Jan 2022
+
+- `changed` schemas dependency for backwards compatible WES analysis
+
+## Version `0.26.0` - 27 Jan 2022
 
 - `removed` non-ACL based download permissions systems for production
 - `removed` admin end point to trigger download permissions cloud function; trigger manually from GCP
