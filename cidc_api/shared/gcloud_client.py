@@ -8,6 +8,7 @@ import warnings
 import hashlib
 from collections import namedtuple
 from concurrent.futures import Future
+from sqlalchemy.orm.session import Session
 from typing import Any, BinaryIO, Callable, Dict, List, Optional, Union
 
 import requests
@@ -238,12 +239,15 @@ def _execute_multiblob_acl_change(
     user_email_list: List[str],
     blob_list: List[storage.Blob],
     callback_fn: Callable[[storage.acl._ACLEntity], None],
+    is_group: bool = False,
 ) -> None:
     """
     Spools out each blob and each user with saving the blob.
     callback_fn is called on each blob / user to make the changes in permissions there.
         See see https://googleapis.dev/python/storage/latest/acl.html
     After processing all of the users for each blob, blob.acl.save() is called.
+
+    If is_group, uses blob.acl.group instead of blob.acl.user
 
     Parameters
     ----------
@@ -255,14 +259,23 @@ def _execute_multiblob_acl_change(
     """
     for blob in blob_list:
         for user_email in user_email_list:
-            blob_user = blob.acl.user(user_email)
-            callback_fn(blob_user)
+            if is_group:
+                blob_group = blob.acl.group(user_email)
+                callback_fn(blob_group)
+            else:
+                blob_user = blob.acl.user(user_email)
+                callback_fn(blob_user)
 
         blob.acl.save()
 
 
-def get_blob_names(trial_id: Optional[str], upload_type: Optional[str]) -> List[str]:
-    prefixes = _build_trial_upload_prefixes(trial_id, upload_type)
+def get_blob_names(
+    trial_id: Optional[str],
+    upload_type: Optional[str],
+    session: Optional[Session] = None,
+) -> List[str]:
+    """session only needed if trial_id is None"""
+    prefixes = _build_trial_upload_prefixes(trial_id, upload_type, session=session)
 
     # https://googleapis.dev/python/storage/latest/client.html#google.cloud.storage.client.Client.list_blobs
     blob_list = []
@@ -275,10 +288,11 @@ def get_blob_names(trial_id: Optional[str], upload_type: Optional[str]) -> List[
 
 
 def grant_download_access_to_blob_names(
-    user_email_list: List[str], blob_name_list: List[str],
+    user_email_list: List[str], blob_name_list: List[str], is_group: bool = False,
 ) -> None:
     """
     Using ACL, grant download access to all blobs given to the user(s) given.
+    If is_group, uses blob.acl.group instead of blob.acl.user
     """
     bucket = _get_bucket(GOOGLE_ACL_DATA_BUCKET)
     blob_list = [bucket.get_blob(name) for name in blob_name_list]
@@ -290,6 +304,7 @@ def grant_download_access_to_blob_names(
         user_email_list=user_email_list,
         blob_list=blob_list,
         callback_fn=lambda obj: obj.grant_read(),
+        is_group=is_group,
     )
 
 
@@ -330,7 +345,7 @@ def grant_download_access(
 
 
 def revoke_download_access_from_blob_names(
-    user_email_list: List[str], blob_name_list: List[str],
+    user_email_list: List[str], blob_name_list: List[str], is_group: bool = False,
 ) -> None:
     """
     Using ACL, grant download access to all blobs given to the users given.
@@ -344,7 +359,10 @@ def revoke_download_access_from_blob_names(
         blob_user.revoke_read()
 
     _execute_multiblob_acl_change(
-        blob_list=blob_list, callback_fn=revoke, user_email_list=user_email_list,
+        blob_list=blob_list,
+        callback_fn=revoke,
+        user_email_list=user_email_list,
+        is_group=is_group,
     )
 
 
@@ -382,13 +400,17 @@ def revoke_download_access(
 
 
 def _build_trial_upload_prefixes(
-    trial_id: Optional[str], upload_type: Optional[str]
+    trial_id: Optional[str],
+    upload_type: Optional[str],
+    session: Optional[Session] = None,
 ) -> List[str]:
     """
     Build the set of prefixes associated with the trial_id and upload_type
     If no trial_id is given, all trials are used.
     If no upload_type is given, the prefix is only defined to the trial.
     If neither are given, an empty string is returned.
+
+    session is only used with trial_id is None
     """
     if trial_id is None and upload_type is None:
         return [""]
@@ -396,7 +418,7 @@ def _build_trial_upload_prefixes(
     if not trial_id:
         from ..models.models import TrialMetadata
 
-        trial_id = set([t.trial_id for t in TrialMetadata.list()])
+        trial_id = set([t.trial_id for t in TrialMetadata.list(session=session)])
 
     if not upload_type:
         return list(trial_id) if isinstance(trial_id, set) else [trial_id]

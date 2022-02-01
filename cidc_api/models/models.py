@@ -674,31 +674,70 @@ class Permissions(CommonColumns):
     @staticmethod
     @with_default_session
     def get_for_trial_type(
-        trial_id: str, upload_type: str, session: Session
+        trial_id: Optional[str], upload_type: Optional[str], session: Session
     ) -> List["Permissions"]:
         """
         Check if a Permissions record exists for the given user, trial, and type.
         The result may be a trial- or assay-level permission that encompasses the 
         given trial id or upload type.
         """
+        if trial_id is None:
+            trial_id = Permissions.EVERY
+        if upload_type is None:
+            upload_type = Permissions.EVERY
+
         return (
             session.query(Permissions)
             .filter(
                 (
-                    (Permissions.trial_id == trial_id)
-                    & (Permissions.upload_type == upload_type)
-                )
-                | (
-                    (Permissions.trial_id == Permissions.EVERY)
-                    & (Permissions.upload_type == upload_type)
-                )
-                | (
-                    (Permissions.trial_id == trial_id)
-                    & (Permissions.upload_type == Permissions.EVERY)
+                    (
+                        (Permissions.trial_id == trial_id)
+                        | (trial_id == Permissions.EVERY)
+                        | (Permissions.trial_id == Permissions.EVERY)
+                    )
+                    & (
+                        (Permissions.upload_type == upload_type)
+                        | (upload_type == Permissions.EVERY)
+                        | (Permissions.upload_type == Permissions.EVERY)
+                    )
                 ),
             )
             .all()
         )
+
+    @staticmethod
+    @with_default_session
+    def get_user_emails_for_trial_upload(
+        trial_id: Optional[str], upload_type: Optional[str], session
+    ) -> Dict[str, Dict[str, List[str]]]:
+        permissions_list: List[Permissions] = Permissions.get_for_trial_type(
+            trial_id=trial_id, upload_type=upload_type, session=session
+        )
+
+        permissions_dict: Dict[str, Dict[str, List[Permissions]]] = defaultdict(
+            lambda: defaultdict(list)
+        )
+        for perm in permissions_list:
+            permissions_dict[perm.trial_id][perm.upload_type].append(perm)
+
+        user_dict: Dict[str, Dict[str, List[Users]]] = {
+            trial: {
+                upload: [
+                    Users.find_by_id(id=perm.granted_to_user, session=session)
+                    for perm in perms
+                ]
+                for upload, perms in upload_dict.items()
+            }
+            for trial, upload_dict in permissions_dict.items()
+        }
+        user_email_dict: Dict[Optional[str], Dict[Optional[str], List[str]]] = {
+            trial: {
+                upload: list({u.email for u in users})
+                for upload, users in upload_dict.items()
+            }
+            for trial, upload_dict in user_dict.items()
+        }
+        return user_email_dict
 
     @staticmethod
     @with_default_session
@@ -740,7 +779,7 @@ class Permissions(CommonColumns):
         if user.role == CIDCRole.NETWORK_VIEWER.value:
             return
 
-        perms = Permissions.find_for_user(user.id)
+        perms = Permissions.find_for_user(user.id, session=session)
         # if they have any download permissions, they need the CIDC Lister role
         if len(perms):
             grant_lister_access(user.email)
