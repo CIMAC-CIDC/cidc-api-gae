@@ -1,4 +1,3 @@
-from cidc_api.models.models import CommonColumns
 import pandas as pd
 import io
 import logging
@@ -16,6 +15,7 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from cidc_api.app import app
 from cidc_api.models import (
+    CommonColumns,
     Users,
     TrialMetadata,
     UploadJobs,
@@ -32,7 +32,6 @@ from cidc_api.config.settings import (
     MAX_PAGINATION_PAGE_SIZE,
     INACTIVE_USER_DAYS,
 )
-from cidc_schemas.prism import PROTOCOL_ID_FIELD_NAME
 from cidc_schemas import prism
 
 from ..utils import mock_gcloud_client
@@ -297,7 +296,7 @@ def test_disable_inactive_users(clean_db, monkeypatch):
 
 TRIAL_ID = "cimac-12345"
 METADATA = {
-    PROTOCOL_ID_FIELD_NAME: TRIAL_ID,
+    prism.PROTOCOL_ID_FIELD_NAME: TRIAL_ID,
     "participants": [],
     "allowed_cohort_names": ["Arm_Z"],
     "allowed_collection_event_names": [],
@@ -427,7 +426,7 @@ def test_partial_patch_trial_metadata(clean_db):
     clean_db.commit()
 
     # Create patch without all required fields (no "participants")
-    metadata_patch = {PROTOCOL_ID_FIELD_NAME: TRIAL_ID, "assays": {}}
+    metadata_patch = {prism.PROTOCOL_ID_FIELD_NAME: TRIAL_ID, "assays": {}}
 
     # patch it - should be no error/exception
     TrialMetadata._patch_trial_metadata(TRIAL_ID, metadata_patch)
@@ -636,7 +635,7 @@ def test_create_assay_upload(clean_db):
         "my/first/wes/blob1/2019-08-30T15:51:38.450978": "test-uuid-1",
         "my/first/wes/blob2/2019-08-30T15:51:38.450978": "test-uuid-2",
     }
-    metadata_patch = {PROTOCOL_ID_FIELD_NAME: TRIAL_ID}
+    metadata_patch = {prism.PROTOCOL_ID_FIELD_NAME: TRIAL_ID}
     gcs_xlsx_uri = "xlsx/assays/wes/12:0:1.5123095"
 
     # Should fail, since trial doesn't exist yet
@@ -673,7 +672,7 @@ def test_upload_job_no_file_map(clean_db):
     """Try to create an assay upload"""
     new_user = Users.create(PROFILE)
 
-    metadata_patch = {PROTOCOL_ID_FIELD_NAME: TRIAL_ID}
+    metadata_patch = {prism.PROTOCOL_ID_FIELD_NAME: TRIAL_ID}
     gcs_xlsx_uri = "xlsx/assays/wes/12:0:1.5123095"
 
     TrialMetadata.create(TRIAL_ID, METADATA)
@@ -699,7 +698,7 @@ def test_assay_upload_merge_extra_metadata(clean_db, monkeypatch):
         uploader_email=EMAIL,
         gcs_file_map={},
         metadata={
-            PROTOCOL_ID_FIELD_NAME: TRIAL_ID,
+            prism.PROTOCOL_ID_FIELD_NAME: TRIAL_ID,
             "whatever": {
                 "hierarchy": [
                     {"we just need a": "uuid-1", "to be able": "to merge"},
@@ -746,7 +745,7 @@ def test_assay_upload_ingestion_success(clean_db, monkeypatch, caplog):
         upload_type="ihc",
         uploader_email=EMAIL,
         gcs_file_map={},
-        metadata={PROTOCOL_ID_FIELD_NAME: TRIAL_ID},
+        metadata={prism.PROTOCOL_ID_FIELD_NAME: TRIAL_ID},
         gcs_xlsx_uri="",
         commit=False,
     )
@@ -1192,6 +1191,52 @@ def test_permissions_broad_perms(clean_db, monkeypatch):
         for user in [user.id, user2.id]
     )
 
+    # test that we can return the user emails as well
+    # insert permission for second user on other_trial / ihc to make sure returns lists correctly
+    Permissions(
+        granted_to_user=user2.id,
+        trial_id=other_trial.trial_id,
+        upload_type="ihc",
+        granted_by_user=user.id,
+    ).insert()
+    user_email_dict = Permissions.get_user_emails_for_trial_upload(None, None)
+    user_email_dict[None]["olink"] = sorted(user_email_dict[None]["olink"])
+    assert user_email_dict == {
+        None: {"olink": sorted([user.email, user2.email])},
+        trial.trial_id: {None: [user.email]},
+        other_trial.trial_id: {"ihc": [user2.email], "wes_fastq": [user.email]},
+    }
+
+    user_email_dict = Permissions.get_user_emails_for_trial_upload(None, "ihc")
+    assert user_email_dict == {
+        trial.trial_id: {None: [user.email]},
+        other_trial.trial_id: {"ihc": [user2.email]},
+    }
+
+    user_email_dict = Permissions.get_user_emails_for_trial_upload(
+        trial.trial_id, "ihc"
+    )
+    assert user_email_dict == {
+        trial.trial_id: {None: [user.email]},
+    }
+
+    user_email_dict = Permissions.get_user_emails_for_trial_upload(
+        "some random trial", "olink"
+    )
+    user_email_dict[None]["olink"] = sorted(user_email_dict[None]["olink"])
+    assert user_email_dict == {
+        None: {"olink": sorted([user.email, user2.email])},
+    }
+
+    user_email_dict = Permissions.get_user_emails_for_trial_upload(
+        other_trial.trial_id, None
+    )
+    user_email_dict[None]["olink"] = sorted(user_email_dict[None]["olink"])
+    assert user_email_dict == {
+        None: {"olink": sorted([user.email, user2.email])},
+        other_trial.trial_id: {"ihc": [user2.email], "wes_fastq": [user.email]},
+    }
+
 
 @db_test
 def test_permissions_delete(clean_db, monkeypatch, caplog):
@@ -1345,7 +1390,7 @@ def test_permissions_grant_download_permissions_for_upload_job(clean_db, monkeyp
         upload_type="ihc",
         uploader_email=user.email,
         gcs_file_map={},
-        metadata={PROTOCOL_ID_FIELD_NAME: trial.trial_id},
+        metadata={prism.PROTOCOL_ID_FIELD_NAME: trial.trial_id},
         gcs_xlsx_uri="",
         commit=False,
     )
