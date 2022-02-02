@@ -734,8 +734,16 @@ class Permissions(CommonColumns):
             trial: {
                 upload: list({u.email for u in users if not u.disabled})
                 for upload, users in upload_dict.items()
+                # only add if at least one user is NOT disabled
+                if sum(not u.disabled for u in users)
             }
             for trial, upload_dict in user_dict.items()
+        }
+        # remove any trial that doesn't have any uploads in it
+        user_email_dict = {
+            trial: upload_dict
+            for trial, upload_dict in user_email_dict.items()
+            if len(upload_dict)
         }
         return user_email_dict
 
