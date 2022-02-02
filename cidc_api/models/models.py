@@ -732,7 +732,7 @@ class Permissions(CommonColumns):
         }
         user_email_dict: Dict[Optional[str], Dict[Optional[str], List[str]]] = {
             trial: {
-                upload: list({u.email for u in users})
+                upload: list({u.email for u in users if not u.disabled})
                 for upload, users in upload_dict.items()
             }
             for trial, upload_dict in user_dict.items()

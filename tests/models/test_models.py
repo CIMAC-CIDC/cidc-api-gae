@@ -1117,6 +1117,8 @@ def test_permissions_broad_perms(clean_db, monkeypatch):
     user.insert()
     user2 = Users(email="foo@bar.com")
     user2.insert()
+    user3 = Users(email="disabled", disabled=True)
+    user3.insert()
     trial = TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA)
     trial.insert()
     other_trial = TrialMetadata(
@@ -1195,6 +1197,13 @@ def test_permissions_broad_perms(clean_db, monkeypatch):
     # insert permission for second user on other_trial / ihc to make sure returns lists correctly
     Permissions(
         granted_to_user=user2.id,
+        trial_id=other_trial.trial_id,
+        upload_type="ihc",
+        granted_by_user=user.id,
+    ).insert()
+    # insert permissions for third user who is disabled; should never be returned
+    Permissions(
+        granted_to_user=user3.id,
         trial_id=other_trial.trial_id,
         upload_type="ihc",
         granted_by_user=user.id,
