@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.3` - 1 Feb 2022
+
+- `fixed` don't return user emails for a trial / upload if that user is disabled
+
 ## Version `0.26.2` - 1 Feb 2022
 
 - `added` function to return user emails for given trial_id / upload_type
