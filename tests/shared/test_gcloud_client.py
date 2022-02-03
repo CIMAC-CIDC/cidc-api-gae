@@ -268,16 +268,15 @@ def test_refresh_intake_access(monkeypatch):
         lambda i: i,
     )
 
-    grant_gcs_access = MagicMock()
+    grant_iam_access = MagicMock()
     monkeypatch.setattr(
-        "cidc_api.shared.gcloud_client.grant_gcs_access", grant_gcs_access
+        "cidc_api.shared.gcloud_client.grant_iam_access", grant_iam_access
     )
 
     refresh_intake_access(EMAIL)
-    args, kwargs = grant_gcs_access.call_args_list[0]
+    args, kwargs = grant_iam_access.call_args_list[0]
     assert args[0].name.startswith(GOOGLE_INTAKE_BUCKET)
     assert args[1:] == (GOOGLE_INTAKE_ROLE, EMAIL)
-    assert "iam" in kwargs and kwargs["iam"]
 
 
 def test_revoke_intake_access(monkeypatch):
@@ -287,13 +286,13 @@ def test_revoke_intake_access(monkeypatch):
         lambda i: i,
     )
 
-    revoke_iam_gcs_access = MagicMock()
+    revoke_iam_access = MagicMock()
     monkeypatch.setattr(
-        "cidc_api.shared.gcloud_client.revoke_iam_gcs_access", revoke_iam_gcs_access
+        "cidc_api.shared.gcloud_client.revoke_iam_access", revoke_iam_access
     )
 
     revoke_intake_access(EMAIL)
-    args, _ = revoke_iam_gcs_access.call_args_list[0]
+    args, _ = revoke_iam_access.call_args_list[0]
     assert args[0].name.startswith(GOOGLE_INTAKE_BUCKET)
     assert args[1:] == (GOOGLE_INTAKE_ROLE, EMAIL)
 

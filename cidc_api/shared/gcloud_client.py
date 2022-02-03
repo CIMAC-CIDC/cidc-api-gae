@@ -124,7 +124,7 @@ def grant_lister_access(user_email: str) -> None:
     """
     logger.info(f"granting list to {user_email}")
     bucket = _get_bucket(GOOGLE_ACL_DATA_BUCKET)
-    grant_gcs_access(bucket, GOOGLE_LISTER_ROLE, user_email, iam=True, expiring=False)
+    grant_iam_access(bucket, GOOGLE_LISTER_ROLE, user_email, expiring=False)
 
 
 def revoke_lister_access(user_email: str) -> None:
@@ -135,7 +135,7 @@ def revoke_lister_access(user_email: str) -> None:
     """
     logger.info(f"revoking list to {user_email}")
     bucket = _get_bucket(GOOGLE_ACL_DATA_BUCKET)
-    revoke_iam_gcs_access(bucket, GOOGLE_LISTER_ROLE, user_email)
+    revoke_iam_access(bucket, GOOGLE_LISTER_ROLE, user_email)
 
 
 def grant_upload_access(user_email: str) -> None:
@@ -147,7 +147,7 @@ def grant_upload_access(user_email: str) -> None:
     """
     logger.info(f"granting upload to {user_email}")
     bucket = _get_bucket(GOOGLE_UPLOAD_BUCKET)
-    grant_gcs_access(bucket, GOOGLE_UPLOAD_ROLE, user_email, iam=True, expiring=False)
+    grant_iam_access(bucket, GOOGLE_UPLOAD_ROLE, user_email, expiring=False)
 
 
 def revoke_upload_access(user_email: str) -> None:
@@ -156,7 +156,7 @@ def revoke_upload_access(user_email: str) -> None:
     """
     logger.info(f"revoking upload from {user_email}")
     bucket = _get_bucket(GOOGLE_UPLOAD_BUCKET)
-    revoke_iam_gcs_access(bucket, GOOGLE_UPLOAD_ROLE, user_email)
+    revoke_iam_access(bucket, GOOGLE_UPLOAD_ROLE, user_email)
 
 
 def get_intake_bucket_name(user_email: str) -> str:
@@ -188,7 +188,7 @@ def create_intake_bucket(user_email: str) -> storage.Bucket:
         bucket = storage_client.create_bucket(bucket)
 
     # Grant the user appropriate permissions
-    grant_gcs_access(bucket, GOOGLE_INTAKE_ROLE, user_email, iam=True)
+    grant_iam_access(bucket, GOOGLE_INTAKE_ROLE, user_email)
 
     return bucket
 
@@ -201,7 +201,7 @@ def refresh_intake_access(user_email: str) -> None:
     bucket = _get_bucket(bucket_name)
 
     if bucket.exists():
-        grant_gcs_access(bucket, GOOGLE_INTAKE_ROLE, user_email, iam=True)
+        grant_iam_access(bucket, GOOGLE_INTAKE_ROLE, user_email)
 
 
 def revoke_intake_access(user_email: str) -> None:
@@ -212,7 +212,7 @@ def revoke_intake_access(user_email: str) -> None:
     bucket = _get_bucket(bucket_name)
 
     if bucket.exists():
-        revoke_iam_gcs_access(bucket, GOOGLE_INTAKE_ROLE, user_email)
+        revoke_iam_access(bucket, GOOGLE_INTAKE_ROLE, user_email)
 
 
 def upload_xlsx_to_intake_bucket(
@@ -430,73 +430,44 @@ def _build_trial_upload_prefixes(
         ]
 
 
-def grant_gcs_access(
-    obj: Union[storage.Blob, storage.Bucket],
-    role: str,
-    user_email: str,
-    iam: bool = True,
-    expiring: bool = True,
+def grant_iam_access(
+    bucket: storage.Bucket, role: str, user_email: str, expiring: bool = True,
 ) -> None:
     """
-    Grant `user_email` the provided `role` on a storage object `obj`.
-    `iam` access assumes `obj` is a bucket and will expire after `INACTIVE_USER_DAYS` days have elapsed.
-    if not `iam`, assumes ACL and therefore asserts role in ["owner", "reader", "writer"]
-    `expiring` only matters if `iam`, set to False for IAM permissions on ACL-controlled buckets
+    Grant `user_email` the provided IAM `role` on a storage `bucket`.
+    Default assumes `bucket` is IAM controlled and should expire after `INACTIVE_USER_DAYS` days have elapsed.
+    Set `expiring` to False for IAM permissions on ACL-controlled buckets.
     """
-    if iam:
-        # see https://cloud.google.com/storage/docs/access-control/using-iam-permissions#code-samples_3
-        policy = obj.get_iam_policy(requested_policy_version=3)
-        policy.version = 3
+    # see https://cloud.google.com/storage/docs/access-control/using-iam-permissions#code-samples_3
+    policy = bucket.get_iam_policy(requested_policy_version=3)
+    policy.version = 3
 
-        # remove the existing binding if one exists so that we can recreate it with an updated TTL.
-        _find_and_pop_iam_binding(policy, role, user_email)
+    # remove the existing binding if one exists so that we can recreate it with an updated TTL.
+    _find_and_pop_iam_binding(policy, role, user_email)
 
-        if not expiring:
-            # special value -1 for non-expiring
-            binding = _build_iam_binding(obj.name, role, user_email, ttl_days=-1)
-        else:
-            binding = _build_iam_binding(obj.name, role, user_email)  # use default
-        # insert the binding into the policy
-        policy.bindings.append(binding)
-
-        try:
-            obj.set_iam_policy(policy)
-        except Exception as e:
-            logger.error(str(e))
-            raise e
-
+    if not expiring:
+        # special value -1 for non-expiring
+        binding = _build_iam_binding(bucket.name, role, user_email, ttl_days=-1)
     else:
-        assert role in [
-            "owner",
-            "reader",
-            "writer",
-        ], f"Passed invalid ACL role {role} to grant_gcs_access for {user_email} on {obj}"
+        binding = _build_iam_binding(bucket.name, role, user_email)  # use default
+    # insert the binding into the policy
+    policy.bindings.append(binding)
 
-        try:
-            if role == "owner":
-                logger.warning("Granting OWNER on {obj} to {user_email}")
-                obj.acl.user(user_email).grant_owner()
-            elif role == "writer":
-                logger.info("Granting WRITER on {obj} to {user_email}")
-                obj.acl.user(user_email).grant_write()
-            else:  # role == "reader"
-                logger.info("Granting READER on {obj} to {user_email}")
-                obj.acl.user(user_email).grant_read()
-        except Exception as e:
-            logger.error(str(e))
-            raise e
-        else:
-            obj.acl.save()
+    try:
+        bucket.set_iam_policy(policy)
+    except Exception as e:
+        logger.error(str(e))
+        raise e
 
 
 # Arbitrary upper bound on the number of GCS IAM bindings we expect a user to have for uploads
 MAX_REVOKE_ALL_ITERATIONS = 250
 
 
-def revoke_nonexpiring_gcs_access(
+def revoke_nonexpiring_iam_access(
     bucket: storage.Bucket, role: str, user_email: str
 ) -> None:
-    """Revoke a bucket IAM policy change made by calling `grant_gcs_access` with expiring=False."""
+    """Revoke a bucket IAM policy change made by calling `grant_iam_access` with expiring=False."""
     # see https://cloud.google.com/storage/docs/access-control/using-iam-permissions#code-samples_3
     policy = bucket.get_iam_policy(requested_policy_version=3)
     policy.version = 3
@@ -519,8 +490,8 @@ def revoke_nonexpiring_gcs_access(
         raise e
 
 
-def revoke_iam_gcs_access(bucket: storage.Bucket, role: str, user_email: str) -> None:
-    """Revoke a bucket IAM policy made by calling `grant_gcs_access` with iam=True."""
+def revoke_iam_access(bucket: storage.Bucket, role: str, user_email: str) -> None:
+    """Revoke a bucket IAM policy made by calling `grant_iam_access`."""
     # see https://cloud.google.com/storage/docs/access-control/using-iam-permissions#code-samples_3
     policy = bucket.get_iam_policy(requested_policy_version=3)
     policy.version = 3
