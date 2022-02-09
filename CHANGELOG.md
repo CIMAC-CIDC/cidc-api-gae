@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.4` - 9 Feb 2022
+
+- `changed` alert email to new group cidc-alert@ds.dfci.harvard.edu
+
 ## Version `0.26.4` - 3 Feb 2022
 
 - `changed` never return empty user email list, ie trials / uploads with no active users
