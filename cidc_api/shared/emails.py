@@ -8,7 +8,16 @@ from cidc_schemas.prism import generate_analysis_configs_from_upload_patch
 from . import gcloud_client
 from ..config.settings import ENV, GOOGLE_ACL_DATA_BUCKET
 
-CIDC_MAILING_LIST = "cidc@jimmy.harvard.edu"
+# emails this list for
+# - new user registration,
+# - new upload alerts, and
+# - upon intaking metadata
+# cloud-functions also emails for
+# - an inactive user being disabled in disable_inactive_users,
+# - errors from CSMS in update_cidc_from_csms,
+# - errors from kicking off permissions in grant_download_permissions, and
+# - errors from implementing permissions in worker > permissions_worker
+CIDC_MAILING_LIST = "cidc-alert@ds.dfci.harvard.edu"
 
 
 def sendable(email_template):

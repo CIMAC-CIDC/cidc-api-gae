@@ -1246,6 +1246,38 @@ def test_permissions_broad_perms(clean_db, monkeypatch):
         other_trial.trial_id: {"ihc": [user2.email], "wes_fastq": [user.email]},
     }
 
+    # when it's the only one in a request, doesn't return anything
+    Permissions(
+        granted_to_user=user3.id,
+        trial_id=other_trial.trial_id,
+        upload_type="hande",
+        granted_by_user=user.id,
+    ).insert()
+    assert (
+        Permissions.get_user_emails_for_trial_upload(other_trial.trial_id, "hande")
+        == {}
+    )
+    # when there's other things in the trial, still returns the trial
+    user_email_dict = Permissions.get_user_emails_for_trial_upload(
+        other_trial.trial_id, None
+    )
+    user_email_dict[None]["olink"] = sorted(user_email_dict[None]["olink"])
+    assert user_email_dict == {
+        None: {"olink": sorted([user.email, user2.email])},
+        other_trial.trial_id: {"ihc": [user2.email], "wes_fastq": [user.email]},
+    }
+    # when there's something else in the same assay, still doesn't the disabled one
+    Permissions(
+        granted_to_user=user2.id,
+        trial_id=trial.trial_id,
+        upload_type="hande",
+        granted_by_user=user.id,
+    ).insert()
+    user_email_dict = Permissions.get_user_emails_for_trial_upload(None, "hande")
+    assert user_email_dict == {
+        trial.trial_id: {None: [user.email], "hande": [user2.email]}
+    }
+
 
 @db_test
 def test_permissions_delete(clean_db, monkeypatch, caplog):

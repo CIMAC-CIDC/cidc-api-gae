@@ -9,7 +9,16 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
-## Version `0.26.3` - 1 Feb 2022
+## Version `0.26.5` - 9 Feb 2022
+
+- `changed` alert email to new group cidc-alert@ds.dfci.harvard.edu
+
+## Version `0.26.4` - 3 Feb 2022
+
+- `changed` never return empty user email list, ie trials / uploads with no active users
+- `changed` functions to reflect that iam=False option was never used
+
+## Version `0.26.3` - 2 Feb 2022
 
 - `fixed` don't return user emails for a trial / upload if that user is disabled
 
