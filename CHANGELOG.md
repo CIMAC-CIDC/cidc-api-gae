@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.6` - 3 Mar 2022
+
+- `changed` update schema dependency for miF schema preamble changes
+
 ## Version `0.26.5` - 9 Feb 2022
 
 - `changed` alert email to new group cidc-alert@ds.dfci.harvard.edu
