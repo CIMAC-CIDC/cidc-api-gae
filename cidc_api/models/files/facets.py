@@ -70,9 +70,9 @@ assay_facets: Facets = {
         ),
         "Combined Cell Counts": FacetConfig(
             [
-                "/cytof_analysis/combined_cell_counts_compartment.csv",
-                "/cytof_analysis/combined_cell_counts_assignment.csv",
-                "/cytof_analysis/combined_cell_counts_profiling.csv",
+                "csv|cell counts assignment",
+                "csv|cell counts compartment",
+                "csv|cell counts profiling",
             ],
             "Summary cell counts, combined across all samples in the trial",
         ),
