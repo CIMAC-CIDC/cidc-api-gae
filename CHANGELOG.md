@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.7` - 25 Mar 2022
+
+- `changed` schema version to peg regex to prevent errors
+
 ## Version `0.26.6` - 3 Mar 2022
 
 - `changed` update schema dependency for miF schema preamble changes
