@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.9` - 21 Mar 2022
+
+- `changed` schema version for wes-matching update
+
 ## Version `0.26.8` - 25 Mar 2022
 
 - `changed` schema version to wes-matching to automate matching
