@@ -23,7 +23,7 @@ def setup_permissions(cidc_api, monkeypatch) -> Tuple[int, int]:
     """
     Create two users, one trial, and three permissions in `db`.
     Two permissions will belong to the first user, and the third will
-    belong to the second one. Returns the first and second user ids 
+    belong to the second one. Returns the first and second user ids
     as a tuple.
     """
     current_user = Users(

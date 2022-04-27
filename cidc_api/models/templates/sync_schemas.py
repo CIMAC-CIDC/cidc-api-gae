@@ -254,7 +254,8 @@ def _sync_shipments(trial: TrialMetadata, new_trial: ClinicalTrial) -> List[Exce
 
 
 def _sync_participants_and_samples(
-    trial: TrialMetadata, new_trial: ClinicalTrial,
+    trial: TrialMetadata,
+    new_trial: ClinicalTrial,
 ) -> List[Exception]:
     """
     Given corresponding TrialMetadata and ClinicalTrial instances, copy over participants and samples.

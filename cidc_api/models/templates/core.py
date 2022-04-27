@@ -71,7 +71,7 @@ class Entry:
       deprecated: bool (default False) of whether to add this name/value to the neighboring json_data.
 
     TO IMPLEMENT:
-      encrypt: whether the spreadsheet value should be encrypted before storage. 
+      encrypt: whether the spreadsheet value should be encrypted before storage.
     """
 
     def __init__(
@@ -621,7 +621,7 @@ class MetadataTemplate:
         entry: Entry,
         style: xlsxwriter.workbook.Format,
     ):
-        """ Writes a property with its type, description, and example if any."""
+        """Writes a property with its type, description, and example if any."""
         ws.write(row, 1, entry.name, style)
         ws.write(row, 2, entry.sqltype.__class__.__name__)
         ws.write(row, 3, entry.doc)

@@ -52,14 +52,23 @@ HandeAssay = MetadataTemplate(
                         HandeRecord.viable_stroma_percentage,
                         name="Viable stroma (% area)",
                     ),
-                    Entry(HandeRecord.necrosis_percentage, name="Necrosis (% area)",),
-                    Entry(HandeRecord.fibrosis_percentage, name="Fibrosis (% area)",),
+                    Entry(
+                        HandeRecord.necrosis_percentage,
+                        name="Necrosis (% area)",
+                    ),
+                    Entry(
+                        HandeRecord.fibrosis_percentage,
+                        name="Fibrosis (% area)",
+                    ),
                     Entry(HandeRecord.comment),
                 ]
             },
         )
     ],
-    constants={HandeUpload.upload_type: "hande", HandeUpload.multifile: True,},
+    constants={
+        HandeUpload.upload_type: "hande",
+        HandeUpload.multifile: True,
+    },
 )
 
 WesFastqAssay = MetadataTemplate(
@@ -104,7 +113,10 @@ WesFastqAssay = MetadataTemplate(
             },
         )
     ],
-    constants={WESUpload.upload_type: "wes", WESUpload.multifile: True,},
+    constants={
+        WESUpload.upload_type: "wes",
+        WESUpload.multifile: True,
+    },
 )
 
 WesBamAssay = MetadataTemplate(
@@ -141,7 +153,10 @@ WesBamAssay = MetadataTemplate(
             },
         )
     ],
-    constants={WESUpload.upload_type: "wes", WESUpload.multifile: True,},
+    constants={
+        WESUpload.upload_type: "wes",
+        WESUpload.multifile: True,
+    },
 )
 
 

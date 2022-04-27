@@ -82,8 +82,8 @@ def public(endpoint):
 
 def check_auth(allowed_roles: List[str], resource: str, method: str) -> bool:
     """
-    Perform authentication and authorization for the current request. 
-    
+    Perform authentication and authorization for the current request.
+
     Args:
         allowed_roles: a list of CIDC user roles allowed to access this endpoint
         resource: the resource targeted by this request
@@ -173,10 +173,10 @@ def _get_issuer_public_key(token: str) -> dict:
 
     Args:
         token: an encoded JWT.
-    
+
     Raises:
         Unauthorized: if no public key can be found.
-        
+
     Returns:
         str: the public key.
     """
@@ -211,7 +211,7 @@ def _decode_id_token(token: str, public_key: dict) -> dict:
         public_key: public_key
 
     Raises:
-        Unauthorized: 
+        Unauthorized:
             - if token is expired
             - if token has invalid claims
             - if token signature is invalid in any way

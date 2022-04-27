@@ -25,7 +25,7 @@ def delete_response():
 
 def unmarshal_request(schema: BaseSchema, kwarg_name: str, load_sqla: bool = True):
     """
-    Generate a decorator that will load and validate the JSON body of 
+    Generate a decorator that will load and validate the JSON body of
     the current request object as an instance of `schema` and pass
     the loaded instance to the decorated function as a keyword argument
     with name `kwarg_name`. If `load_sqla` is False, then only validate the JSON
@@ -65,8 +65,8 @@ def unmarshal_request(schema: BaseSchema, kwarg_name: str, load_sqla: bool = Tru
 
 def marshal_response(schema: BaseSchema, status_code: int = 200):
     """
-    Generate a decorator that will build a JSON representation of the 
-    SQLAlchemy model instance returned by the wrapped function, and return 
+    Generate a decorator that will build a JSON representation of the
+    SQLAlchemy model instance returned by the wrapped function, and return
     an HTTP response whose body contains that JSON representation.
     """
 
@@ -100,7 +100,7 @@ def with_lookup(
     Given a route with a URL parameter (`url_param`) that will contain an id,
     search the `model` relation in the database for a record with that id. If `check_etag`
     is true, only proceed with the lookup if the client-provided etag matches the etag
-    on the record if a record is found. Pass the record as a kwarg to the decorated function. 
+    on the record if a record is found. Pass the record as a kwarg to the decorated function.
     E.g.,
 
     @app.route('/<permission>', methods=['GET'])
@@ -130,8 +130,8 @@ def lookup(
     find_func: Optional[Callable[[Union[int, str]], BaseModel]] = None,
 ):
     """
-    Search the `model` relation in the database for a record with id `record_id`. 
-    If `check_etag` is true, only proceed with the lookup if the client-provided 
+    Search the `model` relation in the database for a record with id `record_id`.
+    If `check_etag` is true, only proceed with the lookup if the client-provided
     etag matches the etag on the record if a record is found.
     """
     if not find_func:
