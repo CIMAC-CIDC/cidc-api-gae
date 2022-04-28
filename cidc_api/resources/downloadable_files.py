@@ -23,11 +23,14 @@ from ..models import (
 from ..shared import gcloud_client
 from ..shared.auth import get_current_user, requires_auth
 from ..shared.rest_utils import with_lookup, marshal_response, use_args_with_pagination
+from ..config.logging import get_logger
 from ..config.settings import (
     GOOGLE_ACL_DATA_BUCKET,
     GOOGLE_EPHEMERAL_BUCKET,
     MAX_THREADPOOL_WORKERS,
 )
+
+logger = get_logger(__name__)
 
 
 downloadable_files_bp = Blueprint("downloadable_files", __name__)
@@ -172,6 +175,10 @@ def create_compressed_batch(args):
         blob.upload_from_filename(outpath)
 
     # Get a signed URL for the download blob
+    user = get_current_user()
+    logger.info(
+        f"File download: generating signed URL for {user.email}, for {args['file_ids']}"
+    )
     download_url = gcloud_client.get_signed_url(blob.name, GOOGLE_EPHEMERAL_BUCKET)
 
     return jsonify(download_url)
@@ -234,6 +241,9 @@ def get_download_url(args):
             raise NotFound(f"No file with id {file_id}.")
 
     # Generate the signed URL and return it.
+    logger.info(
+        f"File download: generating signed URL for {file_record.object_url} for {user.email}"
+    )
     download_url = gcloud_client.get_signed_url(file_record.object_url)
     return jsonify(download_url)
 
