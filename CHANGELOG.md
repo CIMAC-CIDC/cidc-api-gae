@@ -9,7 +9,7 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
-## Version `0.26.10` - 28 Apr 2022
+## Version `0.26.10` - 2 May 2022
 
 - `changed` black, flask, werkzeug, jinja2, schemas version bumps
 - `removed` typing_extensions dependency

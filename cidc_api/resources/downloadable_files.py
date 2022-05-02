@@ -176,9 +176,7 @@ def create_compressed_batch(args):
 
     # Get a signed URL for the download blob
     user = get_current_user()
-    logger.info(
-        f"File download: generating signed URL for {user.email}, for {args['file_ids']}"
-    )
+    logger.info(f"File download: generating signed URL for {user.email}, for {urls}")
     download_url = gcloud_client.get_signed_url(blob.name, GOOGLE_EPHEMERAL_BUCKET)
 
     return jsonify(download_url)
