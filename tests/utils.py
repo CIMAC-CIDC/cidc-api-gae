@@ -54,7 +54,8 @@ def mock_gcloud_client(monkeypatch) -> MagicMock:
         gcloud_client.revoke_download_access,
     )
     monkeypatch.setattr(
-        "cidc_api.models.models.grant_lister_access", gcloud_client.grant_lister_access,
+        "cidc_api.models.models.grant_lister_access",
+        gcloud_client.grant_lister_access,
     )
     monkeypatch.setattr(
         "cidc_api.models.models.revoke_lister_access",

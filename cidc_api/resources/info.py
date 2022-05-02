@@ -65,8 +65,8 @@ _al_under = re.compile("^\w+$")  # alpha or underscore
 @public
 def templates(template_family, template_type):
     """
-    Return the empty Excel template file for the given 
-    `template_family` (e.g., manifests, metadata) and 
+    Return the empty Excel template file for the given
+    `template_family` (e.g., manifests, metadata) and
     `template_type` (e.g., pbmc, olink).
     """
     # Check that both strings are alphabetic

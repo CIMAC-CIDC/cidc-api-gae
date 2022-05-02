@@ -1392,7 +1392,11 @@ def test_permissions_grant_user_permissions(clean_db, monkeypatch):
     gcloud_client.grant_lister_access.assert_called_once_with(user.email)
     gcloud_client.grant_download_access.assert_has_calls(
         [
-            call(user.email, trial.trial_id, upload_type,)
+            call(
+                user.email,
+                trial.trial_id,
+                upload_type,
+            )
             for upload_type in upload_types
         ],
         any_order=True,

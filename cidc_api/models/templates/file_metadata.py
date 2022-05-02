@@ -134,7 +134,9 @@ class Upload(MetadataModel):
         doc="Link to the user who created this upload.",
     )
     shipment_manifest_id = Column(
-        String, nullable=True, doc="Only for manifest uploads",
+        String,
+        nullable=True,
+        doc="Only for manifest uploads",
     )
 
     # Create a GIN index on the GCS object names
@@ -174,7 +176,8 @@ class NGSUpload(Upload):
         doc="A unique ID to identify this upload.",
     )
     trial_id = Column(
-        String, primary_key=True,  # both True allows for use as multi Foreign Key
+        String,
+        primary_key=True,  # both True allows for use as multi Foreign Key
     )
     sequencer_platform = Column(
         Enum(
@@ -227,11 +230,20 @@ class NGSAssayFiles(MetadataModel):
     cimac_id = Column(String, nullable=False)
     trial_id = Column(String, nullable=False)
 
-    r1_object_url = Column(String, doc="Fastq file for the first fragment.",)
-    r2_object_url = Column(String, doc="Fastq file for the second fragment.",)
+    r1_object_url = Column(
+        String,
+        doc="Fastq file for the first fragment.",
+    )
+    r2_object_url = Column(
+        String,
+        doc="Fastq file for the second fragment.",
+    )
     lane = Column(Integer, doc="The lane number from which the reads were generated.")
 
-    bam_object_url = Column(String, doc="Bam file",)
+    bam_object_url = Column(
+        String,
+        doc="Bam file",
+    )
     number = Column(
         Integer,
         doc="An arbitrary number assigned to identify different otherwise equivalent replicates.",
@@ -320,7 +332,10 @@ class File(MetadataModel):
     facet_group = Column(String, doc="The internal data category for this artifact")
 
     __table_args__ = (
-        ForeignKeyConstraint([trial_id, upload_id], [Upload.trial_id, Upload.id],),
+        ForeignKeyConstraint(
+            [trial_id, upload_id],
+            [Upload.trial_id, Upload.id],
+        ),
         UniqueConstraint(trial_id, upload_id, object_url),
     )
     __mapper_args__ = {"polymorphic_on": data_format, "polymorphic_identity": "base"}

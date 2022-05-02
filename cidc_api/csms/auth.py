@@ -62,7 +62,7 @@ def get_with_paging(
 ) -> Iterator[Dict[str, Any]]:
     """
     Return an iterator of entries via get_with_authorization with handling for CSMS paging
-    
+
     Parameters
     ----------
     url: str

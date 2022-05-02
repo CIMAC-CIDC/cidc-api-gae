@@ -100,7 +100,9 @@ def setup_data(cidc_api, clean_db):
     }
     patch2 = {
         "protocol_identifier": trial_id,
-        "shipments": [shipment2,],
+        "shipments": [
+            shipment2,
+        ],
         "participants": [
             {
                 "cimac_participant_id": f"CTTTP2{p}",

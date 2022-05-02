@@ -84,7 +84,10 @@ def _BaseManifestTemplate(
                         Sample.trial_id: identity,
                     },
                 ),
-                Entry(Shipment.manifest_id, process_as={Sample.manifest_id: identity},),
+                Entry(
+                    Shipment.manifest_id,
+                    process_as={Sample.manifest_id: identity},
+                ),
                 Entry(Shipment.assay_priority, deprecated=True),
                 Entry(
                     Shipment.assay_type,

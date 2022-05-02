@@ -121,7 +121,9 @@ def _mock_gcloud_storage_client(
 
     mock_client.encode_and_publish = MagicMock()
     monkeypatch.setattr(
-        gcloud_client, "_encode_and_publish", mock_client.encode_and_publish,
+        gcloud_client,
+        "_encode_and_publish",
+        mock_client.encode_and_publish,
     )
 
     return mock_client

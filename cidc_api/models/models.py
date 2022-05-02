@@ -245,7 +245,7 @@ class CommonColumns(BaseModel):  # type: ignore
     ) -> Dict[str, int]:
         """
         Return a dictionary mapping results of `expr` to the number of times each result
-        occurs in the table related to this model. E.g., for the `UploadJobs` model, 
+        occurs in the table related to this model. E.g., for the `UploadJobs` model,
         `UploadJobs.count_by_column(UploadJobs.upload_type)` would return a dictionary mapping
         upload types to the number of jobs for each type.
         """
@@ -678,7 +678,7 @@ class Permissions(CommonColumns):
     ) -> List["Permissions"]:
         """
         Check if a Permissions record exists for the given user, trial, and type.
-        The result may be a trial- or assay-level permission that encompasses the 
+        The result may be a trial- or assay-level permission that encompasses the
         given trial id or upload type.
         """
         if trial_id is None:
@@ -754,7 +754,7 @@ class Permissions(CommonColumns):
     ) -> Optional["Permissions"]:
         """
         Check if a Permissions record exists for the given user, trial, and type.
-        The result may be a trial- or assay-level permission that encompasses the 
+        The result may be a trial- or assay-level permission that encompasses the
         given trial id or upload type.
         """
         return (
@@ -871,7 +871,7 @@ class Permissions(CommonColumns):
             only affect permissions for this trial
             None for all trials
         upload_type: str
-            only affect permissions for this upload type 
+            only affect permissions for this upload type
             None for all upload types
         grant: bool
             whether to grant or remove the (filtered) permissions
@@ -1289,7 +1289,7 @@ class TrialMetadata(CommonColumns):
     ):
         """
         Update the current TrialMetadata instance if it exists. `changes` should be
-        a dictionary mapping column names to updated values. Skip JSON metadata validation 
+        a dictionary mapping column names to updated values. Skip JSON metadata validation
         if validate_metadata=False.
         """
         # Since commit=False, this will only apply changes to the in-memory
@@ -1376,7 +1376,7 @@ class TrialMetadata(CommonColumns):
             }
         ```
         NOTE: if the metadata model for any existing assays substantially changes,
-        or if new assays are introduced that don't follow the typical structure 
+        or if new assays are introduced that don't follow the typical structure
         (batches containing sample-level records), then this method will need to
         be updated to accommodate those changes.
         """
@@ -2081,7 +2081,7 @@ class DownloadableFiles(CommonColumns):
     @property
     def cimac_id(self):
         """
-        Extract the `cimac_id` associated with this file, if any, by searching the file's 
+        Extract the `cimac_id` associated with this file, if any, by searching the file's
         additional metadata for a field with a key like `<some>.<path>.cimac_id`.
 
         NOTE: this is not a sqlalchemy hybrid_property, and it can't be used directly in queries.
@@ -2100,7 +2100,7 @@ class DownloadableFiles(CommonColumns):
         """
         Return a list of file records related to this file. We could define "related"
         in any number of ways, but currently, a related file:
-            * is sample-specific, and relates to the same sample as this file if this file 
+            * is sample-specific, and relates to the same sample as this file if this file
               has an associated `cimac_id`.
             * isn't sample-specific, and relates to the same `data_category_prefix`.
         """

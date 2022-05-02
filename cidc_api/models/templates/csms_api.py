@@ -133,7 +133,7 @@ def _extract_info_from_manifest(
 ) -> Tuple[str, str, List[Dict[str, Any]]]:
     """
     Given a manifest, do initial validation and return some key values
-    
+
     Returns
     -------
     str : trial_id
@@ -178,7 +178,7 @@ def _extract_info_from_manifest(
 def _extract_details_from_trial(samples: List[Dict[str, Any]]):
     """
     Given a trial, return some key values
-    
+
     Returns
     -------
     str : assay_priority
@@ -196,7 +196,10 @@ def _extract_details_from_trial(samples: List[Dict[str, Any]]):
         check=lambda _: True,
     )
     assay_type = _get_and_check(
-        obj=samples, key="assay_type", msg="will not be thrown", check=lambda _: True,
+        obj=samples,
+        key="assay_type",
+        msg="will not be thrown",
+        check=lambda _: True,
     )
     return assay_priority, assay_type
 
@@ -305,7 +308,7 @@ def insert_manifest_into_blob(
     """
     Given a CSMS-style manifest, add it into the JSON metadata blob
     If `dry_run`, calls `session.rollback` instead of `session.commit`
-    
+
     Exceptions Raised
     -----------------
     - "Cannot add a manifest that is not qc_complete"
@@ -432,7 +435,7 @@ def insert_manifest_from_json(
     """
     Given a CSMS-style manifest, validate and add it into the relational tables.
     If `dry_run`, calls `session.rollback` instead of `session.commit`
-    
+
     Exceptions Raised
     -----------------
     - "Cannot add a manifest that is not qc_complete"
@@ -758,7 +761,7 @@ def _initial_manifest_validation(csms_manifest: Dict[str, Any], *, session: Sess
         both map cimac_id's to a sample definition dict
     Shipment : cidc_shipment
 
-    
+
     Exceptions Raised
     -----------------
     - "Cannot add a manifest that is not qc_complete"
@@ -871,7 +874,7 @@ def _handle_sample_differences(
 ) -> Tuple[OrderedDictType[Type, List[MetadataModel]], List[Change]]:
     """
     Compare the given CSMS and CIDC participants and samples
-    
+
     Unlike _handle_shipment_differences and _handle_upload_differences,
     directly takes the returns for detect_manifest_changes() and updates them
     before giving them back.
@@ -968,7 +971,7 @@ def detect_manifest_changes(
     List[Change]
         the changes that were detected
         used as input for update_json_with_changes, and aims to be human-readable as well
-    
+
     Raises
     ------
     NewManifestError
