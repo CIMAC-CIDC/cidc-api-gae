@@ -24,7 +24,7 @@ Talisman(
     app,
     # disable https if app is run in testing mode
     # flask's test_client doesn't use https for some reason
-    force_https = not app.config['TESTING'],
+    force_https=not app.config["TESTING"],
 )
 
 # Set up the database and run the migrations
