@@ -2,6 +2,7 @@ import traceback
 
 from flask import Flask, jsonify
 from flask_cors import CORS
+from flask_talisman import Talisman
 from werkzeug.exceptions import HTTPException
 from marshmallow.exceptions import ValidationError
 
@@ -17,8 +18,14 @@ logger = get_logger(__name__)
 app = Flask(__name__, static_folder=None)
 app.config.update(SETTINGS)
 
-# Enable CORS
+# Enable CORS and HSTS
 CORS(app, resources={r"*": {"origins": app.config["ALLOWED_CLIENT_URL"]}})
+Talisman(
+    app,
+    # disable https if app is run in testing mode
+    # flask's test_client doesn't use https for some reason
+    force_https = not app.config['TESTING'],
+)
 
 # Set up the database and run the migrations
 init_db(app)
