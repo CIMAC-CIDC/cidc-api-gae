@@ -9,6 +9,11 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## 4 May 2022
+
+- `added` `security` HSTS (headers) to prod and staging
+  - [instructs browser to prefer `https`](https://cloud.google.com/appengine/docs/flexible/python/how-requests-are-handled#forcing_https_connections)
+
 ## Version `0.26.10` - 2 May 2022
 
 - `changed` black, flask, werkzeug, jinja2, schemas version bumps
