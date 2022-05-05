@@ -13,7 +13,8 @@ This Changelog tracks changes to this project. The notes below include a summary
 
 - `added` `security` HSTS (headers) to prod and staging
   - [instructs browser to prefer `https`](https://cloud.google.com/appengine/docs/flexible/python/how-requests-are-handled#forcing_https_connections)
-- added [`wait_for_element_by_id` call](https://stackoverflow.com/questions/27112731/selenium-common-exceptions-nosuchelementexception-message-unable-to-locate-ele) tester
+- `added` [wait_for_element_by_id call](https://stackoverflow.com/questions/27112731/selenium-common-exceptions-nosuchelementexception-message-unable-to-locate-ele) tester
+- `added` `security` Content Security Policy whitelist [for bootstrap, jquery](https://stackoverflow.com/questions/54730178/flask-talisman-breaks-flask-bootstrap)
 
 ## Version `0.26.10` - 2 May 2022
 

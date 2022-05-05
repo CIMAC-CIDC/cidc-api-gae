@@ -20,11 +20,20 @@ app.config.update(SETTINGS)
 
 # Enable CORS and HSTS
 CORS(app, resources={r"*": {"origins": app.config["ALLOWED_CLIENT_URL"]}})
+csp = {
+    "default-src": [
+        "'self'",
+        "stackpath.bootstrapcdn.com",
+        "code.jquery.com",
+        "cdn.jsdelivr.net",
+    ]
+}
 Talisman(
     app,
     # disable https if app is run in testing mode
     # flask's test_client doesn't use https for some reason
     force_https=not app.config["TESTING"],
+    content_security_policy=csp,
 )
 
 # Set up the database and run the migrations
