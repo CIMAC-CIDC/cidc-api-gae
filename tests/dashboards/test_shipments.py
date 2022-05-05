@@ -170,6 +170,7 @@ def test_shipments_dashboard(cidc_api, clean_db, monkeypatch, dash_duo: DashComp
 
         dash_duo.server(shipments_dashboard)
         dash_duo.wait_for_page(f"{dash_duo.server.url}/dashboards/upload_jobs/")
+        dash_duo.wait_for_element_by_id(f"#{TRIAL_DROPDOWN}")
 
         if CIDCRole(role) == CIDCRole.ADMIN:
             # open trial dropdown
