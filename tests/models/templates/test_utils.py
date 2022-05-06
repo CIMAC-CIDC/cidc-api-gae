@@ -45,11 +45,13 @@ def test_remove_record_batch(cidc_api, clean_db):
         assert 'participants" violates foreign key' in str(errs[0])
 
         # hold_commit flushes instead of commits
+        actual_commit = clean_db.commit
         clean_db.commit = MagicMock()
         errs = remove_record_batch(inserted[Sample][:1], hold_commit=True)
         assert len(errs) == 0
         assert clean_db.query(Sample).count() == 0
         clean_db.commit.assert_not_called()
+        clean_db.commit = actual_commit
 
 
 def test_in_single_transaction_smoketest(cidc_api):
