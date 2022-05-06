@@ -1,11 +1,40 @@
 import os.path
 from collections import OrderedDict
+from typing import Dict, List
 from unittest.mock import MagicMock
 
-from cidc_api.models.templates import in_single_transaction, PbmcManifest, TEMPLATE_MAP
+from cidc_api.models.templates import (
+    in_single_transaction,
+    MetadataModel,
+    Participant,
+    PbmcManifest,
+    remove_record_batch,
+    Sample,
+    TEMPLATE_MAP,
+)
 
-from .utils import set_up_example_trial
+from .utils import set_up_example_trial, setup_example
 from .examples import EXAMPLE_DIR
+
+
+def test_remove_record_batch(cidc_api, clean_db):
+    inserted: Dict[type, List[MetadataModel]] = setup_example(clean_db, cidc_api)
+
+    with cidc_api.app_context():
+        assert clean_db.query(Sample).count() == 2
+        assert remove_record_batch(inserted[Sample][1:]) == []
+        assert clean_db.query(Sample).count() == 1
+
+        errs = remove_record_batch(inserted[Participant])
+        assert len(errs) == 1
+        assert 'participants" violates foreign key' in str(errs[0])
+
+        errs = remove_record_batch(inserted[Participant], hold_commit=True)
+        assert len(errs) == 1
+        assert 'participants" violates foreign key' in str(errs[0])
+
+        errs = remove_record_batch(inserted[Participant], dry_run=True)
+        assert len(errs) == 0
 
 
 def test_in_single_transaction_smoketest(cidc_api):

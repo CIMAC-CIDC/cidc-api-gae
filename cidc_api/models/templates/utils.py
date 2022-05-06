@@ -275,11 +275,19 @@ def remove_record_batch(
             errors.append(e)
 
     if hold_commit:
-        session.flush()
+        try:
+            session.flush()
+        except Exception as e:
+            errors.append(e)
+            session.rollback()
     elif dry_run or len(errors):
         session.rollback()
     else:
-        session.commit()
+        try:
+            session.commit()
+        except Exception as e:
+            errors.append(e)
+            session.rollback()
 
     return errors
 
@@ -305,7 +313,11 @@ def in_single_transaction(
     if dry_run or len(errors):
         session.rollback()
     else:
-        session.commit()
+        try:
+            session.commit()
+        except Exception as e:
+            errors.append(e)
+            session.rollback()
 
     return errors
 

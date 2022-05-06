@@ -13,6 +13,7 @@ This Changelog tracks changes to this project. The notes below include a summary
 
 - `removed` `security` HSTS that was broken
 - `added` missing facets for RNA MSI and Microbiome
+- `changed` add more try/catch as result of tests; will be integrated on next bump
 
 ## 4 May 2022
 
