@@ -274,24 +274,17 @@ def remove_record_batch(
         except Exception as e:
             errors.append(e)
 
-    if hold_commit:
-        try:
+    try:
+        if hold_commit:
             session.flush()
-        except Exception as e:
-            errors.append(e)
+        elif dry_run or len(errors):
+            session.flush()
             session.rollback()
-    elif dry_run or len(errors):
-        try:
-            session.flush()
-        except Exception as e:
-            errors.append(e)
-        session.rollback()
-    else:
-        try:
+        else:
             session.commit()
-        except Exception as e:
-            errors.append(e)
-            session.rollback()
+    except Exception as e:
+        errors.append(e)
+        session.rollback()
 
     return errors
 
