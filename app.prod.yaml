@@ -21,8 +21,6 @@ handlers:
     script: auto
     secure: always
     redirect_http_response_code: 301
-    http_headers:
-      Strict-Transport-Security: max-age=31536000; includeSubDomains
 
 env_variables:
   ENV: "prod"

@@ -9,6 +9,11 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## 6 May 2022
+
+- `removed` `security` HSTS that was broken
+- `added` missing facets for RNA MSI and Microbiome
+
 ## 4 May 2022
 
 - `added` `security` HSTS (headers) to prod and staging
