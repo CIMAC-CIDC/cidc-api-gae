@@ -29,12 +29,27 @@ def test_remove_record_batch(cidc_api, clean_db):
         assert len(errs) == 1
         assert 'participants" violates foreign key' in str(errs[0])
 
+        # hold_commit flushes instead, still throws error
         errs = remove_record_batch(inserted[Participant], hold_commit=True)
         assert len(errs) == 1
         assert 'participants" violates foreign key' in str(errs[0])
 
-        errs = remove_record_batch(inserted[Participant], dry_run=True)
+        # dry_run doesn't change anything even when it would be successful
+        errs = remove_record_batch(inserted[Sample][:1], dry_run=True)
         assert len(errs) == 0
+        assert clean_db.query(Sample).count() == 1
+
+        # dry_run does flush to get errors
+        errs = remove_record_batch(inserted[Participant], dry_run=True)
+        assert len(errs) == 1
+        assert 'participants" violates foreign key' in str(errs[0])
+
+        # hold_commit flushes instead of commits
+        clean_db.commit = MagicMock()
+        errs = remove_record_batch(inserted[Sample][:1], hold_commit=True)
+        assert len(errs) == 0
+        assert clean_db.query(Sample).count() == 0
+        clean_db.commit.assert_not_called()
 
 
 def test_in_single_transaction_smoketest(cidc_api):
@@ -63,6 +78,18 @@ def test_in_single_transaction_smoketest(cidc_api):
     func2.assert_called_once_with(session=session, hold_commit=True)
     session.commit.assert_called_once()
     session.flush.assert_called()
+
+    func1.reset_mock()
+    func2.reset_mock()
+    session.flush.reset_mock()
+    session.commit.reset_mock()
+
+    session.commit.side_effect = Exception("foo")
+    errs = in_single_transaction(calls, session=session)
+    assert len(errs) == 1
+    assert "foo" in str(errs[0])
+    func1.assert_called_once_with(foo="bar", session=session, hold_commit=True)
+    func2.assert_called_once_with(session=session, hold_commit=True)
 
 
 def test_get_full_template_name():

@@ -281,6 +281,10 @@ def remove_record_batch(
             errors.append(e)
             session.rollback()
     elif dry_run or len(errors):
+        try:
+            session.flush()
+        except Exception as e:
+            errors.append(e)
         session.rollback()
     else:
         try:
@@ -307,7 +311,12 @@ def in_single_transaction(
     for func, kwargs in calls.items():
         kwargs.update({"session": session, "hold_commit": True})
         errors.extend(func(**kwargs))
-        session.flush()
+
+        try:
+            session.flush()
+        except Exception as e:
+            errors.append(e)
+            break
 
     # no hold_commit here because we need to close the transaction
     if dry_run or len(errors):
