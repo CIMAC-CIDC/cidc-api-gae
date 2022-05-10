@@ -334,7 +334,7 @@ def test_create_compressed_batch(cidc_api, clean_db, monkeypatch):
         )
         perm.insert()
 
-    # Mock GCS client
+    # Mock GCS client and loger
     blob = MagicMock()
     bucket = MagicMock()
     bucket.blob.return_value = blob
@@ -348,6 +348,9 @@ def test_create_compressed_batch(cidc_api, clean_db, monkeypatch):
         lambda *_: signed_url,
     )
 
+    mock_logger = MagicMock()
+    monkeypatch.setattr("cidc_api.resources.downloadable_files.logger", mock_logger)
+
     # User has one permission, s0 the endpoint should try to create
     # a compressed batch file with the single file the user has
     # access to in it.
@@ -358,8 +361,13 @@ def test_create_compressed_batch(cidc_api, clean_db, monkeypatch):
     bucket.get_blob.assert_called_with(url_1)
     blob.upload_from_filename.assert_called_once()
 
+    mock_logger.info.assert_called_once()
+    assert "test@email.com" in mock_logger.info.call_args[0][0]
+    assert url_1 in mock_logger.info.call_args[0][0]
+
     bucket.reset_mock()
     blob.reset_mock()
+    mock_logger.reset_mock()
 
     make_admin(user_id, cidc_api)
 
@@ -382,6 +390,11 @@ def test_create_compressed_batch(cidc_api, clean_db, monkeypatch):
     assert call(url_1) in bucket.get_blob.call_args_list
     assert call(url_2) in bucket.get_blob.call_args_list
     blob.upload_from_filename.assert_called_once()
+
+    mock_logger.info.assert_called_once()
+    assert "test@email.com" in mock_logger.info.call_args[0][0]
+    assert url_1 in mock_logger.info.call_args[0][0]
+    assert url_2 in mock_logger.info.call_args[0][0]
 
 
 def test_get_filter_facets(cidc_api, clean_db, monkeypatch):
@@ -443,6 +456,12 @@ def test_get_download_url(cidc_api, clean_db, monkeypatch):
     """Check that generating a GCS signed URL works as expected"""
     user_id = setup_user(cidc_api, monkeypatch)
     file_id, _ = setup_downloadable_files(cidc_api)
+    with cidc_api.app_context():
+        file_url = DownloadableFiles.find_by_id(file_id).object_url
+
+    # mock logs
+    mock_logger = MagicMock()
+    monkeypatch.setattr("cidc_api.resources.downloadable_files.logger", mock_logger)
 
     client = cidc_api.test_client()
 
@@ -478,6 +497,9 @@ def test_get_download_url(cidc_api, clean_db, monkeypatch):
     res = client.get(f"/downloadable_files/download_url?id={file_id}")
     assert res.status_code == 200
     assert res.json == test_url
+    mock_logger.info.assert_called_once()
+    assert "test@email.com" in mock_logger.info.call_args[0][0]
+    assert file_url in mock_logger.info.call_args[0][0]
 
     # network viewers aren't allowed to get download urls
     make_role(user_id, CIDCRole.NETWORK_VIEWER.value, cidc_api)

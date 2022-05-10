@@ -22,7 +22,7 @@ CIDC_MAILING_LIST = "cidc-alert@ds.dfci.harvard.edu"
 
 def sendable(email_template):
     """
-    Adds the `send` kwarg to an email template. If send_email=True, 
+    Adds the `send` kwarg to an email template. If send_email=True,
     send the email on function call.
     """
 

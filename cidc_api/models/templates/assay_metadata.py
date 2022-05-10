@@ -113,7 +113,8 @@ class WESUpload(NGSUpload):
         doc="A unique ID to identify this upload.",
     )
     trial_id = Column(
-        String, primary_key=True,  # both True allows for use as multi Foreign Key
+        String,
+        primary_key=True,  # both True allows for use as multi Foreign Key
     )
     sequencing_protocol = Column(
         Enum(
@@ -161,7 +162,10 @@ class WESRecord(MetadataModel):
     trial_id = Column(String, nullable=False)
 
     sequencing_date = Column(Date, doc="Date of sequencing.")
-    quality_flag = Column(Numeric, doc="Flag used for quality.",)
+    quality_flag = Column(
+        Numeric,
+        doc="Flag used for quality.",
+    )
 
     upload = relationship(
         WESUpload, back_populates="records", sync_backref=False, viewonly=True

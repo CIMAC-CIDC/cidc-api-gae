@@ -9,6 +9,30 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## 6 May 2022
+
+- `removed` `security` HSTS that was broken
+- `added` missing facets for RNA MSI and Microbiome
+- `changed` add more try/catch as result of tests; will be integrated on next bump
+
+## 4 May 2022
+
+- `added` `security` HSTS (headers) to prod and staging
+  - [instructs browser to prefer `https`](https://cloud.google.com/appengine/docs/flexible/python/how-requests-are-handled#forcing_https_connections)
+
+## Version `0.26.10` - 2 May 2022
+
+- `changed` black, flask, werkzeug, jinja2, schemas version bumps
+- `removed` typing_extensions dependency
+
+## Version `0.26.9` - 21 Mar 2022
+
+- `changed` schema version for wes-matching update
+
+## Version `0.26.8` - 25 Mar 2022
+
+- `changed` schema version to wes-matching to automate matching
+
 ## Version `0.26.7` - 25 Mar 2022
 
 - `changed` schema version to peg regex to prevent errors

@@ -277,7 +277,8 @@ class Shipment(MetadataModel):
         doc="Courier utilized for shipment.",
     )
     tracking_number = Column(
-        String, doc="Air bill number assigned to shipment. Example: 4567788343.",
+        String,
+        doc="Air bill number assigned to shipment. Example: 4567788343.",
     )
     account_number = Column(
         String,
@@ -482,7 +483,8 @@ class Sample(MetadataModel):
         doc="ICD-0-3 histology and behavior code description. e.g. Hodgkin lymphoma, nod. scler., grade 1",
     )
     sample_location = Column(
-        String, doc="Sample location within the shipping container. Example: A1.",
+        String,
+        doc="Sample location within the shipping container. Example: A1.",
     )
     type_of_sample = Column(
         Enum(
@@ -788,7 +790,8 @@ class Aliquot(MetadataModel):
     )
     quantity = Column(Integer, doc="Quantity of each aliquot shipped.")
     aliquot_replacement = Column(
-        Replacement, doc="Status of aliquot if replacement is/was requested.",
+        Replacement,
+        doc="Status of aliquot if replacement is/was requested.",
     )
     aliquot_status = Column(
         Enum(

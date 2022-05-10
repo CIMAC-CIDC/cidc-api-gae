@@ -526,6 +526,11 @@ details_dict = {
         "centrifuge summary output file",
         "Centrifuge output file contains name of a genome, taxonomic ID and rank, and also the proportion of this genome normalized by its genomic length",
     ),
+    "/rna/analysis/microbiome/sample_report.txt": FileDetails(
+        "miscellaneous",
+        "centrifuge summary output file",
+        "Centrifuge output file contains name of a genome, taxonomic ID and rank, and also the proportion of this genome normalized by its genomic length",
+    ),
     "/rna/analysis/trust4/trust4_report.tsv": FileDetails(
         "miscellaneous",
         "TRUST4 final report file",
@@ -537,6 +542,11 @@ details_dict = {
         "This report file contains valiated fusion gene pairs found in all samples including their gene expression.",
     ),
     "/rna/analysis/msisensor/msisensor_report.txt": FileDetails(
+        "miscellaneous",
+        "msisensor report file",
+        "This report file contains MSI score this report file contains MSI score.",
+    ),
+    "/rna/analysis/msisensor/msisensor.txt": FileDetails(
         "miscellaneous",
         "msisensor report file",
         "This report file contains MSI score this report file contains MSI score.",

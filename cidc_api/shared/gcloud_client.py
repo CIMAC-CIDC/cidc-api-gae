@@ -82,7 +82,7 @@ def upload_xlsx_to_gcs(
 ) -> storage.Blob:
     """
     Upload an xlsx template file to GOOGLE_ACL_DATA_BUCKET, returning the object URI.
-    
+
     `template_category` is either "manifests" or "assays".
     `template_type` is an assay or manifest type, like "wes" or "pbmc" respectively.
 
@@ -219,7 +219,7 @@ def upload_xlsx_to_intake_bucket(
     user_email: str, trial_id: str, upload_type: str, xlsx: FileStorage
 ) -> str:
     """
-    Upload a metadata spreadsheet file to the GCS intake bucket, 
+    Upload a metadata spreadsheet file to the GCS intake bucket,
     returning the URL to the bucket in the GCP console.
     """
     # add a timestamp to the metadata file name to avoid overwriting previous versions
@@ -288,7 +288,9 @@ def get_blob_names(
 
 
 def grant_download_access_to_blob_names(
-    user_email_list: List[str], blob_name_list: List[str], is_group: bool = False,
+    user_email_list: List[str],
+    blob_name_list: List[str],
+    is_group: bool = False,
 ) -> None:
     """
     Using ACL, grant download access to all blobs given to the user(s) given.
@@ -345,7 +347,9 @@ def grant_download_access(
 
 
 def revoke_download_access_from_blob_names(
-    user_email_list: List[str], blob_name_list: List[str], is_group: bool = False,
+    user_email_list: List[str],
+    blob_name_list: List[str],
+    is_group: bool = False,
 ) -> None:
     """
     Using ACL, grant download access to all blobs given to the users given.
@@ -431,7 +435,10 @@ def _build_trial_upload_prefixes(
 
 
 def grant_iam_access(
-    bucket: storage.Bucket, role: str, user_email: str, expiring: bool = True,
+    bucket: storage.Bucket,
+    role: str,
+    user_email: str,
+    expiring: bool = True,
 ) -> None:
     """
     Grant `user_email` the provided IAM `role` on a storage `bucket`.
@@ -536,14 +543,17 @@ user_member = lambda email: f"user:{email}"
 
 
 def _build_iam_binding(
-    bucket: str, role: str, user_email: str, ttl_days: int = INACTIVE_USER_DAYS,
+    bucket: str,
+    role: str,
+    user_email: str,
+    ttl_days: int = INACTIVE_USER_DAYS,
 ) -> Dict[str, Any]:
     """
     Grant the user associated with `user_email` the provided IAM `role` when acting
     on objects in `bucket`. This permission remains active for `ttl_days` days.
 
     See GCP common expression language syntax overview: https://cloud.google.com/iam/docs/conditions-overview
-    
+
     Parameters
     ----------
     bucket: str
@@ -583,7 +593,9 @@ def _build_iam_binding(
 
 
 def _find_and_pop_iam_binding(
-    policy: storage.bucket.Policy, role: str, user_email: str,
+    policy: storage.bucket.Policy,
+    role: str,
+    user_email: str,
 ) -> Optional[dict]:
     """
     Find an IAM policy binding for the given `user_email`, `policy`, and `role`, and pop
@@ -714,7 +726,7 @@ def publish_artifact_upload(file_id: int) -> None:
 def send_email(to_emails: List[str], subject: str, html_content: str, **kw) -> None:
     """
     Publish an email-to-send to the emails topic.
-    `kw` are expected to be sendgrid json api style additional email parameters. 
+    `kw` are expected to be sendgrid json api style additional email parameters.
     """
     # Don't actually send an email if this is a test
     if TESTING or ENV == "dev":
