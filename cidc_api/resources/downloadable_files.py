@@ -240,7 +240,7 @@ def get_download_url(args):
 
     # Generate the signed URL and return it.
     logger.info(
-        f"File download: generating signed URL for {file_record.object_url} for {user.email}"
+        f"File download: generating signed URL for {user.email} for {file_record.object_url}"
     )
     download_url = gcloud_client.get_signed_url(file_record.object_url)
     return jsonify(download_url)

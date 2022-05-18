@@ -9,6 +9,11 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.11` - 6 May 2022
+
+- `changed` order of user and url in single file download
+- `changed` WES counting to reflect new system
+
 ## 6 May 2022
 
 - `removed` `security` HSTS that was broken
