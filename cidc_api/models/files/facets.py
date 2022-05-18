@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Dict, List, Optional, Union, Any
 
 from werkzeug.exceptions import BadRequest
@@ -510,3 +511,48 @@ def get_facet_groups_for_paths(paths: List[List[str]]) -> List[str]:
         facet_groups.extend(facet_config.facet_groups)
 
     return facet_groups
+
+
+def get_facet_groups_for_links() -> Dict[str, Dict[str, List[str]]]:
+    """
+    Return all facets grouped by assay
+    Added for selecting a whole assay individually when linking from the dashboard.
+
+    The first key is the assay, as returned for *assays* in models/models.py::TrialMetadata.get_summaries static method.
+        Note that the UI goes through *non-analysis assays* and checks for a corresponding analysis, so only using the assay.
+    The second key is either "received" or "analyzed" as match the UI.
+    The values are a list of facets that are associated with each of those assays, including their analysis.
+    """
+    facets_to_return: dict = defaultdict(lambda: defaultdict(list))
+    for category, cat_facets in facets_dict.items():
+        for middle, subfacet in cat_facets.items():
+            assay: str = middle.replace("-", "").lower()
+            # wes specifics
+            if assay == "wes tumoronly":
+                assay = "wes_tumor"
+            elif "wes" in assay:
+                assay = "wes_normal"
+
+            if isinstance(subfacet, dict):
+                for facet, facet_config in subfacet.items():
+                    full_facet = "|".join([category, middle, facet])
+                    if any("analysis" in f for f in facet_config.facet_groups):
+                        facets_to_return[assay]["analyzed"].append(full_facet)
+                    if any("analysis" not in f for f in facet_config.facet_groups):
+                        facets_to_return[assay]["received"].append(full_facet)
+
+            else:
+                full_facet = "|".join([category, middle])
+                if any("analysis" in f for f in subfacet.facet_groups):
+                    facets_to_return[assay]["analyzed"].append(full_facet)
+                if any("analysis" not in f for f in subfacet.facet_groups):
+                    facets_to_return[assay]["received"].append(full_facet)
+
+            # wes specific, use same values for wes_tumor received as for wes_normal received
+            # because facets refer to the WHOLE of WES assay, not broken up by sample type
+            if assay == "wes_normal":
+                facets_to_return["wes_tumor"]["received"] = facets_to_return[assay][
+                    "received"
+                ]
+
+    return dict({k: dict(v) for k, v in facets_to_return.items()})

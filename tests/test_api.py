@@ -433,6 +433,7 @@ def test_endpoint_urls(cidc_api):
         "/downloadable_files/filelist",
         "/downloadable_files/compressed_batch",
         "/downloadable_files/download_url",
+        "/downloadable_files/facet_groups_for_links",
         "/downloadable_files/filter_facets",
         "/downloadable_files/<int:downloadable_file>",
         "/downloadable_files/<int:downloadable_file>/related_files",

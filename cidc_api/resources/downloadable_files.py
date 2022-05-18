@@ -11,6 +11,8 @@ from webargs import fields
 from webargs.flaskparser import use_args
 from werkzeug.exceptions import BadRequest, NotFound, Unauthorized
 
+from cidc_api.models.files import facets
+
 
 from ..models import (
     DownloadableFiles,
@@ -271,3 +273,28 @@ def get_filter_facets(args):
         )
     )
     return jsonify({"trial_ids": trial_ids, "facets": facets})
+
+
+@downloadable_files_bp.route("/facet_groups_for_links", methods=["GET"])
+@requires_auth("facet_groups_for_links")
+@use_args(file_filter_schema, location="query")
+def get_facet_groups_for_links(args):
+    """
+    Return a list of filter facets for linking to a particular assay in the File Browser.
+    Response will have structure:
+    {
+        <assay>: {
+            "received": [<facet 1>, <facet 2>,...],
+            "analyzed": [<facet 3>, <facet 4>, ...],
+        }
+        <assay 2>: {
+            "received": [...],
+            "analyzed": [...],
+        }
+        ...
+    }
+
+    To link back to the File Browser use the form:
+    portal.cimac-network.org/browse-data?file_view=1&trial_ids=<trial 1>&trial_ids=<trial 2>...&facets=<facet 1>&facets=<facet 2>...
+    """
+    return {"facets": facets.get_facet_groups_for_links()}

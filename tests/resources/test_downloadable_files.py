@@ -527,3 +527,45 @@ def test_log_multiple_errors(caplog):
     log_multiple_errors("some error")
     assert "some error" in caplog.text
     caplog.clear()
+
+
+def test_facet_groups_for_links(cidc_api, clean_db, monkeypatch):
+    user_id = setup_user(cidc_api, monkeypatch)
+    setup_downloadable_files(cidc_api)
+
+    client = cidc_api.test_client()
+
+    res = client.get("/downloadable_files/facet_groups_for_links")
+    assert res.status_code == 200
+    facets = res.json["facets"]
+
+    for assay in [
+        # from UI, headers of Data Overview tab
+        "atacseq",
+        "cytof",
+        "elisa",
+        "h&e",
+        "ihc",
+        "mif",
+        "nanostring",
+        "olink",
+        "rna",
+        "tcr",
+        "wes_normal",
+        "wes_tumor",
+    ]:
+        assert assay in facets
+        assert "received" in facets[assay]
+        assert len(facets[assay]["received"])
+
+        if assay in [
+            # from UI code, src/components/data-overview/DataOverviewPage.tsx::ASSAYS_WITH_ANALYSIS
+            "atacseq",
+            "cytof",
+            "rna",
+            "tcr",
+            "wes_normal",
+            "wes_tumor",
+        ]:
+            assert "analyzed" in facets[assay]
+            assert len(facets[assay]["analyzed"])
