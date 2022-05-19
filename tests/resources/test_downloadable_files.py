@@ -274,10 +274,17 @@ def test_get_filelist(cidc_api, clean_db, monkeypatch):
     make_admin(user_id, cidc_api)
     res = client.post(url, json=short_file_list)
     assert res.status_code == 200
-    assert res.data.decode("utf-8") == (
-        f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_1}/wes/.../reads_123.bam\t{trial_id_1}_wes_..._reads_123.bam\n"
-        f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_2}/cytof/.../analysis.zip\t{trial_id_2}_cytof_..._analysis.zip\n"
-    )
+
+    assert res.data.decode("utf-8") in [
+        (
+            f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_1}/wes/.../reads_123.bam\t{trial_id_1}_wes_..._reads_123.bam\n"
+            f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_2}/cytof/.../analysis.zip\t{trial_id_2}_cytof_..._analysis.zip\n"
+        ),
+        (  # reversed
+            f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_2}/cytof/.../analysis.zip\t{trial_id_2}_cytof_..._analysis.zip\n"
+            f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_1}/wes/.../reads_123.bam\t{trial_id_1}_wes_..._reads_123.bam\n"
+        ),
+    ]
 
     # Clear inserted file records
     with cidc_api.app_context():

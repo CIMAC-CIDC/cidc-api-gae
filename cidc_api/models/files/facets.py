@@ -523,36 +523,49 @@ def get_facet_groups_for_links() -> Dict[str, Dict[str, List[str]]]:
     The second key is either "received" or "analyzed" as match the UI.
     The values are a list of facets that are associated with each of those assays, including their analysis.
     """
-    facets_to_return: dict = defaultdict(lambda: defaultdict(list))
+    # make our return structure
+    starting_dict = {"received": [], "analyzed": []}
+    facets_to_return: dict = defaultdict(starting_dict.copy)
+
+    # helper function to process and prepare each entry for return
+    def process_facet(
+        assay: str, facet_parts: List[str], facet_config: FacetConfig
+    ) -> None:
+        full_facet = "|".join(facet_parts)
+
+        is_received = any("analysis" not in f for f in facet_config.facet_groups)
+        is_analyzed = any("analysis" in f for f in facet_config.facet_groups)
+
+        if is_received:
+            facets_to_return[assay]["received"].append(full_facet)
+        if is_analyzed:
+            facets_to_return[assay]["analyzed"].append(full_facet)
+
+    # helper function to return UI assay from first-level facet group
+    def translate_assay(facet_group: str) -> str:
+        assay: str = facet_group.replace("-", "").lower()
+        # wes specifics
+        if assay == "wes tumoronly":
+            assay = "wes_tumor"
+        elif "wes" in assay:
+            assay = "wes_normal"
+        return assay
+
+    # run through all the facets and put them in the return
     for category, cat_facets in facets_dict.items():
-        for middle, subfacet in cat_facets.items():
-            assay: str = middle.replace("-", "").lower()
-            # wes specifics
-            if assay == "wes tumoronly":
-                assay = "wes_tumor"
-            elif "wes" in assay:
-                assay = "wes_normal"
+        for first, first_config in cat_facets.items():
+            assay = translate_assay(first)
+            if isinstance(first_config, dict):
+                for facet, facet_config in first_config.items():
+                    process_facet(assay, [category, first, facet], facet_config)
+            else:  # isinstance(first_config, FacetConfig)
+                process_facet(assay, [category, first], first_config)
 
-            if isinstance(subfacet, dict):
-                for facet, facet_config in subfacet.items():
-                    full_facet = "|".join([category, middle, facet])
-                    if any("analysis" in f for f in facet_config.facet_groups):
-                        facets_to_return[assay]["analyzed"].append(full_facet)
-                    if any("analysis" not in f for f in facet_config.facet_groups):
-                        facets_to_return[assay]["received"].append(full_facet)
+    # wes specific, use same values for wes_tumor received as for wes_normal received
+    # because facets refer to the WHOLE of WES assay, not broken up by sample type
+    facets_to_return["wes_tumor"]["received"] = facets_to_return["wes_normal"][
+        "received"
+    ]
 
-            else:
-                full_facet = "|".join([category, middle])
-                if any("analysis" in f for f in subfacet.facet_groups):
-                    facets_to_return[assay]["analyzed"].append(full_facet)
-                if any("analysis" not in f for f in subfacet.facet_groups):
-                    facets_to_return[assay]["received"].append(full_facet)
-
-            # wes specific, use same values for wes_tumor received as for wes_normal received
-            # because facets refer to the WHOLE of WES assay, not broken up by sample type
-            if assay == "wes_normal":
-                facets_to_return["wes_tumor"]["received"] = facets_to_return[assay][
-                    "received"
-                ]
-
-    return dict({k: dict(v) for k, v in facets_to_return.items()})
+    # convert so that return will throw KeyErrors for missing keys
+    return dict(facets_to_return)
