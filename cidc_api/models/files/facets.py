@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Dict, List, Optional, Union, Any
 
 from werkzeug.exceptions import BadRequest
@@ -510,3 +511,70 @@ def get_facet_groups_for_paths(paths: List[List[str]]) -> List[str]:
         facet_groups.extend(facet_config.facet_groups)
 
     return facet_groups
+
+
+# helper function to process and prepare each entry for return
+def _process_facet(
+    assay: str,
+    facet_parts: List[str],
+    facet_config: FacetConfig,
+    facets_to_return: Dict[str, Dict[str, List[str]]],
+) -> None:
+    full_facet = "|".join(facet_parts)
+
+    if any("analysis" not in f for f in facet_config.facet_groups):
+        facets_to_return[assay]["received"].append(full_facet)
+    if any("analysis" in f for f in facet_config.facet_groups):
+        facets_to_return[assay]["analyzed"].append(full_facet)
+
+
+# helper function to return UI assay from first-level facet group
+def _translate_assay(facet_group: str) -> str:
+    assay: str = facet_group.replace("-", "").lower()
+    # wes specifics
+    if assay == "wes tumoronly":
+        assay = "wes_tumor"
+    elif "wes" in assay:
+        assay = "wes_normal"
+    return assay
+
+
+def get_facet_groups_for_links() -> Dict[str, Dict[str, List[str]]]:
+    """
+    Return all facets grouped by assay
+    Added for selecting a whole assay individually when linking from the dashboard.
+
+    The first key is the assay, as returned for *assays* in models/models.py::TrialMetadata.get_summaries static method.
+        Note that the UI goes through *non-analysis assays* and checks for a corresponding analysis, so only using the assay.
+    The second key is either "received" or "analyzed" as match the UI.
+    The values are a list of facets that are associated with each of those assays, including their analysis.
+    """
+    # make our return structure
+    starting_dict = {"received": [], "analyzed": []}
+    facets_to_return: dict = defaultdict(starting_dict.copy)
+
+    # run through all assay facets and put them in the return
+    category: str = "Assay Type"
+    for first, first_config in facets_dict[category].items():
+        assay = _translate_assay(first)
+        for facet, facet_config in first_config.items():
+            _process_facet(
+                assay, [category, first, facet], facet_config, facets_to_return
+            )
+
+    # run through all analysis facets and put them in the return
+    category: str = "Analysis Ready"
+    for facet, facet_config in facets_dict[category].items():
+        assay = _translate_assay(first)
+        _process_facet(assay, [category, facet], facet_config, facets_to_return)
+
+    # skip clinical facets for now as they're handled separately on the dashboard
+
+    # wes specific, use same values for wes_tumor received as for wes_normal received
+    # because facets refer to the WHOLE of WES assay, not broken up by sample type
+    facets_to_return["wes_tumor"]["received"] = facets_to_return["wes_normal"][
+        "received"
+    ]
+
+    # convert so that return will throw KeyErrors for missing keys
+    return dict(facets_to_return)

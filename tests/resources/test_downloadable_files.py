@@ -274,10 +274,17 @@ def test_get_filelist(cidc_api, clean_db, monkeypatch):
     make_admin(user_id, cidc_api)
     res = client.post(url, json=short_file_list)
     assert res.status_code == 200
-    assert res.data.decode("utf-8") == (
-        f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_1}/wes/.../reads_123.bam\t{trial_id_1}_wes_..._reads_123.bam\n"
-        f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_2}/cytof/.../analysis.zip\t{trial_id_2}_cytof_..._analysis.zip\n"
-    )
+
+    assert res.data.decode("utf-8") in [
+        (
+            f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_1}/wes/.../reads_123.bam\t{trial_id_1}_wes_..._reads_123.bam\n"
+            f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_2}/cytof/.../analysis.zip\t{trial_id_2}_cytof_..._analysis.zip\n"
+        ),
+        (  # reversed
+            f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_2}/cytof/.../analysis.zip\t{trial_id_2}_cytof_..._analysis.zip\n"
+            f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_1}/wes/.../reads_123.bam\t{trial_id_1}_wes_..._reads_123.bam\n"
+        ),
+    ]
 
     # Clear inserted file records
     with cidc_api.app_context():
@@ -527,3 +534,45 @@ def test_log_multiple_errors(caplog):
     log_multiple_errors("some error")
     assert "some error" in caplog.text
     caplog.clear()
+
+
+def test_facet_groups_for_links(cidc_api, clean_db, monkeypatch):
+    user_id = setup_user(cidc_api, monkeypatch)
+    setup_downloadable_files(cidc_api)
+
+    client = cidc_api.test_client()
+
+    res = client.get("/downloadable_files/facet_groups_for_links")
+    assert res.status_code == 200
+    facets = res.json["facets"]
+
+    for assay in [
+        # from UI, headers of Data Overview tab
+        "atacseq",
+        "cytof",
+        "elisa",
+        "h&e",
+        "ihc",
+        "mif",
+        "nanostring",
+        "olink",
+        "rna",
+        "tcr",
+        "wes_normal",
+        "wes_tumor",
+    ]:
+        assert assay in facets
+        assert "received" in facets[assay]
+        assert len(facets[assay]["received"])
+
+        if assay in [
+            # from UI code, src/components/data-overview/DataOverviewPage.tsx::ASSAYS_WITH_ANALYSIS
+            "atacseq",
+            "cytof",
+            "rna",
+            "tcr",
+            "wes_normal",
+            "wes_tumor",
+        ]:
+            assert "analyzed" in facets[assay]
+            assert len(facets[assay]["analyzed"])

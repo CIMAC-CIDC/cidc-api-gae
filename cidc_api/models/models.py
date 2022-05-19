@@ -1494,21 +1494,18 @@ class TrialMetadata(CommonColumns):
                 trial_metadata,
                 jsonb_array_elements(metadata_json#>'{assays,elisa}') entry
         """
-
-        # Count the distinct tumor and normal samples that have associated analysis data.
-        # Multiple normal samples might be paired with the same tumor sample, so we need
-        # to de-duplicate them before counting.
         wes_analysis_subquery = """
             select
                 trial_id,
                 'wes_analysis' as key,
-                count(distinct pair#>'{tumor,cimac_id}') + count(distinct pair#>'{normal,cimac_id}') as value
+                count(*) as value
             from
                 trial_metadata,
                 jsonb_array_elements(metadata_json#>'{analysis,wes_analysis,pair_runs}') pair
             where
                 pair#>'{report,report}' is not null
-            group by trial_id, key
+            group by
+                trial_id
         """
 
         wes_tumor_only_analysis_subquery = """
@@ -1520,58 +1517,59 @@ class TrialMetadata(CommonColumns):
                 trial_metadata
         """
 
-        wes_assay_subquery = """
+        wes_tumor_subquery = """
             select
                 trial_id,
-                'wes' as key,
-                count(distinct pair#>'{tumor,cimac_id}') + count(distinct pair#>'{normal,cimac_id}') as value
+                'wes_tumor' as key,
+                count(*) as value
             from
                 trial_metadata,
-                jsonb_array_elements(metadata_json#>'{analysis,wes_analysis,pair_runs}') pair
-            group by trial_id
+                jsonb_array_elements(metadata_json#>'{assays,wes}') batch,
+                jsonb_array_elements(batch->'records') record
+            join (
+                    select
+                        sample->'cimac_id' as cimac_id
+                    from
+                        trial_metadata,
+                        jsonb_array_elements(metadata_json->'participants') participant,
+                        jsonb_array_elements(participant->'samples') sample
+                    
+                    where
+                            sample->>'processed_sample_derivative' = 'Tumor DNA'
+                        or
+                            sample->>'processed_sample_derivative' = 'Tumor RNA'
+                ) sample_data
+            on
+                sample_data.cimac_id = record->'cimac_id'
+            group by
+                trial_id
         """
 
-        ## Calculate # of WES TO assay samples as (all - # paired WES samples)
-        # As jsonb_array_length is called for each entry in /assays/wes : array,
-        # it returns several rows which if `join`ed against wes_assay_subquery
-        # duplicates the value to be subtracted so `sum` doesn't work.
-        # Instead, `union` these two queries (`all` because repeated values)
-        # with opposing signs to subtract via `sum`
-        # Since # paired WES samples = `wes_assay_subquery` is a positive number,
-        # subtract total number of samples from it and negate
-
-        ## Eg
-        # /assays/wes : [{records: 3}, {records: 3}]
-        # wes_assay_subquery: 4
-        # so want 3+3 - 4 = 2
-
-        ## With double negative
-        # key           value
-        # --------------------
-        # wes             4
-        # wes_tumor_only -3
-        # wes_tumor_only -3
-        # --------------------
-        # -sum            2
-        wes_tumor_only_assay_subquery = f"""
+        wes_normal_subquery = """
             select
                 trial_id,
-                'wes_tumor_only' as key,
-                -sum(value)
-            from (
-                select
-                    trial_id,
-                    key,
-                    - jsonb_array_length(batches->'records') as value
-                from
-                    trial_metadata,
-                    jsonb_each(metadata_json->'assays') assays,
-                    jsonb_array_elements(value) batches
-                where key = 'wes'
-            union all 
-                {wes_assay_subquery}
-            ) tbl
-            group by trial_id, key
+                'wes_normal' as key,
+                count(*) as value
+            from
+                trial_metadata,
+                jsonb_array_elements(metadata_json#>'{assays,wes}') batch,
+                jsonb_array_elements(batch->'records') record
+            join (
+                    select
+                        sample->'cimac_id' as cimac_id
+                    from
+                        trial_metadata,
+                        jsonb_array_elements(metadata_json->'participants') participant,
+                        jsonb_array_elements(participant->'samples') sample
+                        where
+                                sample->>'processed_sample_derivative' <> 'Tumor DNA'
+                            and
+                                sample->>'processed_sample_derivative' <> 'Tumor RNA'
+                ) sample_data
+            on
+                sample_data.cimac_id = record->'cimac_id'
+            group by
+                trial_id
         """
 
         rna_level1_analysis_subquery = """
@@ -1721,9 +1719,9 @@ class TrialMetadata(CommonColumns):
                     union all
                     {wes_tumor_only_analysis_subquery}
                     union all
-                    {wes_assay_subquery}
+                    {wes_tumor_subquery}
                     union all
-                    {wes_tumor_only_assay_subquery}
+                    {wes_normal_subquery}
                     union all
                     {rna_level1_analysis_subquery}
                     union all
