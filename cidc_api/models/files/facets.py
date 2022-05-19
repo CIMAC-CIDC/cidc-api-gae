@@ -513,6 +513,32 @@ def get_facet_groups_for_paths(paths: List[List[str]]) -> List[str]:
     return facet_groups
 
 
+# helper function to process and prepare each entry for return
+def _process_facet(
+    assay: str,
+    facet_parts: List[str],
+    facet_config: FacetConfig,
+    facets_to_return: Dict[Dict[str, List[str]]],
+) -> None:
+    full_facet = "|".join(facet_parts)
+
+    if any("analysis" not in f for f in facet_config.facet_groups):
+        facets_to_return[assay]["received"].append(full_facet)
+    if any("analysis" in f for f in facet_config.facet_groups):
+        facets_to_return[assay]["analyzed"].append(full_facet)
+
+
+# helper function to return UI assay from first-level facet group
+def _translate_assay(facet_group: str) -> str:
+    assay: str = facet_group.replace("-", "").lower()
+    # wes specifics
+    if assay == "wes tumoronly":
+        assay = "wes_tumor"
+    elif "wes" in assay:
+        assay = "wes_normal"
+    return assay
+
+
 def get_facet_groups_for_links() -> Dict[str, Dict[str, List[str]]]:
     """
     Return all facets grouped by assay
@@ -527,39 +553,20 @@ def get_facet_groups_for_links() -> Dict[str, Dict[str, List[str]]]:
     starting_dict = {"received": [], "analyzed": []}
     facets_to_return: dict = defaultdict(starting_dict.copy)
 
-    # helper function to process and prepare each entry for return
-    def process_facet(
-        assay: str, facet_parts: List[str], facet_config: FacetConfig
-    ) -> None:
-        full_facet = "|".join(facet_parts)
-
-        if any("analysis" not in f for f in facet_config.facet_groups):
-            facets_to_return[assay]["received"].append(full_facet)
-        if any("analysis" in f for f in facet_config.facet_groups):
-            facets_to_return[assay]["analyzed"].append(full_facet)
-
-    # helper function to return UI assay from first-level facet group
-    def translate_assay(facet_group: str) -> str:
-        assay: str = facet_group.replace("-", "").lower()
-        # wes specifics
-        if assay == "wes tumoronly":
-            assay = "wes_tumor"
-        elif "wes" in assay:
-            assay = "wes_normal"
-        return assay
-
     # run through all assay facets and put them in the return
     category: str = "Assay Type"
     for first, first_config in facets_dict[category].items():
-        assay = translate_assay(first)
+        assay = _translate_assay(first)
         for facet, facet_config in first_config.items():
-            process_facet(assay, [category, first, facet], facet_config)
+            _process_facet(
+                assay, [category, first, facet], facet_config, facets_to_return
+            )
 
     # run through all analysis facets and put them in the return
     category: str = "Analysis Ready"
     for facet, facet_config in facets_dict[category].items():
-        assay = translate_assay(first)
-        process_facet(assay, [category, facet], facet_config)
+        assay = _translate_assay(first)
+        _process_facet(assay, [category, facet], facet_config, facets_to_return)
 
     # skip clinical facets for now as they're handled separately on the dashboard
 
