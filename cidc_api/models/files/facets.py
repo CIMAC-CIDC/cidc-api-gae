@@ -551,15 +551,20 @@ def get_facet_groups_for_links() -> Dict[str, Dict[str, List[str]]]:
             assay = "wes_normal"
         return assay
 
-    # run through all the facets and put them in the return
-    for category, cat_facets in facets_dict.items():
-        for first, first_config in cat_facets.items():
-            assay = translate_assay(first)
-            if isinstance(first_config, dict):
-                for facet, facet_config in first_config.items():
-                    process_facet(assay, [category, first, facet], facet_config)
-            else:  # isinstance(first_config, FacetConfig)
-                process_facet(assay, [category, first], first_config)
+    # run through all assay facets and put them in the return
+    category: str = "Assay Type"
+    for first, first_config in facets_dict[category].items():
+        assay = translate_assay(first)
+        for facet, facet_config in first_config.items():
+            process_facet(assay, [category, first, facet], facet_config)
+    
+    # run through all analysis facets and put them in the return
+    category: str = "Analysis Ready"
+    for facet, facet_config in facets_dict[category].items():
+        assay = translate_assay(first)
+        process_facet(assay, [category, facet], facet_config)
+
+    # skip clinical facets for now as they're handled separately on the dashboard
 
     # wes specific, use same values for wes_tumor received as for wes_normal received
     # because facets refer to the WHOLE of WES assay, not broken up by sample type
