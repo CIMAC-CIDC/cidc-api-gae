@@ -518,7 +518,7 @@ def _process_facet(
     assay: str,
     facet_parts: List[str],
     facet_config: FacetConfig,
-    facets_to_return: Dict[Dict[str, List[str]]],
+    facets_to_return: Dict[str, Dict[str, List[str]]],
 ) -> None:
     full_facet = "|".join(facet_parts)
 
