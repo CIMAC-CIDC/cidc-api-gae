@@ -533,12 +533,9 @@ def get_facet_groups_for_links() -> Dict[str, Dict[str, List[str]]]:
     ) -> None:
         full_facet = "|".join(facet_parts)
 
-        is_received = any("analysis" not in f for f in facet_config.facet_groups)
-        is_analyzed = any("analysis" in f for f in facet_config.facet_groups)
-
-        if is_received:
+        if any("analysis" not in f for f in facet_config.facet_groups):
             facets_to_return[assay]["received"].append(full_facet)
-        if is_analyzed:
+        if any("analysis" in f for f in facet_config.facet_groups):
             facets_to_return[assay]["analyzed"].append(full_facet)
 
     # helper function to return UI assay from first-level facet group
@@ -557,7 +554,7 @@ def get_facet_groups_for_links() -> Dict[str, Dict[str, List[str]]]:
         assay = translate_assay(first)
         for facet, facet_config in first_config.items():
             process_facet(assay, [category, first, facet], facet_config)
-    
+
     # run through all analysis facets and put them in the return
     category: str = "Analysis Ready"
     for facet, facet_config in facets_dict[category].items():
