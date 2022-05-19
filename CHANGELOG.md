@@ -14,6 +14,7 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `changed` order of user and url in single file download
 - `changed` WES counting to reflect new system
 - `added` new downloadable_files endpoint to return all facets grouped by assay
+- `added` README.md as pypi long_description
 
 ## 6 May 2022
 
