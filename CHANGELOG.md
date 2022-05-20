@@ -12,6 +12,9 @@ This Changelog tracks changes to this project. The notes below include a summary
 ## Version `0.26.12` - 20 May 2022
 
 - `changed` schemas bump to add ctDNA for assay_type in blood manifests
+- `changed` WES counting again
+- `added` clinical facets to the new downloadable_files endpoint
+- `changed` copy to deepcopy for facet dict and add test to check all facets directly
 
 ## Version `0.26.11` - 19 May 2022
 
