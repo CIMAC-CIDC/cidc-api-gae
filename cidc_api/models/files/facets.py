@@ -1,4 +1,5 @@
 from collections import defaultdict
+from copy import deepcopy
 from typing import Dict, List, Optional, Union, Any
 
 from werkzeug.exceptions import BadRequest
@@ -533,9 +534,9 @@ def _translate_assay(facet_group: str) -> str:
     assay: str = facet_group.replace("-", "").lower()
     # wes specifics
     if assay == "wes tumoronly":
-        assay = "wes_tumor"
+        assay = "wes_tumor_only"
     elif "wes" in assay:
-        assay = "wes_normal"
+        assay = "wes"
     return assay
 
 
@@ -551,7 +552,7 @@ def get_facet_groups_for_links() -> Dict[str, Dict[str, List[str]]]:
     """
     # make our return structure
     starting_dict = {"received": [], "analyzed": []}
-    facets_to_return: dict = defaultdict(starting_dict.copy)
+    facets_to_return: dict = defaultdict(lambda: deepcopy(starting_dict))
 
     # run through all assay facets and put them in the return
     category: str = "Assay Type"
@@ -565,16 +566,21 @@ def get_facet_groups_for_links() -> Dict[str, Dict[str, List[str]]]:
     # run through all analysis facets and put them in the return
     category: str = "Analysis Ready"
     for facet, facet_config in facets_dict[category].items():
-        assay = _translate_assay(first)
+        assay = _translate_assay(facet)
         _process_facet(assay, [category, facet], facet_config, facets_to_return)
 
-    # skip clinical facets for now as they're handled separately on the dashboard
+    # run through all clinical facets and put them in the return under `clinical_participants`
+    # see models/models.py#L1422
+    category: str = "Clinical Type"
+    for facet, facet_config in facets_dict[category].items():
+        # these will all go into received, as none contain "analysis"
+        _process_facet(
+            "clinical_participants", [category, facet], facet_config, facets_to_return
+        )
 
     # wes specific, use same values for wes_tumor received as for wes_normal received
     # because facets refer to the WHOLE of WES assay, not broken up by sample type
-    facets_to_return["wes_tumor"]["received"] = facets_to_return["wes_normal"][
-        "received"
-    ]
+    facets_to_return["wes_tumor_only"]["received"] = facets_to_return["wes"]["received"]
 
     # convert so that return will throw KeyErrors for missing keys
     return dict(facets_to_return)

@@ -445,13 +445,17 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
         "participants": [
             {
                 "samples": [
-                    {"cimac_id": "1", "processed_sample_derivative": "Tumor DNA"},
-                    {"cimac_id": "2", "processed_sample_derivative": "not"},
+                    {"cimac_id": "t1", "processed_sample_derivative": "Tumor DNA"},
+                    {"cimac_id": "t2", "processed_sample_derivative": "Tumor DNA"},
+                    {"cimac_id": "n1", "processed_sample_derivative": "not"},
+                    {"cimac_id": "n2", "processed_sample_derivative": "not"},
                 ]
             },
             {
                 "samples": [
-                    {"cimac_id": "3", "processed_sample_derivative": "Tumor DNA"}
+                    {"cimac_id": "t3", "processed_sample_derivative": "Tumor DNA"},
+                    {"cimac_id": "t4", "processed_sample_derivative": "Tumor DNA"},
+                    {"cimac_id": "n3", "processed_sample_derivative": "not"},
                 ]
             },
         ],
@@ -459,8 +463,11 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
         "assays": {
             "atacseq": [{"records": records * 13}],
             "wes": [
-                {"records": [{"cimac_id": str(n)} for n in range(1, 4)]},
-            ],  # 2 for wes_tumor + 1 for wes_normal
+                {
+                    "records": [{"cimac_id": f"t{n}"} for n in range(1, 5)]
+                    + [{"cimac_id": f"n{n}"} for n in range(1, 4)]
+                },
+            ],  # wes_tumor_only = 1, wes = 3
             "rna": [{"records": records * 2}],
             "mif": [
                 {"records": records * 3},
@@ -479,22 +486,17 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
             "wes_analysis": {
                 "pair_runs": [
                     {
-                        "tumor": {"cimac_id": "t0"},
-                        "normal": {"cimac_id": "n0"},
-                    },  # no analysis data
-                    # 3 for wes_analysis
-                    {
                         "tumor": {"cimac_id": "t1"},
                         "normal": {"cimac_id": "n1"},
-                        "report": {"report": "foo"},
-                    },
+                    },  # no analysis data
+                    # wes_analysis = 2
                     {
-                        "tumor": {"cimac_id": "t1"},
+                        "tumor": {"cimac_id": "t2"},
                         "normal": {"cimac_id": "n2"},
                         "report": {"report": "foo"},
                     },
                     {
-                        "tumor": {"cimac_id": "t2"},
+                        "tumor": {"cimac_id": "t3"},
                         "normal": {"cimac_id": "n3"},
                         "report": {"report": "foo"},
                     },
@@ -503,9 +505,7 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "excluded_samples": records * 2,
             },
             "wes_tumor_only_analysis": {
-                "runs": records * 4,
-                # these are excluded, so not adding fake assay data
-                "excluded_samples": records * 3,
+                "runs": records,  # wes_tumor_only_analysis = 1
             },
         },
         "clinical_data": {
@@ -592,10 +592,10 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "mif": 0.0,
                 "rna_level1_analysis": 10.0,
                 "tcr_analysis": 6.0,
+                "wes": 0.0,
                 "wes_analysis": 0.0,
+                "wes_tumor_only": 0.0,
                 "wes_tumor_only_analysis": 0.0,
-                "wes_tumor": 0.0,
-                "wes_normal": 0.0,
                 "excluded_samples": {
                     "tcr_analysis": records * 4,
                     "rna_level1_analysis": records * 2,
@@ -611,7 +611,7 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "trial_id": "tm1",
                 "file_size_bytes": 5,
                 "total_participants": 2,
-                "total_samples": 3,
+                "total_samples": 7,
                 "clinical_participants": 7.0,
                 "atacseq": 13.0,
                 "atacseq_analysis": 12.0,
@@ -621,13 +621,12 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "mif": 5.0,
                 "rna_level1_analysis": 0.0,
                 "tcr_analysis": 0.0,
-                "wes_analysis": 3.0,
-                "wes_tumor_only_analysis": 4.0,
-                "wes_normal": 1.0,
-                "wes_tumor": 2.0,
+                "wes": 3.0,
+                "wes_analysis": 2.0,
+                "wes_tumor_only": 1.0,
+                "wes_tumor_only_analysis": 1.0,
                 "excluded_samples": {
                     "wes_analysis": records * 2,
-                    "wes_tumor_only_analysis": records * 3,
                 },
             },
         ],
