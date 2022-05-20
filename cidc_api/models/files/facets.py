@@ -534,9 +534,9 @@ def _translate_assay(facet_group: str) -> str:
     assay: str = facet_group.replace("-", "").lower()
     # wes specifics
     if assay == "wes tumoronly":
-        assay = "wes_tumor"
+        assay = "wes_tumor_only"
     elif "wes" in assay:
-        assay = "wes_normal"
+        assay = "wes"
     return assay
 
 
@@ -580,9 +580,7 @@ def get_facet_groups_for_links() -> Dict[str, Dict[str, List[str]]]:
 
     # wes specific, use same values for wes_tumor received as for wes_normal received
     # because facets refer to the WHOLE of WES assay, not broken up by sample type
-    facets_to_return["wes_tumor"]["received"] = facets_to_return["wes_normal"][
-        "received"
-    ]
+    facets_to_return["wes_tumor_only"]["received"] = facets_to_return["wes"]["received"]
 
     # convert so that return will throw KeyErrors for missing keys
     return dict(facets_to_return)

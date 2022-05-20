@@ -537,7 +537,7 @@ def test_log_multiple_errors(caplog):
 
 
 def test_facet_groups_for_links(cidc_api, clean_db, monkeypatch):
-    user_id = setup_user(cidc_api, monkeypatch)
+    setup_user(cidc_api, monkeypatch)
     setup_downloadable_files(cidc_api)
 
     client = cidc_api.test_client()
@@ -646,7 +646,7 @@ def test_facet_groups_for_links(cidc_api, clean_db, monkeypatch):
             ],
             "received": ["Assay Type|TCR|Source"],
         },
-        "wes_normal": {
+        "wes": {
             "analyzed": [
                 "Assay Type|WES|Germline",
                 "Assay Type|WES|Purity",
@@ -665,7 +665,7 @@ def test_facet_groups_for_links(cidc_api, clean_db, monkeypatch):
             ],
             "received": ["Assay Type|WES|Source", "Analysis Ready|WES Assay"],
         },
-        "wes_tumor": {
+        "wes_tumor_only": {
             "analyzed": [
                 "Assay Type|WES Tumor-Only|Germline",
                 "Assay Type|WES Tumor-Only|Purity",
