@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.12` - 20 May 2022
+
+- `changed` schemas bump to add ctDNA for assay_type in blood manifests
+
 ## Version `0.26.11` - 19 May 2022
 
 - `changed` order of user and url in single file download
