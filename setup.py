@@ -5,6 +5,9 @@ from setuptools import setup
 with open("requirements.modules.txt") as f:
     requirements = f.read().splitlines()
 
+with open("README.md") as f:
+    long_description = f.read()
+
 from cidc_api import __version__
 
 setup(
@@ -22,6 +25,8 @@ setup(
         "cidc_api.models.templates",
     ],
     url="https://github.com/CIMAC-CIDC/cidc_api-gae",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     version=__version__,
     zip_safe=False,
 )

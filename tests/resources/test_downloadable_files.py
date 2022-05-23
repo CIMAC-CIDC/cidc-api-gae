@@ -274,10 +274,17 @@ def test_get_filelist(cidc_api, clean_db, monkeypatch):
     make_admin(user_id, cidc_api)
     res = client.post(url, json=short_file_list)
     assert res.status_code == 200
-    assert res.data.decode("utf-8") == (
-        f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_1}/wes/.../reads_123.bam\t{trial_id_1}_wes_..._reads_123.bam\n"
-        f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_2}/cytof/.../analysis.zip\t{trial_id_2}_cytof_..._analysis.zip\n"
-    )
+
+    assert res.data.decode("utf-8") in [
+        (
+            f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_1}/wes/.../reads_123.bam\t{trial_id_1}_wes_..._reads_123.bam\n"
+            f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_2}/cytof/.../analysis.zip\t{trial_id_2}_cytof_..._analysis.zip\n"
+        ),
+        (  # reversed
+            f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_2}/cytof/.../analysis.zip\t{trial_id_2}_cytof_..._analysis.zip\n"
+            f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_1}/wes/.../reads_123.bam\t{trial_id_1}_wes_..._reads_123.bam\n"
+        ),
+    ]
 
     # Clear inserted file records
     with cidc_api.app_context():
@@ -527,3 +534,152 @@ def test_log_multiple_errors(caplog):
     log_multiple_errors("some error")
     assert "some error" in caplog.text
     caplog.clear()
+
+
+def test_facet_groups_for_links(cidc_api, clean_db, monkeypatch):
+    setup_user(cidc_api, monkeypatch)
+    setup_downloadable_files(cidc_api)
+
+    client = cidc_api.test_client()
+
+    res = client.get("/downloadable_files/facet_groups_for_links")
+    assert res.status_code == 200
+    facets = res.json["facets"]
+
+    assert facets == {
+        "clinical_participants": {
+            "analyzed": [],
+            "received": [
+                "Clinical Type|Participants Info",
+                "Clinical Type|Samples Info",
+                "Clinical Type|Clinical Data",
+            ],
+        },
+        "atacseq": {
+            "analyzed": [
+                "Assay Type|ATAC-Seq|Source",
+                "Assay Type|ATAC-Seq|Peaks",
+                "Assay Type|ATAC-Seq|Report",
+            ],
+            "received": ["Assay Type|ATAC-Seq|Source"],
+        },
+        "cytof": {
+            "analyzed": [
+                "Assay Type|CyTOF|Cell Counts",
+                "Assay Type|CyTOF|Labeled Source",
+                "Assay Type|CyTOF|Analysis Results",
+                "Assay Type|CyTOF|Key",
+            ],
+            "received": [
+                "Assay Type|CyTOF|Source",
+                "Assay Type|CyTOF|Combined Cell Counts",
+                "Analysis Ready|CyTOF",
+            ],
+        },
+        "elisa": {
+            "analyzed": [],
+            "received": ["Assay Type|ELISA|Data"],
+        },
+        "h&e": {
+            "analyzed": [],
+            "received": ["Assay Type|H&E|Images"],
+        },
+        "ihc": {
+            "analyzed": [],
+            "received": [
+                "Assay Type|IHC|Images",
+                "Assay Type|IHC|Combined Markers",
+                "Analysis Ready|IHC",
+            ],
+        },
+        "mif": {
+            "analyzed": [],
+            "received": [
+                "Assay Type|mIF|Source Images",
+                "Assay Type|mIF|Images with Features",
+                "Assay Type|mIF|Analysis Images",
+                "Assay Type|mIF|Analysis Data",
+                "Assay Type|mIF|QC Info",
+                "Analysis Ready|mIF",
+            ],
+        },
+        "miscellaneous": {
+            "analyzed": [],
+            "received": ["Assay Type|Miscellaneous|All"],
+        },
+        "nanostring": {
+            "analyzed": [],
+            "received": [
+                "Assay Type|Nanostring|Source",
+                "Assay Type|Nanostring|Data",
+                "Analysis Ready|Nanostring",
+            ],
+        },
+        "olink": {
+            "analyzed": ["Assay Type|Olink|Study-Level", "Analysis Ready|Olink"],
+            "received": [
+                "Assay Type|Olink|Run-Level",
+                "Assay Type|Olink|Batch-Level",
+                "Assay Type|Olink|Study-Level",
+            ],
+        },
+        "rna": {
+            "analyzed": [
+                "Assay Type|RNA|Alignment",
+                "Assay Type|RNA|Quality",
+                "Assay Type|RNA|Gene Quantification",
+                "Assay Type|RNA|Microbiome",
+                "Assay Type|RNA|Immune-Repertoire",
+                "Assay Type|RNA|Fusion",
+                "Assay Type|RNA|MSI",
+                "Assay Type|RNA|HLA",
+                "Analysis Ready|RNA",
+            ],
+            "received": ["Assay Type|RNA|Source"],
+        },
+        "tcr": {
+            "analyzed": [
+                "Assay Type|TCR|Misc.",
+                "Assay Type|TCR|Analysis Data",
+                "Assay Type|TCR|Reports",
+                "Analysis Ready|TCR",
+            ],
+            "received": ["Assay Type|TCR|Source"],
+        },
+        "wes": {
+            "analyzed": [
+                "Assay Type|WES|Germline",
+                "Assay Type|WES|Purity",
+                "Assay Type|WES|Clonality",
+                "Assay Type|WES|Copy Number",
+                "Assay Type|WES|Neoantigen",
+                "Assay Type|WES|Somatic",
+                "Assay Type|WES|Alignment",
+                "Assay Type|WES|Metrics",
+                "Assay Type|WES|HLA Type",
+                "Assay Type|WES|Report",
+                "Assay Type|WES|RNA",
+                "Assay Type|WES|MSI",
+                "Assay Type|WES|Error Documentation",
+                "Analysis Ready|WES Analysis",
+            ],
+            "received": ["Assay Type|WES|Source", "Analysis Ready|WES Assay"],
+        },
+        "wes_tumor_only": {
+            "analyzed": [
+                "Assay Type|WES Tumor-Only|Germline",
+                "Assay Type|WES Tumor-Only|Purity",
+                "Assay Type|WES Tumor-Only|Clonality",
+                "Assay Type|WES Tumor-Only|Copy Number",
+                "Assay Type|WES Tumor-Only|Error Documentation",
+                "Assay Type|WES Tumor-Only|Neoantigen",
+                "Assay Type|WES Tumor-Only|Somatic",
+                "Assay Type|WES Tumor-Only|Alignment",
+                "Assay Type|WES Tumor-Only|Metrics",
+                "Assay Type|WES Tumor-Only|HLA Type",
+                "Assay Type|WES Tumor-Only|Report",
+                "Assay Type|WES Tumor-Only|MSI",
+            ],
+            "received": ["Assay Type|WES|Source", "Analysis Ready|WES Assay"],
+        },
+    }

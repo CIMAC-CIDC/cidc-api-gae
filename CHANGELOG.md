@@ -9,6 +9,20 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.12` - 20 May 2022
+
+- `changed` schemas bump to add ctDNA for assay_type in blood manifests
+- `changed` WES counting again
+- `added` clinical facets to the new downloadable_files endpoint
+- `changed` copy to deepcopy for facet dict and add test to check all facets directly
+
+## Version `0.26.11` - 19 May 2022
+
+- `changed` order of user and url in single file download
+- `changed` WES counting to reflect new system
+- `added` new downloadable_files endpoint to return all facets grouped by assay
+- `added` README.md as pypi long_description
+
 ## 6 May 2022
 
 - `removed` `security` HSTS that was broken
