@@ -547,6 +547,19 @@ def test_facet_groups_for_links(cidc_api, clean_db, monkeypatch):
     facets = res.json["facets"]
 
     assert facets == {
+        "ctdna": {
+            "analyzed": [
+                "Assay Type|ctDNA|Genome-wide Plots",
+                "Assay Type|ctDNA|Bias / QC Plots",
+                "Assay Type|ctDNA|Optimal Solutions",
+                "Assay Type|ctDNA|Other Solutions",
+                "Assay Type|ctDNA|Batch-level Summary Plots",
+                "Analysis Ready|ctDNA",
+            ],
+            "received": [
+                "Assay Type|ctDNA|Demultiplexed Source BAMs",
+            ],
+        },
         "clinical_participants": {
             "analyzed": [],
             "received": [
