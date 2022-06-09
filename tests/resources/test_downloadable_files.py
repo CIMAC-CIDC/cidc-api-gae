@@ -605,6 +605,16 @@ def test_facet_groups_for_links(cidc_api, clean_db, monkeypatch):
                 "Analysis Ready|IHC",
             ],
         },
+        "microbiome": {
+            "analyzed": [
+                "Assay Type|Microbiome|Batch-level Summary Plots",
+                "Analysis Ready|Microbiome",
+            ],
+            "received": [
+                "Assay Type|Microbiome|Source",
+                "Assay Type|Microbiome|OTU Tables",
+            ],
+        },
         "mif": {
             "analyzed": [],
             "received": [
