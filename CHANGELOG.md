@@ -9,7 +9,7 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
-## Version `0.26.14` - 8 Jun 2022
+## Version `0.26.14` - 9 Jun 2022
 
 - `changed` schemas bump for Microbiome support
 - `added` facets, details, analysis counting for Microbiome
