@@ -341,7 +341,7 @@ def test_create_compressed_batch(cidc_api, clean_db, monkeypatch):
         )
         perm.insert()
 
-    # Mock GCS client and loger
+    # Mock GCS client and logger
     blob = MagicMock()
     bucket = MagicMock()
     bucket.blob.return_value = blob
