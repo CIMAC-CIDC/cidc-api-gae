@@ -9,6 +9,11 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.15` - 13 Jun 2022
+
+- `added` requirements for \_etag, \_created, \_updated
+  - to prevent future 412 error on account reactivation
+
 ## Version `0.26.14` - 9 Jun 2022
 
 - `changed` schemas bump for Microbiome support
