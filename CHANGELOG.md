@@ -9,6 +9,12 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.15` - 13 Jun 2022
+
+- `added` requirements for \_etag, \_created, \_updated
+  - to prevent future 412 error on account reactivation
+- `changed` schemas bump for shipping manifest requirement relaxing
+
 ## 13 Jun 2022
 
 - `changed` compression for downloaded batches from gztar to zip
