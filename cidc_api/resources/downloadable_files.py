@@ -133,8 +133,8 @@ def create_compressed_batch(args):
     into a single file. Respond with a GCS signed URL for downloading the
     compressed file.
 
-    Currently, onl file batches with size <= 1GiB are supported. If the total file
-    size of the requested files is greater than 1GiB, respond with HTTP status code
+    Currently, only file batches with size <=100MB are supported. If the total file
+    size of the requested files is greater than 100MB, respond with HTTP status code
     400 (Bad Request).
     """
     urls = _get_object_urls_or_404(args["file_ids"])
@@ -167,7 +167,7 @@ def create_compressed_batch(args):
         # Create a compressed file from the contents of the temporary directory
         random_filename = str(uuid4())
         outpath = shutil.make_archive(
-            os.path.join(tmpdir, random_filename), "gztar", indir
+            os.path.join(tmpdir, random_filename), "zip", indir
         )
 
         # Upload the compressed file to the ephemeral bucket, where
