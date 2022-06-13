@@ -121,7 +121,7 @@ def _get_object_urls_or_404(ids: List[int]) -> List[str]:
     return urls
 
 
-MAX_BUNDLE_BYTES = int(1e8)  # 100MB
+MAX_BUNDLE_BYTES = int(2**30)  # 1GiB
 
 
 @downloadable_files_bp.route("/compressed_batch", methods=["POST"])

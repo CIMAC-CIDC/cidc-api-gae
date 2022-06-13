@@ -12,6 +12,7 @@ This Changelog tracks changes to this project. The notes below include a summary
 ## 13 Jun 2022
 
 - `changed` compression for downloaded batches from gztar to zip
+- `changed` max download size from 100MB to 1GiB
 
 ## Version `0.26.14` - 9 Jun 2022
 
