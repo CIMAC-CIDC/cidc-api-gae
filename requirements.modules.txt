@@ -12,4 +12,4 @@ requests==2.22.0
 # pin jinja version to resolve cidc-schemas dependency issue
 jinja2~=3.0.3
 
-cidc-schemas~=0.25.39
+cidc-schemas~=0.25.40
