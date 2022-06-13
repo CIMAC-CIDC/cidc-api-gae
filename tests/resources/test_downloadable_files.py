@@ -59,7 +59,7 @@ def setup_downloadable_files(cidc_api) -> Tuple[int, int]:
             object_url=f"{trial_id}/{object_url}",
             facet_group=facet_group,
             uploaded_timestamp=datetime.now(),
-            file_size_bytes=int(51 * 1e6),  # 51MB
+            file_size_bytes=int(0.6 * 2**30),  # 0.6GiB
         )
 
     wes_file = make_file(
@@ -358,7 +358,7 @@ def test_create_compressed_batch(cidc_api, clean_db, monkeypatch):
     mock_logger = MagicMock()
     monkeypatch.setattr("cidc_api.resources.downloadable_files.logger", mock_logger)
 
-    # User has one permission, s0 the endpoint should try to create
+    # User has one permission, so the endpoint should try to create
     # a compressed batch file with the single file the user has
     # access to in it.
     res = client.post(url, json=short_file_list)
@@ -379,6 +379,7 @@ def test_create_compressed_batch(cidc_api, clean_db, monkeypatch):
     make_admin(user_id, cidc_api)
 
     # Admin has access to both files, but together they are too large
+    # 2 files of 0.6GiB each is 1.2GiB > 1GiB
     res = client.post(url, json=short_file_list)
     assert res.status_code == 400
     assert "batch too large" in res.json["_error"]["message"]
@@ -386,6 +387,7 @@ def test_create_compressed_batch(cidc_api, clean_db, monkeypatch):
     blob.upload_from_filename.assert_not_called()
 
     # Decrease the size of one of the files and try again
+    # 0.6GiB + 1B < 1GiB
     with cidc_api.app_context():
         df = DownloadableFiles.find_by_id(file_id_1)
         df.file_size_bytes = 1
