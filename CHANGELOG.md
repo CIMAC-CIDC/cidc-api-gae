@@ -13,6 +13,7 @@ This Changelog tracks changes to this project. The notes below include a summary
 
 - `added` requirements for \_etag, \_created, \_updated
   - to prevent future 412 error on account reactivation
+- `changed` schemas bump for shipping manifest requirement relaxing
 
 ## Version `0.26.14` - 9 Jun 2022
 
