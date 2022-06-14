@@ -9,6 +9,23 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## 14 Jun 2022
+
+- `changed` reverted max download size from 1GiB to 100MB
+  - with instance_class in app.yaml as F2, 512MB memory limit
+  - testing on staging shows 100MB is likely functional limit for GAE-processed
+
+## Version `0.26.15` - 13 Jun 2022
+
+- `added` requirements for \_etag, \_created, \_updated
+  - to prevent future 412 error on account reactivation
+- `changed` schemas bump for shipping manifest requirement relaxing
+
+## 13 Jun 2022
+
+- `changed` compression for downloaded batches from gztar to zip
+- `changed` max download size from 100MB to 1GiB
+
 ## Version `0.26.14` - 9 Jun 2022
 
 - `changed` schemas bump for Microbiome support
