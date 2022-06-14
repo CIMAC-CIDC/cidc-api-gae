@@ -9,6 +9,11 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## 14 Jun 2022
+
+- `changed` max download size from 1GiB to 400MB
+  - with instance_class in app.yaml as F2, 512MB memory limit
+
 ## Version `0.26.15` - 13 Jun 2022
 
 - `added` requirements for \_etag, \_created, \_updated
