@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.16` - 21 Jun 2022
+
+- `changed` schema version for addition of new wes bait set
+
 ## 14 Jun 2022
 
 - `changed` reverted max download size from 1GiB to 100MB
