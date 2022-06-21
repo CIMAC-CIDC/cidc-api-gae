@@ -218,7 +218,7 @@ def insert_record_batch(
             # in case they're needed for later fk's
             try:
                 session.flush()
-            except (DataError, IntegrityError) as e:
+            except (DataError, IntegrityError, InvalidTextRepresentation) as e:
                 errors.append(_handle_postgres_error(e, model=model))
                 break  # if it fails in a flush, it's done done
 
