@@ -9,6 +9,11 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.17` - 21 Jun 2022
+
+- `added` new wes bait set to relational db
+- `added` catch for underlying psycopg2 error being thrown
+
 ## Version `0.26.16` - 21 Jun 2022
 
 - `changed` schema version for addition of new wes bait set
