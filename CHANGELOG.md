@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## 30 Jun 2022
+
+- `added` flask-cachecontrol to prevent caching of /users/data_access_report
+
 ## Version `0.26.17` - 21 Jun 2022
 
 - `added` new wes bait set to relational db
