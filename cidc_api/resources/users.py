@@ -5,6 +5,7 @@ os.environ["TZ"] = "UTC"
 from datetime import datetime
 
 from flask import Blueprint, send_file
+from flask_cachecontrol import dont_cache
 from werkzeug.exceptions import BadRequest
 
 from ..shared.auth import get_current_user, requires_auth
@@ -135,6 +136,7 @@ def update_user(user: Users, user_updates: Users):
 
 @users_bp.route("/data_access_report", methods=["GET"])
 @requires_auth("users_data_access_report", [CIDCRole.ADMIN.value])
+@dont_cache()
 def get_data_access_report():
     """Generate the user data access report."""
     buffer = io.BytesIO()
