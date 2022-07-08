@@ -147,7 +147,7 @@ class CommonColumns(BaseModel):  # type: ignore
         return make_etag(etag_fields)
 
     @with_default_session
-    def insert(self, session: Session, commit: bool = True, compute_etag: bool = True):
+    def insert(self, session: Session, commit: bool = True):
         """Add the current instance to the session."""
         # Compute an _etag if none was provided
         self._etag = self._etag or self.compute_etag()
@@ -522,7 +522,9 @@ class Permissions(CommonColumns):
 
     @with_default_session
     def insert(
-        self, session: Session, commit: bool = True, compute_etag: bool = True
+        self,
+        session: Session,
+        commit: bool = True,
     ) -> None:
         """
         Insert this permission record into the database and add a corresponding IAM policy binding
@@ -598,7 +600,7 @@ class Permissions(CommonColumns):
             session.delete(perm)
 
         # Always commit, because we don't want to grant IAM download unless this insert succeeds.
-        super().insert(session=session, commit=True, compute_etag=compute_etag)
+        super().insert(session=session, commit=True)
 
         # Don't make any GCS changes if this user doesn't have download access
         if is_network_viewer:
@@ -1270,14 +1272,13 @@ class TrialMetadata(CommonColumns):
         self,
         session: Session,
         commit: bool = True,
-        compute_etag: bool = True,
         validate_metadata: bool = True,
     ):
         """Add the current instance to the session. Skip JSON metadata validation validate_metadata=False."""
         if self.metadata_json is not None and validate_metadata:
             self.validate_metadata_json(self.metadata_json)
 
-        return super().insert(session=session, commit=commit, compute_etag=compute_etag)
+        return super().insert(session=session, commit=commit)
 
     @with_default_session
     def update(
@@ -1520,6 +1521,30 @@ class TrialMetadata(CommonColumns):
                 trial_metadata
         """
 
+        # Also get the old ones
+        wes_analysis_old_subquery = """
+            select
+                trial_id,
+                'wes_analysis' as key,
+                count(*) as value
+            from
+                trial_metadata,
+                jsonb_array_elements(metadata_json#>'{analysis,wes_analysis_old,pair_runs}') pair
+            where
+                pair#>'{report,report}' is not null
+            group by
+                trial_id
+        """
+
+        wes_tumor_only_analysis_old_subquery = """
+            select
+                trial_id,
+                'wes_tumor_only_analysis' as key,
+                jsonb_array_length(metadata_json#>'{analysis,wes_tumor_only_analysis_old,runs}') as value
+            from
+                trial_metadata
+        """
+
         # Count the tumor samples that will have associated paired-analysis data.
         # We are asserting that a tumor sample will not be used for multiple analyses.
         # This is the same as wes_analysis_subquery but without the requirement for a report,
@@ -1733,6 +1758,10 @@ class TrialMetadata(CommonColumns):
                     {wes_analysis_subquery}
                     union all
                     {wes_tumor_only_analysis_subquery}
+                    union all
+                    {wes_analysis_old_subquery}
+                    union all
+                    {wes_tumor_only_analysis_old_subquery}
                     union all
                     {wes_subquery}
                     union all

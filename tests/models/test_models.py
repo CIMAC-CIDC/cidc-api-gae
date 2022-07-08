@@ -422,8 +422,7 @@ def test_partial_patch_trial_metadata(clean_db):
     """Update an existing trial_metadata_record"""
     # Create the initial trial
 
-    clean_db.add(TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA))
-    clean_db.commit()
+    TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA).insert(session=clean_db)
 
     # Create patch without all required fields (no "participants")
     metadata_patch = {prism.PROTOCOL_ID_FIELD_NAME: TRIAL_ID, "assays": {}}
@@ -885,17 +884,15 @@ def test_create_downloadable_file_from_blob(clean_db, monkeypatch):
     fake_blob.size = 5
     fake_blob.time_created = datetime.now()
 
-    clean_db.add(
-        TrialMetadata(
-            trial_id="id",
-            metadata_json={
-                "protocol_identifier": "id",
-                "allowed_collection_event_names": [],
-                "allowed_cohort_names": [],
-                "participants": [],
-            },
-        )
-    )
+    TrialMetadata(
+        trial_id="id",
+        metadata_json={
+            "protocol_identifier": "id",
+            "allowed_collection_event_names": [],
+            "allowed_cohort_names": [],
+            "participants": [],
+        },
+    ).insert(session=clean_db)
     df = DownloadableFiles.create_from_blob(
         "id", "pbmc", "Shipping Manifest", "pbmc/shipping", fake_blob
     )
