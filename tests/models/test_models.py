@@ -422,8 +422,7 @@ def test_partial_patch_trial_metadata(clean_db):
     """Update an existing trial_metadata_record"""
     # Create the initial trial
 
-    clean_db.add(TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA))
-    clean_db.commit()
+    TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA).insert(session=clean_db)
 
     # Create patch without all required fields (no "participants")
     metadata_patch = {prism.PROTOCOL_ID_FIELD_NAME: TRIAL_ID, "assays": {}}
@@ -491,12 +490,19 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                         "tumor": {"cimac_id": "t1"},
                         "normal": {"cimac_id": "n1"},
                     },  # no analysis data
-                    # wes_analysis = 2
+                    # wes_analysis = 2; 1 here, 1 below
                     {
                         "tumor": {"cimac_id": "t2"},
                         "normal": {"cimac_id": "n2"},
                         "report": {"report": "foo"},
                     },
+                ],
+                # these are excluded, so not adding fake assay data
+                "excluded_samples": records,
+            },
+            "wes_analysis_old": {
+                "pair_runs": [
+                    # wes_analysis = 2; 1 here, 1 above
                     {
                         "tumor": {"cimac_id": "t3"},
                         "normal": {"cimac_id": "n3"},
@@ -504,10 +510,13 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                     },
                 ],
                 # these are excluded, so not adding fake assay data
-                "excluded_samples": records * 2,
+                "excluded_samples": records,
             },
             "wes_tumor_only_analysis": {
-                "runs": records,  # wes_tumor_only_analysis = 1
+                "runs": records,  # wes_tumor_only_analysis = 2; 1 here, 1 below
+            },
+            "wes_tumor_only_analysis_old": {
+                "runs": records,  # wes_tumor_only_analysis = 2; 1 here, 1 above
             },
         },
         "clinical_data": {
@@ -628,11 +637,11 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "rna_level1_analysis": 0.0,
                 "tcr_analysis": 0.0,
                 "wes": 3.0,
-                "wes_analysis": 2.0,
+                "wes_analysis": 2.0,  # combined with wes_analysis_old
                 "wes_tumor_only": 1.0,
-                "wes_tumor_only_analysis": 1.0,
+                "wes_tumor_only_analysis": 2.0,  # combined with wes_tumor_only_analysis_old
                 "excluded_samples": {
-                    "wes_analysis": records * 2,
+                    "wes_analysis": records * 2,  # combined with wes_analysis_old
                 },
             },
         ],
@@ -885,17 +894,15 @@ def test_create_downloadable_file_from_blob(clean_db, monkeypatch):
     fake_blob.size = 5
     fake_blob.time_created = datetime.now()
 
-    clean_db.add(
-        TrialMetadata(
-            trial_id="id",
-            metadata_json={
-                "protocol_identifier": "id",
-                "allowed_collection_event_names": [],
-                "allowed_cohort_names": [],
-                "participants": [],
-            },
-        )
-    )
+    TrialMetadata(
+        trial_id="id",
+        metadata_json={
+            "protocol_identifier": "id",
+            "allowed_collection_event_names": [],
+            "allowed_cohort_names": [],
+            "participants": [],
+        },
+    ).insert(session=clean_db)
     df = DownloadableFiles.create_from_blob(
         "id", "pbmc", "Shipping Manifest", "pbmc/shipping", fake_blob
     )
