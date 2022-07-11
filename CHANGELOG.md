@@ -9,7 +9,7 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
-## Version `0.26.17` -  8 Jul 2022
+## Version `0.26.18` -  8 Jul 2022
 
 - `added` schemas bump, facets, counting for WES v3
 - `added` migration to move old WES analysis
