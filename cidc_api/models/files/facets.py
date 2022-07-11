@@ -222,6 +222,7 @@ assay_facets: Facets = {
         "Error Documentation": FacetConfig(["/wes/analysis/error.yaml"]),
     },
     "WES Tumor-Only": {
+        "TcellExtrect": FacetConfig(["/wes_tumor_only/analysis/tcellextrect.txt"]),
         "Germline": FacetConfig(
             [
                 "/wes_tumor_only/analysis/vcfcompare.txt",
