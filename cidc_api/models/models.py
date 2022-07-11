@@ -1510,19 +1510,7 @@ class TrialMetadata(CommonColumns):
                 pair#>'{report,report}' is not null
             group by
                 trial_id
-        """
-
-        wes_tumor_only_analysis_subquery = """
-            select
-                trial_id,
-                'wes_tumor_only_analysis' as key,
-                jsonb_array_length(metadata_json#>'{analysis,wes_tumor_only_analysis,runs}') as value
-            from
-                trial_metadata
-        """
-
-        # Also get the old ones
-        wes_analysis_old_subquery = """
+            union all
             select
                 trial_id,
                 'wes_analysis' as key,
@@ -1536,7 +1524,14 @@ class TrialMetadata(CommonColumns):
                 trial_id
         """
 
-        wes_tumor_only_analysis_old_subquery = """
+        wes_tumor_only_analysis_subquery = """
+            select
+                trial_id,
+                'wes_tumor_only_analysis' as key,
+                jsonb_array_length(metadata_json#>'{analysis,wes_tumor_only_analysis,runs}') as value
+            from
+                trial_metadata
+            union all
             select
                 trial_id,
                 'wes_tumor_only_analysis' as key,
@@ -1557,6 +1552,16 @@ class TrialMetadata(CommonColumns):
             from
                 trial_metadata,
                 jsonb_array_elements(metadata_json#>'{analysis,wes_analysis,pair_runs}') pair
+            group by
+                trial_id
+            union all
+            select
+                trial_id,
+                'wes' as key,
+                count(*) as value
+            from
+                trial_metadata,
+                jsonb_array_elements(metadata_json#>'{analysis,wes_analysis_old,pair_runs}') pair
             group by
                 trial_id
         """
@@ -1598,6 +1603,16 @@ class TrialMetadata(CommonColumns):
             from
                 trial_metadata,
                 jsonb_array_elements(metadata_json#>'{analysis,wes_analysis,pair_runs}') pair
+            group by
+                trial_id
+            union all
+            select
+                trial_id,
+                'wes_tumor_only' as key,
+                -count(*) as value
+            from
+                trial_metadata,
+                jsonb_array_elements(metadata_json#>'{analysis,wes_analysis_old,pair_runs}') pair
             group by
                 trial_id
         """
@@ -1688,8 +1703,22 @@ class TrialMetadata(CommonColumns):
                     union all
                     select
                         trial_id,
+                        'wes_analysis' as key,
+                        jsonb_array_elements(metadata_json#>'{analysis,wes_analysis_old,excluded_samples}') as sample
+                    from
+                        trial_metadata
+                    union all
+                    select
+                        trial_id,
                         'wes_tumor_only_analysis' as key,
                         jsonb_array_elements(metadata_json#>'{analysis,wes_tumor_only_analysis,excluded_samples}') as sample
+                    from
+                        trial_metadata
+                    union all
+                    select
+                        trial_id,
+                        'wes_tumor_only_analysis' as key,
+                        jsonb_array_elements(metadata_json#>'{analysis,wes_tumor_only_analysis_old,excluded_samples}') as sample
                     from
                         trial_metadata
                     union all
@@ -1758,10 +1787,6 @@ class TrialMetadata(CommonColumns):
                     {wes_analysis_subquery}
                     union all
                     {wes_tumor_only_analysis_subquery}
-                    union all
-                    {wes_analysis_old_subquery}
-                    union all
-                    {wes_tumor_only_analysis_old_subquery}
                     union all
                     {wes_subquery}
                     union all

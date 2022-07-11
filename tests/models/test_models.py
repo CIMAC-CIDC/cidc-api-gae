@@ -490,12 +490,19 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                         "tumor": {"cimac_id": "t1"},
                         "normal": {"cimac_id": "n1"},
                     },  # no analysis data
-                    # wes_analysis = 2
+                    # wes_analysis = 2; 1 here, 1 below
                     {
                         "tumor": {"cimac_id": "t2"},
                         "normal": {"cimac_id": "n2"},
                         "report": {"report": "foo"},
                     },
+                ],
+                # these are excluded, so not adding fake assay data
+                "excluded_samples": records,
+            },
+            "wes_analysis_old": {
+                "pair_runs": [
+                    # wes_analysis = 2; 1 here, 1 above
                     {
                         "tumor": {"cimac_id": "t3"},
                         "normal": {"cimac_id": "n3"},
@@ -503,10 +510,13 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                     },
                 ],
                 # these are excluded, so not adding fake assay data
-                "excluded_samples": records * 2,
+                "excluded_samples": records,
             },
             "wes_tumor_only_analysis": {
-                "runs": records,  # wes_tumor_only_analysis = 1
+                "runs": records,  # wes_tumor_only_analysis = 2; 1 here, 1 below
+            },
+            "wes_tumor_only_analysis_old": {
+                "runs": records,  # wes_tumor_only_analysis = 2; 1 here, 1 above
             },
         },
         "clinical_data": {
@@ -627,11 +637,11 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "rna_level1_analysis": 0.0,
                 "tcr_analysis": 0.0,
                 "wes": 3.0,
-                "wes_analysis": 2.0,
+                "wes_analysis": 2.0,  # combined with wes_analysis_old
                 "wes_tumor_only": 1.0,
-                "wes_tumor_only_analysis": 1.0,
+                "wes_tumor_only_analysis": 2.0,  # combined with wes_tumor_only_analysis_old
                 "excluded_samples": {
-                    "wes_analysis": records * 2,
+                    "wes_analysis": records * 2,  # combined with wes_analysis_old
                 },
             },
         ],
