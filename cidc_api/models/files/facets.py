@@ -128,10 +128,6 @@ assay_facets: Facets = {
                 "/wes/analysis/clonality_input.tsv",
                 "/wes/analysis/clonality_results.tsv",
                 "/wes/analysis/clonality_summary.tsv",
-                "/wes/analysis/clonality_cnv_segments.cns",
-                "/wes/analysis/clonality_cnv_segments_enhanced.cns",
-                "/wes/analysis/clonality_cnv_scatterplot.png",
-                "/wes/analysis/clonality_cnvkit_gainloss.bed",
             ]
         ),
         "Copy Number": FacetConfig(
@@ -148,6 +144,10 @@ assay_facets: Facets = {
                 "/wes/analysis/copynumber_consensus_loss.bed",
                 "/wes/analysis/copynumber_facets.cncf",
                 "/wes/analysis/copynumber_facets_gainloss.bed",
+                "/wes/analysis/copynumber_cnv_segments.cns",
+                "/wes/analysis/copynumber_cnv_segments_enhanced.cns",
+                "/wes/analysis/copynumber_cnv_scatterplot.png",
+                "/wes/analysis/copynumber_cnvkit_gainloss.bed",
             ]
         ),
         "Neoantigen": FacetConfig(["/wes/analysis/combined_filtered.tsv"]),

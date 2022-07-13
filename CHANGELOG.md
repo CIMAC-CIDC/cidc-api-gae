@@ -9,6 +9,11 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.20` -  13 Jul 2022
+
+- `changed` schemas bump for WES template autogeneration tweaks
+- `changed` schemas bump for WES analysis cnvkit to copynumber
+
 ## Version `0.26.19` -  12 Jul 2022
 
 - `added` schemas bump, attach bytes to email for WES template autogeneration
