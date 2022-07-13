@@ -12,6 +12,7 @@ This Changelog tracks changes to this project. The notes below include a summary
 ## Version `0.26.20` -  13 Jul 2022
 
 - `changed` schemas bump for WES template autogeneration tweaks
+- `changed` schemas bump for WES analysis cnvkit to copynumber
 
 ## Version `0.26.19` -  12 Jul 2022
 
