@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.21` -  13 Jul 2022
+
+- `changed` schemas bump to fix requirements
+
 ## Version `0.26.20` -  13 Jul 2022
 
 - `changed` schemas bump for WES template autogeneration tweaks
