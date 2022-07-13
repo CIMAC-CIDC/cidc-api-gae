@@ -136,22 +136,22 @@ details_dict = {
         "tumor clonality: PyClone-VI tumor clonality results summary file",
         "Summary of Pyclone-VI results file condensed to only show the cluster_id, cellular_prevalence, and cellular_prevalence_std columns.",
     ),
-    "/wes/analysis/clonality_cnv_segments.cns": FileDetails(
+    "/wes/analysis/copynumber_cnv_segments.cns": FileDetails(
         "miscellaneous",
         "copynumber: CNVkit segments file",
         "CNVkit's Segmented log2 ratios file. The 'cn' column representes the total copy number of the segment.  The other columns of the results file are described here (https://cnvkit.readthedocs.io/en/stable/fileformats.html#segmented-log2-ratios-cns)",
     ),
-    "/wes/analysis/clonality_cnv_segments_enhanced.cns": FileDetails(
+    "/wes/analysis/copynumber_cnv_segments_enhanced.cns": FileDetails(
         "miscellaneous",
         "copynumber: Enhanced CNVkit segments file with BAF and Major/minor allele information",
         "The enhanced CNVkit segments file incoporates somatic sNP and tumor purity information (called by the pipeline) to incorporate B-allele frequencies, major and minor allele (cn1 and cn2 respectively), and correct for tumor sample purity level.",
     ),
-    "/wes/analysis/clonality_cnv_scatterplot.png": FileDetails(
+    "/wes/analysis/copynumber_cnv_scatterplot.png": FileDetails(
         "miscellaneous",
         "copynumber: scatter plot of log2 coverage and segmentation call information",
         "Genome-wide scatter plot of log2 coverage ratios and called CNV segments",
     ),
-    "/wes/analysis/clonality_cnvkit_gainloss.bed": FileDetails(
+    "/wes/analysis/copynumber_cnvkit_gainloss.bed": FileDetails(
         "miscellaneous",
         "copynumber: CNVkit segments file filtered with hard cut-offs to call regions of GAIN/LOSS",
         "Filtered CNVkit segments file after applying a hard cut-off to call regions of GAIN (total copy number >= 3) and regions of LOSS (total copy number <= 1.5).",
@@ -462,22 +462,22 @@ details_dict = {
         "tumor clonality: PyClone-VI tumor clonality results summary file",
         "Summary of Pyclone-VI results file condensed to only show the cluster_id, cellular_prevalence, and cellular_prevalence_std columns.",
     ),
-    "/wes_tumor_only/analysis/clonality_cnv_segments.cns": FileDetails(
+    "/wes_tumor_only/analysis/copynumber_cnv_segments.cns": FileDetails(
         "miscellaneous",
         "copynumber: CNVkit segments file",
         "CNVkit's Segmented log2 ratios file. The 'cn' column representes the total copy number of the segment.  The other columns of the results file are described here (https://cnvkit.readthedocs.io/en/stable/fileformats.html#segmented-log2-ratios-cns)",
     ),
-    "/wes_tumor_only/analysis/clonality_cnv_segments_enhanced.cns": FileDetails(
+    "/wes_tumor_only/analysis/copynumber_cnv_segments_enhanced.cns": FileDetails(
         "miscellaneous",
         "copynumber: Enhanced CNVkit segments file with BAF and Major/minor allele information",
         "The enhanced CNVkit segments file incoporates somatic sNP and tumor purity information (called by the pipeline) to incorporate B-allele frequencies, major and minor allele (cn1 and cn2 respectively), and correct for tumor sample purity level.",
     ),
-    "/wes_tumor_only/analysis/clonality_cnv_scatterplot.png": FileDetails(
+    "/wes_tumor_only/analysis/copynumber_cnv_scatterplot.png": FileDetails(
         "miscellaneous",
         "copynumber: scatter plot of log2 coverage and segmentation call information",
         "Genome-wide scatter plot of log2 coverage ratios and called CNV segments",
     ),
-    "/wes_tumor_only/analysis/clonality_cnvkit_gainloss.bed": FileDetails(
+    "/wes_tumor_only/analysis/copynumber_cnvkit_gainloss.bed": FileDetails(
         "miscellaneous",
         "copynumber: CNVkit segments file filtered with hard cut-offs to call regions of GAIN/LOSS",
         "Filtered CNVkit segments file after applying a hard cut-off to call regions of GAIN (total copy number >= 3) and regions of LOSS (total copy number <= 1.5).",
