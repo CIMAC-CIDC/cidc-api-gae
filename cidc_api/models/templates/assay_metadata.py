@@ -131,6 +131,7 @@ class WESUpload(NGSUpload):
             "broad_custom_exome_v1",
             "TWIST Dana Farber Custom Panel",
             "TWIST Custom Panel PN 101042",
+            "Agilent SS Human All Exon V4",
             name="bait_set_enum",
         ),
         nullable=False,

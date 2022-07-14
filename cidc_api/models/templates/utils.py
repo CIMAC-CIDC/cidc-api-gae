@@ -9,7 +9,7 @@ __all__ = [
 ]
 
 from collections import defaultdict
-from typing import Any, Callable, Dict, List, OrderedDict, Set, Type
+from typing import Any, Callable, Dict, List, NamedTuple, OrderedDict, Set, Type
 
 from psycopg2.errors import (
     CheckViolation,
@@ -110,6 +110,20 @@ def _handle_postgres_error(error: IntegrityError, model: Type) -> Exception:
 
     orig = error.orig
     pg_error: str = orig.pgerror
+
+    class fake_column(NamedTuple):
+        name: str
+
+    def fake_primary_key_map(self):
+        return {
+            fake_column("_created"): self._created,
+            fake_column("_updated"): self._updated,
+            fake_column("_etag"): self._etag,
+            fake_column("id"): self.id,
+        }
+
+    if not hasattr(model, "primary_key_map"):
+        model.primary_key_map = fake_primary_key_map
     instance = {c.name: v for c, v in model(**error.params).primary_key_map().items()}
 
     if isinstance(orig, ForeignKeyViolation):
@@ -205,6 +219,11 @@ def insert_record_batch(
         # merge all records into session and keep a copy
         for n, record in enumerate(records):
             try:
+                # when handling old tables through this function
+                # need to make sure that there is an _etag computed
+                if hasattr(record, "_etag") and record._etag is None:
+                    record._etag = record.compute_etag()
+
                 record = session.merge(record)
                 ordered_records[model][n] = record
             except Exception as e:
@@ -218,7 +237,7 @@ def insert_record_batch(
             # in case they're needed for later fk's
             try:
                 session.flush()
-            except (DataError, IntegrityError) as e:
+            except (DataError, IntegrityError, InvalidTextRepresentation) as e:
                 errors.append(_handle_postgres_error(e, model=model))
                 break  # if it fails in a flush, it's done done
 

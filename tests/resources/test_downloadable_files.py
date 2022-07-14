@@ -679,6 +679,7 @@ def test_facet_groups_for_links(cidc_api, clean_db, monkeypatch):
                 "Assay Type|WES|Copy Number",
                 "Assay Type|WES|Neoantigen",
                 "Assay Type|WES|Somatic",
+                "Assay Type|WES|TcellExtrect",
                 "Assay Type|WES|Alignment",
                 "Assay Type|WES|Metrics",
                 "Assay Type|WES|HLA Type",
@@ -692,6 +693,7 @@ def test_facet_groups_for_links(cidc_api, clean_db, monkeypatch):
         },
         "wes_tumor_only": {
             "analyzed": [
+                "Assay Type|WES Tumor-Only|TcellExtrect",
                 "Assay Type|WES Tumor-Only|Germline",
                 "Assay Type|WES Tumor-Only|Purity",
                 "Assay Type|WES Tumor-Only|Clonality",

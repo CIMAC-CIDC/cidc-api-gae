@@ -2,6 +2,7 @@
 import html
 import base64
 from functools import wraps
+from typing import Dict, Union
 
 from cidc_schemas.prism import generate_analysis_configs_from_upload_patch
 
@@ -85,11 +86,10 @@ def new_user_registration(email: str) -> dict:
 @sendable
 def new_upload_alert(upload, full_metadata) -> dict:
     """Alert the CIDC administrators that an upload succeeded."""
-    pipeline_configs = generate_analysis_configs_from_upload_patch(
-        full_metadata,
-        upload.metadata_patch,
-        upload.upload_type,
-        GOOGLE_ACL_DATA_BUCKET,
+    pipeline_configs: Dict[
+        str, Union[bytes, str]
+    ] = generate_analysis_configs_from_upload_patch(
+        full_metadata, upload.metadata_patch, upload.upload_type, GOOGLE_ACL_DATA_BUCKET
     )
 
     subject = (
@@ -115,7 +115,9 @@ def new_upload_alert(upload, full_metadata) -> dict:
         email["attachments"] = [
             {
                 # converting to base64 email attachment format (en/decode due to b64 expecting bytes)
-                "content": base64.b64encode(conf.encode()).decode(),
+                "content": base64.b64encode(
+                    conf.encode() if isinstance(conf, str) else conf
+                ).decode(),
                 "type": "application/yaml",
                 "filename": conf_name,
             }

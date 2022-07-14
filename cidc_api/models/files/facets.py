@@ -110,16 +110,44 @@ assay_facets: Facets = {
                 "/wes/analysis/vcfcompare.txt",
                 "/wes/analysis/tumor/haplotyper_targets.vcf.gz",
                 "/wes/analysis/normal/haplotyper_targets.vcf.gz",
+                "/wes/analysis/tumor/haplotyper_output.vcf",
+                "/wes/analysis/normal/haplotyper_output.vcf",
             ]
         ),
-        "Purity": FacetConfig(["/wes/analysis/optimal_purity_value.txt"]),
+        "Purity": FacetConfig(
+            [
+                "/wes/analysis/optimal_purity_value.txt",
+                "/wes/analysis/alternative_solutions.txt",
+                "/wes/analysis/cp_contours.pdf",
+            ]
+        ),
         "Clonality": FacetConfig(
-            ["/wes/analysis/clonality_pyclone.tsv", "/wes/analysis/clonality_table.tsv"]
+            [
+                "/wes/analysis/clonality_pyclone.tsv",
+                "/wes/analysis/clonality_table.tsv",
+                "/wes/analysis/clonality_input.tsv",
+                "/wes/analysis/clonality_results.tsv",
+                "/wes/analysis/clonality_summary.tsv",
+            ]
         ),
         "Copy Number": FacetConfig(
             [
                 "/wes/analysis/copynumber_cnvcalls.txt",
                 "/wes/analysis/copynumber_cnvcalls.txt.tn.tsv",
+                "/wes/analysis/copynumber_segments.txt",
+                "/wes/analysis/copynumber_genome_view.pdf",
+                "/wes/analysis/copynumber_chromosome_view.pdf",
+                "/wes/analysis/copynumber_sequenza_gainloss.bed",
+                "/wes/analysis/copynumber_sequenza_final.txt.gz",
+                "/wes/analysis/copynumber_consensus.bed",
+                "/wes/analysis/copynumber_consensus_gain.bed",
+                "/wes/analysis/copynumber_consensus_loss.bed",
+                "/wes/analysis/copynumber_facets.cncf",
+                "/wes/analysis/copynumber_facets_gainloss.bed",
+                "/wes/analysis/copynumber_cnv_segments.cns",
+                "/wes/analysis/copynumber_cnv_segments_enhanced.cns",
+                "/wes/analysis/copynumber_cnv_scatterplot.png",
+                "/wes/analysis/copynumber_cnvkit_gainloss.bed",
             ]
         ),
         "Neoantigen": FacetConfig(["/wes/analysis/combined_filtered.tsv"]),
@@ -131,14 +159,23 @@ assay_facets: Facets = {
                 "/wes/analysis/maf_tnscope_filter.maf",
                 "/wes/analysis/tnscope_exons.vcf.gz",
                 "/wes/analysis/vcf_compare.txt",
+                "/wes/analysis/tnscope_output_twist.vcf",
+                "/wes/analysis/tnscope_output_twist.maf",
+                "/wes/analysis/tnscope_output_twist_filtered.vcf",
+                "/wes/analysis/tnscope_output_twist_filtered.maf",
             ]
         ),
+        "TcellExtrect": FacetConfig(["/wes/analysis/tcellextrect.txt"]),
         "Alignment": FacetConfig(
             [
                 "/wes/analysis/tumor/sorted.dedup.bam",
                 "/wes/analysis/tumor/sorted.dedup.bam.bai",
                 "/wes/analysis/normal/sorted.dedup.bam",
                 "/wes/analysis/normal/sorted.dedup.bam.bai",
+                "/wes/analysis/tumor/recalibrated.bam",
+                "/wes/analysis/tumor/recalibrated.bam.bai",
+                "/wes/analysis/normal/recalibrated.bam",
+                "/wes/analysis/normal/recalibrated.bam.bai",
             ]
         ),
         "Metrics": FacetConfig(
@@ -153,6 +190,8 @@ assay_facets: Facets = {
         ),
         "HLA Type": FacetConfig(
             [
+                "/wes/analysis/tumor/hla_final_result.txt",
+                "/wes/analysis/normal/hla_final_result.txt",
                 "/wes/analysis/tumor/optitype_result.tsv",
                 "/wes/analysis/normal/optitype_result.tsv",
                 "/wes/analysis/tumor/xhla_report_hla.json",
@@ -170,6 +209,7 @@ assay_facets: Facets = {
                 "/wes/analysis/metasheet.csv",
                 "/wes/analysis/wes_sample.json",
                 "/wes/analysis/xhla_report_hla.json",
+                "/wes/analysis/tumor_germline_overlap.tsv",
             ]
         ),
         "RNA": FacetConfig(
@@ -182,6 +222,7 @@ assay_facets: Facets = {
         "Error Documentation": FacetConfig(["/wes/analysis/error.yaml"]),
     },
     "WES Tumor-Only": {
+        "TcellExtrect": FacetConfig(["/wes_tumor_only/analysis/tcellextrect.txt"]),
         "Germline": FacetConfig(
             [
                 "/wes_tumor_only/analysis/vcfcompare.txt",

@@ -9,6 +9,36 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.21` -  13 Jul 2022
+
+- `changed` schemas bump to fix requirements
+
+## Version `0.26.20` -  13 Jul 2022
+
+- `changed` schemas bump for WES template autogeneration tweaks
+- `changed` schemas bump for WES analysis cnvkit to copynumber
+
+## Version `0.26.19` -  12 Jul 2022
+
+- `added` schemas bump, attach bytes to email for WES template autogeneration
+
+## Version `0.26.18` -  8 Jul 2022
+
+- `added` schemas bump, facets, counting for WES v3
+- `added` migration to move old WES analysis
+- `added` explicit migration for adding required for \_etag, \_created, \_updated
+  - missing from `0.26.15` below
+- `added` handling missing \_etag in bulk inserts for testing
+
+## 30 Jun 2022
+
+- `added` flask-cachecontrol to prevent caching of /users/data_access_report
+
+## Version `0.26.17` - 21 Jun 2022
+
+- `added` new wes bait set to relational db
+- `added` catch for underlying psycopg2 error being thrown
+
 ## Version `0.26.16` - 21 Jun 2022
 
 - `changed` schema version for addition of new wes bait set
