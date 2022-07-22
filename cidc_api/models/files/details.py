@@ -358,9 +358,7 @@ details_dict = {
     "/wes/analysis/tumor/mosdepth_region_dist_broad.txt": FileDetails(
         "analysis", "", ""
     ),
-    "/wes/analysis/tumor/mosdepth_region_dist_mda.txt": FileDetails(
-        "analysis", "", ""
-    ),
+    "/wes/analysis/tumor/mosdepth_region_dist_mda.txt": FileDetails("analysis", "", ""),
     "/wes/analysis/tumor/mosdepth_region_dist_mocha.txt": FileDetails(
         "analysis", "", ""
     ),
@@ -599,19 +597,11 @@ details_dict = {
         "neaontigen: list of predicted neoantigens",
         "The combined MHC class I and II predicted neoantigens using the pVACseq software.  The column definitions are given here (ref: https://pvactools.readthedocs.io/en/latest/pvacseq/output_files.html)",
     ),
-    "/wes_tumor_only/analysis/vcf_tnscope_filter.vcf": FileDetails(
-        "analysis", "", ""
-    ),
-    "/wes_tumor_only/analysis/maf_tnscope_filter.maf": FileDetails(
-        "analysis", "", ""
-    ),
-    "/wes_tumor_only/analysis/tnscope_exons.vcf.gz": FileDetails(
-        "analysis", "", ""
-    ),
+    "/wes_tumor_only/analysis/vcf_tnscope_filter.vcf": FileDetails("analysis", "", ""),
+    "/wes_tumor_only/analysis/maf_tnscope_filter.maf": FileDetails("analysis", "", ""),
+    "/wes_tumor_only/analysis/tnscope_exons.vcf.gz": FileDetails("analysis", "", ""),
     "/wes_tumor_only/analysis/tn_corealigned.bam": FileDetails("analysis", "", ""),
-    "/wes_tumor_only/analysis/tn_corealigned.bam.bai": FileDetails(
-        "analysis", "", ""
-    ),
+    "/wes_tumor_only/analysis/tn_corealigned.bam.bai": FileDetails("analysis", "", ""),
     "/wes_tumor_only/analysis/HLA_results.tsv": FileDetails("analysis", "", ""),
     "/wes_tumor_only/analysis/tumor/recalibrated.bam": FileDetails(
         "analysis",
@@ -741,9 +731,7 @@ details_dict = {
         "analysis", "", ""
     ),
     "/wes_tumor_only/analysis/report.tar.gz": FileDetails("analysis", "", ""),
-    "/wes_tumor_only/analysis/wes_run_version.tsv": FileDetails(
-        "analysis", "", ""
-    ),
+    "/wes_tumor_only/analysis/wes_run_version.tsv": FileDetails("analysis", "", ""),
     "/wes_tumor_only/analysis/config.yaml": FileDetails("analysis", "", ""),
     "/wes_tumor_only/analysis/metasheet.csv": FileDetails("analysis", "", ""),
     "/wes_tumor_only/analysis/wes_sample.json": FileDetails("analysis", "", ""),
