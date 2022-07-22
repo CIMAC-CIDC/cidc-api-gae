@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## 22 Jul 2022
+
+- `changed` all WES analysis file purpose to "analysis"
+
 ## Version `0.26.21` -  13 Jul 2022
 
 - `changed` schemas bump to fix requirements
