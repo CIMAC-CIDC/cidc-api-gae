@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.22` -  26 Jul 2022
+
+- `changed` schemas bump for new participant alert on manifest upload
+
 ## 22 Jul 2022
 
 - `changed` all WES analysis file purpose to "analysis"
