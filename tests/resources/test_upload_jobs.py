@@ -49,6 +49,28 @@ trial_id = "test_trial"
 user_email = "test@email.com"
 
 
+PBMC_PATCH: dict = {
+    "participants": [
+        {
+            "samples": [
+                {"cimac_id": "CTTTP01A1.00"},
+                {"cimac_id": "CTTTP01A2.00"},
+                {"cimac_id": "CTTTP01A3.00"},
+            ],
+            "cimac_participant_id": "CTTTP01",
+        },
+        {
+            "samples": [
+                {"cimac_id": "CTTTP02A1.00"},
+                {"cimac_id": "CTTTP02A2.00"},
+                {"cimac_id": "CTTTP02A3.00"},
+            ],
+            "cimac_participant_id": "CTTTP02",
+        },
+    ]
+}
+
+
 def setup_trial_and_user(cidc_api, monkeypatch) -> int:
     """
     Insert a trial and a cimac-user into the database, and set the user
@@ -396,9 +418,9 @@ class UploadMocks:
         self,
         monkeypatch,
         prismify_trial_id="test_trial",
-        prismify_file_entries=None,
-        prismify_extra=None,
-        prismify_errors=None,
+        prismify_file_entries=[],
+        prismify_extra={},
+        prismify_errors=[],
         whitelist_openpyxl: bool = False,
     ):
         self.whiteliste_openpyxl = whitelist_openpyxl
@@ -451,11 +473,9 @@ class UploadMocks:
         self.prismify = MagicMock(name="prismify")
         monkeypatch.setattr("cidc_schemas.prism.prismify", self.prismify)
         self.prismify.return_value = (
-            dict(
-                **{PROTOCOL_ID_FIELD_NAME: prismify_trial_id}, **(prismify_extra or {})
-            ),
-            prismify_file_entries or [],
-            prismify_errors or [],
+            dict(**{PROTOCOL_ID_FIELD_NAME: prismify_trial_id}, **prismify_extra),
+            prismify_file_entries,
+            prismify_errors,
         )
 
     def make_all_assertions(self):
@@ -638,7 +658,11 @@ def test_admin_upload(cidc_api, clean_db, monkeypatch):
     """Ensure an admin can upload assays and manifests without specific permissions."""
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
     make_admin(user_id, cidc_api)
-    mocks = UploadMocks(monkeypatch, whitelist_openpyxl=True)
+    mocks = UploadMocks(
+        monkeypatch,
+        whitelist_openpyxl=True,
+        prismify_extra=PBMC_PATCH,
+    )
 
     client = cidc_api.test_client()
 
@@ -670,7 +694,11 @@ def test_admin_upload(cidc_api, clean_db, monkeypatch):
 def test_upload_manifest(cidc_api, clean_db, monkeypatch, caplog):
     """Ensure the upload_manifest endpoint follows the expected execution flow"""
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
-    mocks = UploadMocks(monkeypatch, whitelist_openpyxl=True)
+    mocks = UploadMocks(
+        monkeypatch,
+        whitelist_openpyxl=True,
+        prismify_extra=PBMC_PATCH,
+    )
 
     client = cidc_api.test_client()
     setup_example(clean_db, cidc_api)
@@ -701,7 +729,11 @@ def test_upload_manifest(cidc_api, clean_db, monkeypatch, caplog):
 def test_upload_manifest_twice(cidc_api, clean_db, monkeypatch):
     """Ensure that doing upload_manifest twice will produce only one DownloadableFiles"""
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
-    mocks = UploadMocks(monkeypatch, whitelist_openpyxl=True)
+    mocks = UploadMocks(
+        monkeypatch,
+        whitelist_openpyxl=True,
+        prismify_extra=PBMC_PATCH,
+    )
 
     client = cidc_api.test_client()
     setup_example(clean_db, cidc_api)
