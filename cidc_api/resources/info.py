@@ -4,6 +4,7 @@ import re
 
 from flask import Blueprint, jsonify, current_app as app, send_file
 from werkzeug.exceptions import NotFound, BadRequest
+from werkzeug.utils import secure_filename
 
 from cidc_schemas import prism, template
 
@@ -69,11 +70,9 @@ def templates(template_family, template_type):
     `template_family` (e.g., manifests, metadata) and
     `template_type` (e.g., pbmc, olink).
     """
-    # Check that both strings are alphabetic
-    if not re.match(_al_under, template_family):
-        raise BadRequest(f"Invalid template family: {template_family}")
-    elif not re.match(_al_under, template_type):
-        raise BadRequest(f"Invalid template type: {template_type}")
+    # Ensure that both user-provided strings are safe
+    template_family = secure_filename(template_family)
+    template_type = secure_filename(template_type)
 
     schema_path = os.path.join(
         "templates", template_family, f"{template_type}_template.json"
