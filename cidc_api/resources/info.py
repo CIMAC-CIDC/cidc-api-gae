@@ -88,7 +88,7 @@ def templates(template_family, template_type):
             template.generate_empty_template(schema_path, template_path)
         except FileNotFoundError:
             raise NotFound(
-                f"No template found for the given template family and template type"
+                f"No template found for the given template family and template type: {template_family} {template_type}"
             )
 
     return send_file(
