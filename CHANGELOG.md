@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.23` -  27 Jul 2022
+
+- `changed` schemas bump for clinical data participant count fix
+
 ## Version `0.26.22` -  26 Jul 2022
 
 - `changed` schemas bump for new participant alert on manifest upload
