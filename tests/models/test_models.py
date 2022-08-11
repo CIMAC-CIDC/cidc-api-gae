@@ -1711,7 +1711,7 @@ def test_user_get_data_access_report(clean_db, monkeypatch):
         approval_date=datetime.now(),
         role=CIDCRole.ADMIN.value,
     )
-    admin_user.insert()
+    admin_user.insert(session=clean_db)
 
     cimac_user = Users(
         email="cimac@email.com",
@@ -1719,13 +1719,13 @@ def test_user_get_data_access_report(clean_db, monkeypatch):
         approval_date=datetime.now(),
         role=CIDCRole.CIMAC_USER.value,
     )
-    cimac_user.insert()
+    cimac_user.insert(session=clean_db)
 
     trial = TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA)
-    trial.insert()
+    trial.insert(session=clean_db)
 
     trial2 = TrialMetadata(trial_id=TRIAL_ID + "2", metadata_json=METADATA)
-    trial2.insert()
+    trial2.insert(session=clean_db)
 
     upload_types = ["wes_bam", "ihc"]
 
@@ -1738,15 +1738,24 @@ def test_user_get_data_access_report(clean_db, monkeypatch):
                 granted_by_user=admin_user.id,
                 trial_id=trial.trial_id,
                 upload_type=t,
-            ).insert()
+            ).insert(session=clean_db)
+
+    # Add a clinical_data permission
+    Permissions(
+        granted_to_user=cimac_user.id,
+        granted_by_user=admin_user.id,
+        trial_id=trial2.trial_id,
+        upload_type="clinical_data",
+    ).insert(session=clean_db)
 
     # Add a cross-assay permission
+    # Should NOT affect the clinical_data perm above
     Permissions(
         granted_to_user=cimac_user.id,
         granted_by_user=admin_user.id,
         trial_id=trial2.trial_id,
         upload_type=None,
-    ).insert()
+    ).insert(session=clean_db)
 
     # Add a cross-trial permission as well
     Permissions(
@@ -1754,10 +1763,10 @@ def test_user_get_data_access_report(clean_db, monkeypatch):
         granted_by_user=admin_user.id,
         trial_id=None,
         upload_type="olink",
-    ).insert()
+    ).insert(session=clean_db)
 
     bio = io.BytesIO()
-    result_df = Users.get_data_access_report(bio)
+    result_df = Users.get_data_access_report(bio, session=clean_db)
     bio.seek(0)
 
     # Make sure bytes were written to the BytesIO instance
@@ -1774,28 +1783,38 @@ def test_user_get_data_access_report(clean_db, monkeypatch):
             assert set([user.role]) == set(user_df.role)
             assert set([user.organization]) == set(user_df.organization)
             if user == admin_user:
-                #  trial_id  permissions
-                # ----------------------
-                # {trial_id}      *
-                assert set(["*"]) == set(user_df.permissions)
+                #  trial_id    permissions
+                # --------------------------
+                # {trial_id} *,clinical_data
+                assert set(["*,clinical_data"]) == set(user_df.permissions)
             else:  # user == cimac_user
                 if t == trial:
                     #  trial_id   permissions
                     # ------------------------
                     # {trial_id} "wes_bam,ihc" < or reverse
                     #      *       "olink"
-                    assert set(user_df.permissions).issubset(
-                        ["wes_bam,ihc", "ihc,wes_bam", "olink"]
-                    )
-                else:  # t == trial2
-                    #  trial_id  permissions
-                    # ----------------------
-                    # {trial_id}      *
-                    #      *       "olink"
                     assert len(user_df.index) == 2
+                    assert sum(user_df.trial_id == t.trial_id) == 1
+                    assert set(
+                        user_df.permissions[user_df.trial_id == t.trial_id]
+                        .iloc[0]
+                        .split(",")
+                    ) == set(["ihc", "wes_bam"])
                     assert (
-                        user_df.permissions[user_df.trial_id == t.trial_id] == "*"
+                        user_df.permissions[user_df.trial_id != t.trial_id] == "olink"
                     ).all()
+                else:  # t == trial2
+                    #  trial_id    permissions
+                    # --------------------------
+                    # {trial_id} clinical_data,* < or reverse
+                    #      *         "olink"
+                    assert len(user_df.index) == 2
+                    assert sum(user_df.trial_id == t.trial_id) == 1
+                    assert set(
+                        user_df.permissions[user_df.trial_id == t.trial_id]
+                        .iloc[0]
+                        .split(",")
+                    ) == set(["*", "clinical_data"])
                     assert (
                         user_df.permissions[user_df.trial_id != t.trial_id] == "olink"
                     ).all()

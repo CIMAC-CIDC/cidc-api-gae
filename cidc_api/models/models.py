@@ -69,6 +69,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.query import Query
 from sqlalchemy.sql import text
+from sqlalchemy.sql.functions import coalesce
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.engine import ResultProxy
 
@@ -420,7 +421,7 @@ class Users(CommonColumns):
             session.query(
                 *user_columns,
                 Permissions.trial_id,
-                func.string_agg(Permissions.upload_type, ","),
+                func.string_agg(coalesce(Permissions.upload_type, "*"), ","),
             )
             .filter(
                 Users.id == Permissions.granted_to_user,
@@ -435,7 +436,7 @@ class Users(CommonColumns):
                 # Handle admins separately, since they can view all data for all
                 # trials even if they have no permissions assigned to them.
                 session.query(
-                    *user_columns, TrialMetadata.trial_id, literal("*")
+                    *user_columns, TrialMetadata.trial_id, literal("*,clinical_data")
                 ).filter(Users.role == CIDCRole.ADMIN.value)
             )
         )
