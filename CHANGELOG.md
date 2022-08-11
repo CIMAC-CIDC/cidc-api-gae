@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.26` - 11 Aug 2022
+
+- `changed` cross-assay permissions to not include clinical data
+
 ## Version `0.26.25` -  9 Aug 2022
 
 - `changed` schemas bump for hande manifest req relaxation
