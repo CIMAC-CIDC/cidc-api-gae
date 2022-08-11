@@ -69,6 +69,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from sqlalchemy.orm.session import Session
 from sqlalchemy.orm.query import Query
 from sqlalchemy.sql import text
+from sqlalchemy.sql.functions import coalesce
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.engine import ResultProxy
 
@@ -420,7 +421,7 @@ class Users(CommonColumns):
             session.query(
                 *user_columns,
                 Permissions.trial_id,
-                func.string_agg(Permissions.upload_type, ","),
+                func.string_agg(coalesce(Permissions.upload_type, "*"), ","),
             )
             .filter(
                 Users.id == Permissions.granted_to_user,
@@ -435,7 +436,7 @@ class Users(CommonColumns):
                 # Handle admins separately, since they can view all data for all
                 # trials even if they have no permissions assigned to them.
                 session.query(
-                    *user_columns, TrialMetadata.trial_id, literal("*")
+                    *user_columns, TrialMetadata.trial_id, literal("*,clinical_data")
                 ).filter(Users.role == CIDCRole.ADMIN.value)
             )
         )
@@ -585,8 +586,12 @@ class Permissions(CommonColumns):
                 if self.trial_id == self.EVERY
                 else Permissions.trial_id == self.trial_id,
                 # If inserting a cross-upload type perm, then select relevant
-                # upload type-specific perms for deletion.
-                Permissions.upload_type != self.EVERY
+                # upload type-specific perms for deletion. This does NOT
+                # include clinical_data, just manifests/assays/analysis.
+                and_(
+                    Permissions.upload_type != self.EVERY,
+                    Permissions.upload_type != "clinical_data",
+                )
                 if self.upload_type == self.EVERY
                 else Permissions.upload_type == self.upload_type,
             )
@@ -698,9 +703,15 @@ class Permissions(CommonColumns):
                         | (Permissions.trial_id == Permissions.EVERY)
                     )
                     & (
+                        # return if it's the target
                         (Permissions.upload_type == upload_type)
+                        # if getting EVERY, return all
                         | (upload_type == Permissions.EVERY)
-                        | (Permissions.upload_type == Permissions.EVERY)
+                        # if permission is EVERY, don't return if looking for clinical_data
+                        | (
+                            (Permissions.upload_type == Permissions.EVERY)
+                            & (upload_type != "clinical_data")
+                        )
                     )
                 ),
             )
@@ -773,7 +784,9 @@ class Permissions(CommonColumns):
                 )
                 | (
                     (Permissions.trial_id == trial_id)
+                    # if permission is EVERY, don't return if looking for clinical_data
                     & (Permissions.upload_type == Permissions.EVERY)
+                    & (upload_type != "clinical_data")
                 ),
             )
             .first()
@@ -874,7 +887,7 @@ class Permissions(CommonColumns):
             None for all trials
         upload_type: str
             only affect permissions for this upload type
-            None for all upload types
+            None for all upload types except clinical_data
         grant: bool
             whether to grant or remove the (filtered) permissions
             if True, adds lister IAM permission
@@ -902,12 +915,23 @@ class Permissions(CommonColumns):
                     Permissions.trial_id == trial_id, Permissions.trial_id == None
                 ),  # null for cross-trial
             )
-        if upload_type:
+        if upload_type == "clinical_data":
+            # don't get null ie cross-assay
+            filters.append(
+                Permissions.upload_type == upload_type,
+            )
+        elif upload_type:
             filters.append(
                 or_(
                     Permissions.upload_type == upload_type,
                     Permissions.upload_type == None,
                 ),  # null for cross-assay
+            )
+        else:  # null for cross-assay
+            filters.append(
+                # don't affect clinical_data
+                Permissions.upload_type
+                != "clinical_data",
             )
 
         # List[Tuple[Permissions, Users]]
