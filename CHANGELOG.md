@@ -9,6 +9,11 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.27` - 15 Aug 2022
+
+- `changed` bump schemas for ctdna analysis nulls
+- `changed` issuing permissions for upload job actually gets them all now
+
 ## Version `0.26.26` - 11 Aug 2022
 
 - `changed` cross-assay permissions to not include clinical data
