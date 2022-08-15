@@ -839,17 +839,33 @@ class Permissions(CommonColumns):
     def grant_download_permissions_for_upload_job(
         cls, upload: "UploadJobs", session: Session
     ) -> None:
-        perms = (
-            session.query(cls)
-            .filter_by(trial_id=upload.trial_id, upload_type=upload.upload_type)
-            .all()
-        )
+        filters = [
+            or_(cls.trial_id == upload.trial_id, cls.trial_id == None),
+        ]
+        if upload.upload_type == "clinical_data":
+            filters.append(cls.upload_type == upload.upload_type)
+        else:
+            filters.append(
+                or_(cls.upload_type == upload.upload_type, cls.trial_id == None)
+            )
+
+        perms = session.query(cls).filter(*filters).all()
+        user_email_list: List[str] = []
+
         for perm in perms:
             user = Users.find_by_id(perm.granted_to_user, session=session)
-            if user.is_admin() or user.is_nci_user() or user.disabled:
+            if (
+                user.is_admin()
+                or user.is_nci_user()
+                or user.disabled
+                or user.email in user_email_list
+            ):
                 continue
+            else:
+                user_email_list.append(user.email)
+                grant_lister_access(user.email)
 
-            grant_download_access(user.email, perm.trial_id, perm.upload_type)
+        grant_download_access(user_email_list, upload.trial_id, upload.upload_type)
 
     @staticmethod
     @with_default_session

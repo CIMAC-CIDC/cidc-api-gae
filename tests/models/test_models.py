@@ -1440,7 +1440,7 @@ def test_permissions_grant_download_permissions_for_upload_job(clean_db, monkeyp
     trial = TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA)
     trial.insert()
 
-    upload_types = ["wes_bam", "ihc", "rna_fastq", "plasma"]
+    upload_types = ["wes_bam", "ihc", "rna_fastq", "plasma", "clinical_data"]
     for upload_type in upload_types:
         Permissions(
             granted_to_user=user.id,
@@ -1462,10 +1462,17 @@ def test_permissions_grant_download_permissions_for_upload_job(clean_db, monkeyp
         gcs_xlsx_uri="",
         commit=False,
     )
-    # Add extra perm on a different user for trial / ihc
+    # Add extra perm on different user for trial / all and all / ihc
+    # Tests second user and cross-assay, cross-trial permissions
     Permissions(
         granted_to_user=user2.id,
         trial_id=trial.trial_id,
+        upload_type=None,
+        granted_by_user=user.id,
+    ).insert()
+    Permissions(
+        granted_to_user=user2.id,
+        trial_id=None,
         upload_type=assay_upload.upload_type,
         granted_by_user=user.id,
     ).insert()
@@ -1475,17 +1482,38 @@ def test_permissions_grant_download_permissions_for_upload_job(clean_db, monkeyp
     assay_upload.status = UploadJobStatus.UPLOAD_COMPLETED.value
     assay_upload.ingestion_success(trial)
 
+    # trigger and assert
+    gcloud_client.reset_mocks()
     Permissions.grant_download_permissions_for_upload_job(
         assay_upload, session=clean_db
     )
     gcloud_client.grant_lister_access.assert_has_calls(
         [call(user.email), call(user2.email)]
     )
-    gcloud_client.grant_download_access.assert_has_calls(
-        [
-            call(user.email, assay_upload.trial_id, assay_upload.upload_type),
-            call(user2.email, assay_upload.trial_id, assay_upload.upload_type),
-        ]
+    gcloud_client.grant_download_access.assert_called_once_with(
+        [user.email, user2.email], assay_upload.trial_id, assay_upload.upload_type
+    )
+
+    # Test that clinical_data doesn't get from cross-assay permissions
+    clinical_upload = UploadJobs.create(
+        upload_type="clinical_data",
+        uploader_email=user.email,
+        gcs_file_map={},
+        metadata={prism.PROTOCOL_ID_FIELD_NAME: trial.trial_id},
+        gcs_xlsx_uri="",
+        commit=False,
+    )
+    clinical_upload.status = UploadJobStatus.UPLOAD_COMPLETED.value
+    clinical_upload.ingestion_success(trial)
+    gcloud_client.reset_mocks()
+
+    # trigger and assert
+    Permissions.grant_download_permissions_for_upload_job(
+        clinical_upload, session=clean_db
+    )
+    gcloud_client.grant_lister_access.assert_has_calls([call(user.email)])
+    gcloud_client.grant_download_access.assert_called_once_with(
+        [user.email], clinical_upload.trial_id, clinical_upload.upload_type
     )
 
 
