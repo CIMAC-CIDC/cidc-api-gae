@@ -1027,6 +1027,11 @@ details_dict = {
         "stained image file that is the result of an H&E experiment",
         "An SVS image file stained with hematoxylin and eosin, generated from an H&E experiment.",
     ),
+    "/hande/image_file.": FileDetails(
+        "source",
+        "stained image file that is the result of an H&E experiment",
+        "An image file stained with hematoxylin and eosin, generated from an H&E experiment.",
+    ),
     # ELISA
     "/elisa/assay.xlsx": FileDetails(
         "source",
