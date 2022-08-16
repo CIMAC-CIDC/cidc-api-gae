@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## 16 Aug 2022
+
+- `changed` edit H&E faceting to correctly label all new image uploads re allowing jpg files
+
 ## Version `0.26.27` - 15 Aug 2022
 
 - `changed` bump schemas for ctdna analysis nulls and hande jpeg files
