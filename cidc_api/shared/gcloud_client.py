@@ -9,7 +9,7 @@ import hashlib
 from collections import namedtuple
 from concurrent.futures import Future
 from sqlalchemy.orm.session import Session
-from typing import Any, BinaryIO, Callable, Dict, List, Optional, Union
+from typing import Any, BinaryIO, Callable, Dict, List, Optional, Set, Union
 
 import requests
 from google.cloud import storage, pubsub
@@ -35,6 +35,8 @@ from ..config.settings import (
     INACTIVE_USER_DAYS,
 )
 from ..config.logging import get_logger
+
+from cidc_schemas.prism.constants import ASSAY_TO_FILEPATH
 
 logger = get_logger(__name__)
 
@@ -275,7 +277,9 @@ def get_blob_names(
     session: Optional[Session] = None,
 ) -> List[str]:
     """session only needed if trial_id is None"""
-    prefixes = _build_trial_upload_prefixes(trial_id, upload_type, session=session)
+    prefixes: Set[str] = _build_trial_upload_prefixes(
+        trial_id, upload_type, session=session
+    )
 
     # https://googleapis.dev/python/storage/latest/client.html#google.cloud.storage.client.Client.list_blobs
     blob_list = []
@@ -407,31 +411,38 @@ def _build_trial_upload_prefixes(
     trial_id: Optional[str],
     upload_type: Optional[str],
     session: Optional[Session] = None,
-) -> List[str]:
+) -> Set[str]:
     """
     Build the set of prefixes associated with the trial_id and upload_type
     If no trial_id is given, all trials are used.
-    If no upload_type is given, the prefix is only defined to the trial.
-    If neither are given, an empty string is returned.
+    If no upload_type is given, the prefixes are everything but clinical_data.
+        If upload_type has no files, returns empty set.
+    If neither are given, an empty set is returned.
 
-    session is only used with trial_id is None
+    session is only used with trial_id is None and upload_type is not None
     """
     if trial_id is None and upload_type is None:
-        return [""]
+        return set()
 
     if not trial_id:
         from ..models.models import TrialMetadata
 
         trial_id = set([t.trial_id for t in TrialMetadata.list(session=session)])
-
-    if not upload_type:
-        return list(trial_id) if isinstance(trial_id, set) else [trial_id]
     else:
-        broad_upload_type = upload_type.lower().replace(" ", "_").split("_", 1)[0]
-        return [
-            f"{trial}/{broad_upload_type}"
-            for trial in (trial_id if isinstance(trial_id, set) else [trial_id])
-        ]
+        trial_id = set([trial_id])
+
+    if upload_type in ASSAY_TO_FILEPATH:
+        return {f"{trial}/{ASSAY_TO_FILEPATH[upload_type]}" for trial in trial_id}
+    elif upload_type:
+        return set()
+    else:  # null for cross-assay
+        # don't affect clinical_data
+        return {
+            f"{trial}/{upload_prefix}"
+            for trial in trial_id
+            for upload_name, upload_prefix in ASSAY_TO_FILEPATH.items()
+            if upload_name != "clinical_data"
+        }
 
 
 def grant_iam_access(

@@ -1440,7 +1440,7 @@ def test_permissions_grant_download_permissions_for_upload_job(clean_db, monkeyp
     trial = TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA)
     trial.insert()
 
-    upload_types = ["wes_bam", "ihc", "rna_fastq", "plasma"]
+    upload_types = ["wes_bam", "ihc", "rna_fastq", "plasma", "clinical_data"]
     for upload_type in upload_types:
         Permissions(
             granted_to_user=user.id,
@@ -1462,10 +1462,17 @@ def test_permissions_grant_download_permissions_for_upload_job(clean_db, monkeyp
         gcs_xlsx_uri="",
         commit=False,
     )
-    # Add extra perm on a different user for trial / ihc
+    # Add extra perm on different user for trial / all and all / ihc
+    # Tests second user and cross-assay, cross-trial permissions
     Permissions(
         granted_to_user=user2.id,
         trial_id=trial.trial_id,
+        upload_type=None,
+        granted_by_user=user.id,
+    ).insert()
+    Permissions(
+        granted_to_user=user2.id,
+        trial_id=None,
         upload_type=assay_upload.upload_type,
         granted_by_user=user.id,
     ).insert()
@@ -1475,17 +1482,38 @@ def test_permissions_grant_download_permissions_for_upload_job(clean_db, monkeyp
     assay_upload.status = UploadJobStatus.UPLOAD_COMPLETED.value
     assay_upload.ingestion_success(trial)
 
+    # trigger and assert
+    gcloud_client.reset_mocks()
     Permissions.grant_download_permissions_for_upload_job(
         assay_upload, session=clean_db
     )
     gcloud_client.grant_lister_access.assert_has_calls(
         [call(user.email), call(user2.email)]
     )
-    gcloud_client.grant_download_access.assert_has_calls(
-        [
-            call(user.email, assay_upload.trial_id, assay_upload.upload_type),
-            call(user2.email, assay_upload.trial_id, assay_upload.upload_type),
-        ]
+    gcloud_client.grant_download_access.assert_called_once_with(
+        [user.email, user2.email], assay_upload.trial_id, assay_upload.upload_type
+    )
+
+    # Test that clinical_data doesn't get from cross-assay permissions
+    clinical_upload = UploadJobs.create(
+        upload_type="clinical_data",
+        uploader_email=user.email,
+        gcs_file_map={},
+        metadata={prism.PROTOCOL_ID_FIELD_NAME: trial.trial_id},
+        gcs_xlsx_uri="",
+        commit=False,
+    )
+    clinical_upload.status = UploadJobStatus.UPLOAD_COMPLETED.value
+    clinical_upload.ingestion_success(trial)
+    gcloud_client.reset_mocks()
+
+    # trigger and assert
+    Permissions.grant_download_permissions_for_upload_job(
+        clinical_upload, session=clean_db
+    )
+    gcloud_client.grant_lister_access.assert_has_calls([call(user.email)])
+    gcloud_client.grant_download_access.assert_called_once_with(
+        [user.email], clinical_upload.trial_id, clinical_upload.upload_type
     )
 
 
@@ -1711,7 +1739,7 @@ def test_user_get_data_access_report(clean_db, monkeypatch):
         approval_date=datetime.now(),
         role=CIDCRole.ADMIN.value,
     )
-    admin_user.insert()
+    admin_user.insert(session=clean_db)
 
     cimac_user = Users(
         email="cimac@email.com",
@@ -1719,13 +1747,13 @@ def test_user_get_data_access_report(clean_db, monkeypatch):
         approval_date=datetime.now(),
         role=CIDCRole.CIMAC_USER.value,
     )
-    cimac_user.insert()
+    cimac_user.insert(session=clean_db)
 
     trial = TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA)
-    trial.insert()
+    trial.insert(session=clean_db)
 
     trial2 = TrialMetadata(trial_id=TRIAL_ID + "2", metadata_json=METADATA)
-    trial2.insert()
+    trial2.insert(session=clean_db)
 
     upload_types = ["wes_bam", "ihc"]
 
@@ -1738,15 +1766,24 @@ def test_user_get_data_access_report(clean_db, monkeypatch):
                 granted_by_user=admin_user.id,
                 trial_id=trial.trial_id,
                 upload_type=t,
-            ).insert()
+            ).insert(session=clean_db)
+
+    # Add a clinical_data permission
+    Permissions(
+        granted_to_user=cimac_user.id,
+        granted_by_user=admin_user.id,
+        trial_id=trial2.trial_id,
+        upload_type="clinical_data",
+    ).insert(session=clean_db)
 
     # Add a cross-assay permission
+    # Should NOT affect the clinical_data perm above
     Permissions(
         granted_to_user=cimac_user.id,
         granted_by_user=admin_user.id,
         trial_id=trial2.trial_id,
         upload_type=None,
-    ).insert()
+    ).insert(session=clean_db)
 
     # Add a cross-trial permission as well
     Permissions(
@@ -1754,10 +1791,10 @@ def test_user_get_data_access_report(clean_db, monkeypatch):
         granted_by_user=admin_user.id,
         trial_id=None,
         upload_type="olink",
-    ).insert()
+    ).insert(session=clean_db)
 
     bio = io.BytesIO()
-    result_df = Users.get_data_access_report(bio)
+    result_df = Users.get_data_access_report(bio, session=clean_db)
     bio.seek(0)
 
     # Make sure bytes were written to the BytesIO instance
@@ -1774,28 +1811,38 @@ def test_user_get_data_access_report(clean_db, monkeypatch):
             assert set([user.role]) == set(user_df.role)
             assert set([user.organization]) == set(user_df.organization)
             if user == admin_user:
-                #  trial_id  permissions
-                # ----------------------
-                # {trial_id}      *
-                assert set(["*"]) == set(user_df.permissions)
+                #  trial_id    permissions
+                # --------------------------
+                # {trial_id} *,clinical_data
+                assert set(["*,clinical_data"]) == set(user_df.permissions)
             else:  # user == cimac_user
                 if t == trial:
                     #  trial_id   permissions
                     # ------------------------
                     # {trial_id} "wes_bam,ihc" < or reverse
                     #      *       "olink"
-                    assert set(user_df.permissions).issubset(
-                        ["wes_bam,ihc", "ihc,wes_bam", "olink"]
-                    )
-                else:  # t == trial2
-                    #  trial_id  permissions
-                    # ----------------------
-                    # {trial_id}      *
-                    #      *       "olink"
                     assert len(user_df.index) == 2
+                    assert sum(user_df.trial_id == t.trial_id) == 1
+                    assert set(
+                        user_df.permissions[user_df.trial_id == t.trial_id]
+                        .iloc[0]
+                        .split(",")
+                    ) == set(["ihc", "wes_bam"])
                     assert (
-                        user_df.permissions[user_df.trial_id == t.trial_id] == "*"
+                        user_df.permissions[user_df.trial_id != t.trial_id] == "olink"
                     ).all()
+                else:  # t == trial2
+                    #  trial_id    permissions
+                    # --------------------------
+                    # {trial_id} clinical_data,* < or reverse
+                    #      *         "olink"
+                    assert len(user_df.index) == 2
+                    assert sum(user_df.trial_id == t.trial_id) == 1
+                    assert set(
+                        user_df.permissions[user_df.trial_id == t.trial_id]
+                        .iloc[0]
+                        .split(",")
+                    ) == set(["*", "clinical_data"])
                     assert (
                         user_df.permissions[user_df.trial_id != t.trial_id] == "olink"
                     ).all()
