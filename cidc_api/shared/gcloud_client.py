@@ -15,7 +15,7 @@ from typing import Any, BinaryIO, Callable, Dict, List, Optional, Set, Union
 
 import requests
 from google.cloud import storage, pubsub
-from  google.oauth2.service_account import Credentials
+from google.oauth2.service_account import Credentials
 from werkzeug.datastructures import FileStorage
 
 from ..config.settings import (
@@ -56,7 +56,9 @@ def _get_storage_client() -> storage.Client:
     global _storage_client
     if _storage_client is None:
         secret_manager = get_secrets_manager()
-        credentials = Credentials.from_service_account_info(secret_manager.get("APP_ENGINE_CREDENTIALS"))
+        credentials = Credentials.from_service_account_info(
+            secret_manager.get("APP_ENGINE_CREDENTIALS")
+        )
         _storage_client = storage.Client(credentials=credentials)
     return _storage_client
 
