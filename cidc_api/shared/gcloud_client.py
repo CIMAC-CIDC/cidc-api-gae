@@ -2,6 +2,8 @@
 import json
 import os
 
+from cidc_api.config.secrets import get_secrets_manager
+
 os.environ["TZ"] = "UTC"
 import datetime
 import warnings
@@ -13,6 +15,7 @@ from typing import Any, BinaryIO, Callable, Dict, List, Optional, Set, Union
 
 import requests
 from google.cloud import storage, pubsub
+from google.oauth2.service_account import Credentials
 from werkzeug.datastructures import FileStorage
 
 from ..config.settings import (
@@ -47,10 +50,16 @@ def _get_storage_client() -> storage.Client:
     """
     the project which the client acts on behalf of falls back to the default inferred from the environment
     see: https://googleapis.dev/python/storage/latest/client.html#google.cloud.storage.client.Client
+
+    directly providing service account credentials for signing in get_signed_url() below
     """
     global _storage_client
     if _storage_client is None:
-        _storage_client = storage.Client()
+        secret_manager = get_secrets_manager()
+        credentials = Credentials.from_service_account_info(
+            secret_manager.get("APP_ENGINE_CREDENTIALS")
+        )
+        _storage_client = storage.Client(credentials=credentials)
     return _storage_client
 
 

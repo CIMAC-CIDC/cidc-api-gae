@@ -9,6 +9,12 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.29` - xx Sep 2022
+
+- `changed` credentials handling for generating signed urls
+- `changed` default app run to debug False
+- `added` user input sanitization when getting a specific template
+
 ## Version `0.26.28` - 17 Aug 2022
 
 - `changed` bump schemas for microbiome metadata template changes and new shipping lab
