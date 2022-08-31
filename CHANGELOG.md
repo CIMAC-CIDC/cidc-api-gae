@@ -9,6 +9,23 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.26.28` - 17 Aug 2022
+
+- `changed` bump schemas for microbiome metadata template changes and new shipping lab
+
+## 16 Aug 2022
+
+- `changed` edit H&E faceting to correctly label all new image uploads re allowing jpg files
+
+## Version `0.26.27` - 15 Aug 2022
+
+- `changed` bump schemas for ctdna analysis nulls and hande jpeg files
+- `changed` issuing permissions for upload job actually gets them all now
+
+## Version `0.26.26` - 11 Aug 2022
+
+- `changed` cross-assay permissions to not include clinical data
+
 ## Version `0.26.25` -  9 Aug 2022
 
 - `changed` schemas bump for hande manifest req relaxation

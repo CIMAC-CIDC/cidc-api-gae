@@ -141,8 +141,30 @@ def test_build_trial_upload_prefixes(monkeypatch):
     assert set(_build_trial_upload_prefixes(None, "rna_bam")) == set(
         f"{t}/rna" for t in fake_trial_ids
     )
-    assert _build_trial_upload_prefixes("foo", None) == ["foo"]
-    assert _build_trial_upload_prefixes("foo", "rna_bam") == ["foo/rna"]
+    assert _build_trial_upload_prefixes("foo", None) == {
+        "foo/atacseq",
+        "foo/ctdna",
+        "foo/ctdna_analysis",
+        "foo/cytof",
+        "foo/cytof_analysis",
+        "foo/elisa",
+        "foo/hande",
+        "foo/ihc",
+        "foo/microbiome",
+        "foo/microbiome_analysis",
+        "foo/mif",
+        "foo/misc_data",
+        "foo/nanostring",
+        "foo/olink",
+        "foo/participants",
+        "foo/rna",
+        "foo/samples",
+        "foo/tcr",
+        "foo/tcr_analysis",
+        "foo/wes",
+        "foo/wes_tumor_only",
+    }
+    assert _build_trial_upload_prefixes("foo", "rna_bam") == {"foo/rna"}
 
 
 def test_grant_lister_access(monkeypatch):
