@@ -9,7 +9,11 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
-## Version `0.26.29` - xx Sep 2022
+## Version `0.26.30` - Aug 31 2022
+
+- `fixed` bug in credentials handling
+
+## Version `0.26.29` - Aug 31 2022
 
 - `changed` credentials handling for generating signed urls
 - `changed` default app run to debug False

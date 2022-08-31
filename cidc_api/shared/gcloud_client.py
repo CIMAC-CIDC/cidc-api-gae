@@ -56,8 +56,9 @@ def _get_storage_client() -> storage.Client:
     global _storage_client
     if _storage_client is None:
         secret_manager = get_secrets_manager()
+
         credentials = Credentials.from_service_account_info(
-            secret_manager.get("APP_ENGINE_CREDENTIALS")
+            json.loads(secret_manager.get("APP_ENGINE_CREDENTIALS"))
         )
         _storage_client = storage.Client(credentials=credentials)
     return _storage_client
