@@ -3,7 +3,7 @@ import os
 import re
 
 from flask import Blueprint, jsonify, current_app as app, send_file
-from werkzeug.exceptions import NotFound, BadRequest
+from werkzeug.exceptions import NotFound
 from werkzeug.utils import secure_filename
 
 from cidc_schemas import prism, template
@@ -57,9 +57,6 @@ def data_overview():
             "num_assays": len(prism.SUPPORTED_ASSAYS),
         }
     )
-
-
-_al_under = re.compile("^\w+$")  # alpha or underscore
 
 
 @info_bp.route("templates/<template_family>/<template_type>", methods=["GET"])
