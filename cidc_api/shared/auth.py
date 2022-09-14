@@ -1,6 +1,6 @@
 from functools import wraps
 from packaging import version
-from typing import List, Type
+from typing import List
 
 import requests
 from jose import jwt
