@@ -39,7 +39,7 @@ TEMPLATES_DIR = path.join("/tmp", "templates")
 if path.exists(TEMPLATES_DIR):
     shutil.rmtree(TEMPLATES_DIR)
 mkdir(TEMPLATES_DIR)
-for family in ["manifests", "metadata", "analyses"]:
+for family in ["assays", "manifests", "analyses"]:
     family_dir = path.join(TEMPLATES_DIR, family)
     mkdir(family_dir)
 

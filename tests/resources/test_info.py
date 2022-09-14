@@ -135,6 +135,7 @@ def test_templates(cidc_api):
     olink_path = os.path.join(
         cidc_api.config["TEMPLATES_DIR"], "assays", "olink_template.xlsx"
     )
+
     assert not os.path.exists(olink_path)
     res = client.get(f"{INFO_ENDPOINT}/templates/assays/olink")
     assert res.status_code == 200
