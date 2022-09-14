@@ -74,8 +74,35 @@ class NewManifestError(Exception):
     pass
 
 
+def _parse_upload_type(sample: dict, upload_type: Set[str]) -> str:
+    sample_manifest_type = sample.get("sample_manifest_type")
+    processed_derivative = sample.get("processed_sample_derivative")
+    if sample_manifest_type is None:
+        # safety
+        return
+
+    elif sample_manifest_type == "biofluid_cellular":
+        upload_type.add("pbmc")
+    elif sample_manifest_type == "tissue_slides":
+        upload_type.add("tissue_slide")
+
+    elif processed_derivative == "Germline DNA":
+        upload_type.add(f"normal_{sample_manifest_type.split()[0].lower()}_dna")
+    elif processed_derivative == "Tumor DNA":
+        upload_type.add(f"tumor_{sample_manifest_type.split()[0]}_dna")
+    elif processed_derivative in ["DNA", "RNA"]:
+        unprocessed_type = sample.get("type_of_sample")
+        new_type = "tumor" if "tumor" in unprocessed_type.lower() else "normal"
+        new_type += (
+            "_blood_" if sample_manifest_type.startswith("biofluid") else "_tissue_"
+        )
+        new_type += processed_derivative.lower()
+
+        upload_type.add(new_type)
+
+
 def _get_upload_type(samples: Iterable[Dict[str, Any]]) -> str:
-    upload_type = set()
+    upload_type: Set[str] = set()
 
     for sample in samples:
         processed_type = sample.get("processed_sample_type").lower()
@@ -94,32 +121,8 @@ def _get_upload_type(samples: Iterable[Dict[str, Any]]) -> str:
         ]:
             upload_type.add(processed_type)
         else:
-            sample_manifest_type = sample.get("sample_manifest_type")
-            processed_derivative = sample.get("processed_sample_derivative")
-            if sample_manifest_type is None:
-                # safety
-                continue
-
-            elif sample_manifest_type == "biofluid_cellular":
-                upload_type.add("pbmc")
-            elif sample_manifest_type == "tissue_slides":
-                upload_type.add("tissue_slide")
-
-            elif processed_derivative == "Germline DNA":
-                upload_type.add(f"normal_{sample_manifest_type.split()[0].lower()}_dna")
-            elif processed_derivative == "Tumor DNA":
-                upload_type.add(f"tumor_{sample_manifest_type.split()[0]}_dna")
-            elif processed_derivative in ["DNA", "RNA"]:
-                unprocessed_type = sample.get("type_of_sample")
-                new_type = "tumor" if "tumor" in unprocessed_type.lower() else "normal"
-                new_type += (
-                    "_blood_"
-                    if sample_manifest_type.startswith("biofluid")
-                    else "_tissue_"
-                )
-                new_type += processed_derivative.lower()
-
-                upload_type.add(new_type)
+            # updates upload_type in-place with the given sample
+            _parse_upload_type(sample=sample, upload_type=upload_type)
 
     assert (
         len(upload_type) == 1
@@ -198,7 +201,7 @@ def _extract_info_from_manifest(
     return trial_id, manifest_id, samples
 
 
-def _extract_details_from_trial(samples: List[Dict[str, Any]]):
+def _extract_details_from_trial(csms_samples: List[Dict[str, Any]]):
     """
     Given a trial, return some key values
 
@@ -213,13 +216,13 @@ def _extract_details_from_trial(samples: List[Dict[str, Any]]):
     - f"No assay_type defined for manifest_id={manifest_id} for trial {trial_id}"
     """
     assay_priority = _get_and_check(
-        obj=samples,
+        obj=csms_samples,
         key="assay_priority",
         msg="will not be thrown",
         check=lambda _: True,
     )
     assay_type = _get_and_check(
-        obj=samples,
+        obj=csms_samples,
         key="assay_type",
         msg="will not be thrown",
         check=lambda _: True,
@@ -227,10 +230,55 @@ def _extract_details_from_trial(samples: List[Dict[str, Any]]):
     return assay_priority, assay_type
 
 
-def _convert_samples(
+def _process_csms_sample(csms_sample: dict):
+    event_name = csms_sample.get("standardized_collection_event_name")
+    if event_name is None:
+        raise Exception(
+            f"No standardized_collection_event_name defined for sample {csms_sample.get('cimac_id', '')} on manifest {csms_sample['manifest_id']} for trial {csms_sample['protocol_identifier']}"
+        )
+    else:
+        csms_sample["collection_event_name"] = event_name
+
+    # differences in naming convention
+    processed_sample_type_map: Dict[str, str] = {
+        "tissue_slide": "Fixed Slide",
+        "tumor_tissue_dna": "Tissue Scroll",
+        "plasma": "Plasma",
+        "normal_tissue_dna": "Tissue Scroll",
+        "h_and_e": "H&E-Stained Fixed Tissue Slide Specimen",
+        "pbmc": "PBMC",
+    }
+    if csms_sample["processed_sample_type"] in processed_sample_type_map:
+        csms_sample["processed_sample_type"] = processed_sample_type_map[
+            csms_sample["processed_sample_type"]
+        ]
+
+    # differences in keys
+    if "fixation_or_stabilization_type" in csms_sample:
+        csms_sample["fixation_stabilization_type"] = csms_sample.pop(
+            "fixation_or_stabilization_type"
+        )
+
+    # typing
+    if "sample_derivative_concentration" in csms_sample:
+        csms_sample["sample_derivative_concentration"] = float(
+            csms_sample["sample_derivative_concentration"]
+        )
+
+    # "Not Reported" as default when required
+    if (
+        csms_sample["type_of_sample"] == "Blood"
+        and "type_of_primary_container" not in csms_sample
+    ):
+        csms_sample["type_of_primary_container"] = "Not Reported"
+    if "parent_sample_id" not in csms_sample:
+        csms_sample["parent_sample_id"] = "Not Reported"
+
+
+def _convert_csms_samples(
     trial_id: str,
     manifest_id: str,
-    samples: List[Dict[str, Any]],
+    csms_samples: List[Dict[str, Any]],
     existing_cimac_ids: List[str] = [],
 ) -> Iterator[Tuple[str, Dict[str, Any]]]:
     """
@@ -240,7 +288,7 @@ def _convert_samples(
     Returns
     -------
     iterator yielding (str, dict)
-        cimac_id, sample
+        cimac_id, converted CSMS sample
 
     Exceptions Raised
     -----------------
@@ -251,50 +299,11 @@ def _convert_samples(
     - f"Sample with no local participant_id given:\n{sample}"
         if participant_id and trial_participant_id are both undefined
     """
-    for n, sample in enumerate(samples):
-        event_name = sample.get("standardized_collection_event_name")
-        if event_name is None:
-            raise Exception(
-                f"No standardized_collection_event_name defined for sample {sample['cimac_id']} on manifest {sample['manifest_id']} for trial {sample['protocol_identifier']}"
-            )
-        else:
-            sample["collection_event_name"] = event_name
+    for n, sample in enumerate(csms_samples):
+        # process the sample
+        _process_csms_sample(csms_sample=sample)
 
-        # differences in naming convention
-        processed_sample_type_map: Dict[str, str] = {
-            "tissue_slide": "Fixed Slide",
-            "tumor_tissue_dna": "Tissue Scroll",
-            "plasma": "Plasma",
-            "normal_tissue_dna": "Tissue Scroll",
-            "h_and_e": "H&E-Stained Fixed Tissue Slide Specimen",
-            "pbmc": "PBMC",
-        }
-        if sample["processed_sample_type"] in processed_sample_type_map:
-            sample["processed_sample_type"] = processed_sample_type_map[
-                sample["processed_sample_type"]
-            ]
-
-        # differences in keys
-        if "fixation_or_stabilization_type" in sample:
-            sample["fixation_stabilization_type"] = sample.pop(
-                "fixation_or_stabilization_type"
-            )
-
-        # typing
-        if "sample_derivative_concentration" in sample:
-            sample["sample_derivative_concentration"] = float(
-                sample["sample_derivative_concentration"]
-            )
-
-        # "Not Reported" as default when required
-        if (
-            sample["type_of_sample"] == "Blood"
-            and "type_of_primary_container" not in sample
-        ):
-            sample["type_of_primary_container"] = "Not Reported"
-        if "parent_sample_id" not in sample:
-            sample["parent_sample_id"] = "Not Reported"
-
+        # get and validate the CIMAC id
         cimac_id = _get_and_check(
             obj=sample,
             key="cimac_id",
@@ -309,6 +318,7 @@ def _convert_samples(
                 f"Sample with cimac_id={cimac_id} already exists for trial {trial_id}\nNew samples: {sample}"
             )
 
+        # yield
         yield (cimac_id, sample)
 
 
@@ -349,7 +359,7 @@ def insert_manifest_into_blob(
     # schemas import here to keep JSON-blob code together
     from cidc_schemas.prism.merger import merge_clinical_trial_metadata
 
-    trial_id, manifest_id, samples = _extract_info_from_manifest(manifest)
+    trial_id, manifest_id, csms_samples = _extract_info_from_manifest(manifest)
     trial_md = TrialMetadata.select_for_update_by_trial_id(trial_id, session=session)
     if manifest_id in [s["manifest_id"] for s in trial_md.metadata_json["shipments"]]:
         raise Exception(
@@ -362,7 +372,7 @@ def insert_manifest_into_blob(
         for p in trial_md.metadata_json["participants"]
         for s in p["samples"]
     ]
-    assay_priority, assay_type = _extract_details_from_trial(samples)
+    assay_priority, assay_type = _extract_details_from_trial(csms_samples)
     if assay_priority:
         manifest["assay_priority"] = assay_priority
     if assay_type:
@@ -381,8 +391,8 @@ def insert_manifest_into_blob(
 
     # sort samples by participants
     sample_map: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
-    for cimac_id, sample in _convert_samples(
-        trial_id, manifest_id, samples, existing_cimac_ids
+    for cimac_id, sample in _convert_csms_samples(
+        trial_id, manifest_id, csms_samples, existing_cimac_ids
     ):
         sample_map[cimac_id_to_cimac_participant_id(cimac_id, {})].append(sample)
 
@@ -430,7 +440,7 @@ def insert_manifest_into_blob(
         _status=UploadJobStatus.MERGE_COMPLETED.value,
         multifile=False,
         metadata_patch=patch,
-        upload_type=_get_upload_type(samples),
+        upload_type=_get_upload_type(csms_samples),
         uploader_email=uploader_email,
     ).insert(commit=False, session=session)
 
@@ -599,10 +609,64 @@ def _get_csms_sample_map(
                 ],
             ),
         )
-        for csms_cimac_id, csms_sample in _convert_samples(
+        for csms_cimac_id, csms_sample in _convert_csms_samples(
             trial_id, manifest_id, csms_samples
         )
     }
+
+
+def _cross_validate_samples(
+    trial_id: str,
+    manifest_id: str,
+    cidc_sample_map: Dict[str, dict],
+    csms_sample_map: Dict[str, dict],
+    *,
+    session: Session,
+):
+    # make sure that all of the CIDC samples are still in CSMS
+    for cimac_id, cidc_sample in cidc_sample_map.items():
+        if cimac_id not in csms_sample_map:
+            formatted = (
+                trial_id,
+                manifest_id,
+                cidc_sample["cimac_id"],
+            )
+            raise Exception(
+                f"Missing sample: {formatted} on CSMS {(trial_id, manifest_id)}"
+            )
+    # make sure that all of the CSMS samples are in CIDC
+    all_cidc_sample_map: Dict[str, dict] = {
+        sample["cimac_id"]: {
+            **sample,
+            "trial_id": upload.trial_id,
+            "manifest_id": upload.metadata_patch["shipments"][0]["manifest_id"],
+        }
+        for upload in session.query(UploadJobs)
+        .filter(UploadJobs.status == UploadJobStatus.MERGE_COMPLETED.value)
+        .all()
+        for partic in upload.metadata_patch.get("participants", [])
+        for sample in partic.get("samples", [])
+        if len(upload.metadata_patch.get("shipments", []))
+    }
+    for cimac_id in csms_sample_map:
+        # as sample maps are pulling only from CIDC for this trial_id / manifest_id
+        # any missing cimac_id's are a change in critical field
+        # but the cimac_id might exist elsewhere in CIDC
+        if cimac_id not in cidc_sample_map:
+            cidc_sample = all_cidc_sample_map.get(cimac_id, None)
+
+            formatted = (
+                (
+                    cidc_sample["trial_id"],
+                    cidc_sample["manifest_id"],
+                    cidc_sample["cimac_id"],
+                )
+                if cidc_sample is not None
+                else f"<no sample found>"
+            )
+            raise Exception(
+                f"Change in critical field for: {formatted} to CSMS {(trial_id, manifest_id, cimac_id)}"
+            )
 
 
 def _initial_manifest_validation(
@@ -669,50 +733,14 @@ def _initial_manifest_validation(
     cidc_sample_map = _get_cidc_sample_map(cidc_shipment.metadata_patch)
     csms_sample_map = _get_csms_sample_map(trial_id, manifest_id, csms_samples)
 
-    # make sure that all of the CIDC samples are still in CSMS
-    for cimac_id, cidc_sample in cidc_sample_map.items():
-        if cimac_id not in csms_sample_map:
-            formatted = (
-                trial_id,
-                manifest_id,
-                cidc_sample["cimac_id"],
-            )
-            raise Exception(
-                f"Missing sample: {formatted} on CSMS {(trial_id, manifest_id)}"
-            )
-    # make sure that all of the CSMS samples are in CIDC
-    CIDC_SAMPLE_MAP: Dict[str, dict] = {
-        sample["cimac_id"]: {
-            **sample,
-            "trial_id": upload.trial_id,
-            "manifest_id": upload.metadata_patch["shipments"][0]["manifest_id"],
-        }
-        for upload in session.query(UploadJobs)
-        .filter(UploadJobs.status == UploadJobStatus.MERGE_COMPLETED.value)
-        .all()
-        for partic in upload.metadata_patch.get("participants", [])
-        for sample in partic.get("samples", [])
-        if len(upload.metadata_patch.get("shipments", []))
-    }
-    for cimac_id in csms_sample_map:
-        # as sample maps are pulling only from CIDC for this trial_id / manifest_id
-        # any missing cimac_id's are a change in critical field
-        # but the cimac_id might exist elsewhere in CIDC
-        if cimac_id not in cidc_sample_map:
-            cidc_sample = CIDC_SAMPLE_MAP.get(cimac_id, None)
-
-            formatted = (
-                (
-                    cidc_sample["trial_id"],
-                    cidc_sample["manifest_id"],
-                    cidc_sample["cimac_id"],
-                )
-                if cidc_sample is not None
-                else f"<no sample found>"
-            )
-            raise Exception(
-                f"Change in critical field for: {formatted} to CSMS {(trial_id, manifest_id, cimac_id)}"
-            )
+    # raises Exceptions if something is amiss
+    _cross_validate_samples(
+        trial_id=trial_id,
+        manifest_id=manifest_id,
+        cidc_sample_map=cidc_sample_map,
+        csms_sample_map=csms_sample_map,
+        session=session,
+    )
 
     csms_assay_priority, csms_assay_type = _extract_details_from_trial(csms_samples)
     if csms_assay_priority:

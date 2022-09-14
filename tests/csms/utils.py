@@ -11,7 +11,7 @@ from cidc_api.csms import auth
 from cidc_api.models.csms_api import (
     cimac_id_to_cimac_participant_id,
 )
-from cidc_api.models.csms_api import _convert_samples
+from cidc_api.models.csms_api import _convert_csms_samples
 
 from .data import manifests, samples
 
@@ -168,7 +168,7 @@ def validate_json_blob(trial_md: dict):
                 len(this_sample) == 1
             ), f"Sample not uniquely defined: {sample['cimac_id']}, found {len(this_sample)}"
             _, this_sample = next(
-                _convert_samples(
+                _convert_csms_samples(
                     trial_md["protocol_identifier"], "manifest_id", this_sample, []
                 )
             )
