@@ -22,7 +22,6 @@ setup(
         "cidc_api.models",
         "cidc_api.shared",
         "cidc_api.models.files",
-        "cidc_api.models.templates",
     ],
     url="https://github.com/CIMAC-CIDC/cidc_api-gae",
     long_description=long_description,

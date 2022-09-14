@@ -31,7 +31,18 @@ os.environ["TZ"] = "UTC"
 from datetime import datetime, timedelta
 from enum import Enum as EnumBaseClass
 from functools import wraps
-from typing import Any, BinaryIO, Dict, Optional, List, Union, Callable, Tuple
+from typing import (
+    Any,
+    BinaryIO,
+    Dict,
+    Optional,
+    List,
+    Set,
+    Type,
+    Union,
+    Callable,
+    Tuple,
+)
 
 import pandas as pd
 from flask import current_app as app
@@ -140,6 +151,26 @@ class CommonColumns(BaseModel):  # type: ignore
     _updated = Column(DateTime, default=func.now(), nullable=False)
     _etag = Column(String(40), nullable=False)
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Returns a dict of all non-null columns (by name) and their values"""
+        # avoid circular imports
+        _all_bases: Callable[[Type], Set[Type]] = lambda cls: set(cls.__bases__).union(
+            [s for c in cls.__bases__ for s in _all_bases(c)]
+        )
+
+        columns_to_check = [c for c in type(self).__table__.columns]
+        for b in _all_bases(type(self)):
+            if hasattr(b, "__table__"):
+                columns_to_check.extend(b.__table__.columns)
+
+        ret = {
+            c.name: getattr(self, c.name)
+            for c in columns_to_check
+            if hasattr(self, c.name)
+        }
+        ret = {k: v for k, v in ret.items() if v is not None}
+        return ret
 
     def compute_etag(self) -> str:
         """Calculate the etag for this instance"""

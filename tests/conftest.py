@@ -17,22 +17,6 @@ from cidc_api.models import (
     DownloadableFiles,
     TrialMetadata,
     Permissions,
-    Aliquot,
-    ClinicalTrial,
-    Cohort,
-    CollectionEvent,
-    Participant,
-    Sample,
-    Shipment,
-    HandeImage,
-    HandeRecord,
-    HandeUpload,
-    File,
-    Upload,
-    NGSUpload,
-    NGSAssayFiles,
-    WESUpload,
-    WESRecord,
 )
 
 # Install the Chrome web driver and add it to the PATH env variable
@@ -68,23 +52,6 @@ def clean_db(cidc_api):
         session = cidc_api.extensions["sqlalchemy"].db.session
         with session.no_autoflush:
             session.query(UploadJobs).delete()
-            session.query(NGSAssayFiles)  # before Files and NGSUpload
-            session.query(HandeRecord).delete()  # before HandeUpload and HandeImage
-            session.query(HandeImage).delete()  # before File
-            session.query(File).delete()
-            session.query(WESRecord).delete()  # before WESUpload
-            session.query(WESUpload).delete()  # before NGSUpload
-
-            session.query(NGSUpload).delete()  # after WESUpload and NGSAssayFiles
-            session.query(HandeUpload).delete()  # after NGSUpload, before Upload
-            session.query(Upload).delete()
-            session.query(Aliquot).delete()
-            session.query(Sample).delete()
-            session.query(Shipment).delete()
-            session.query(Participant).delete()
-            session.query(CollectionEvent).delete()
-            session.query(Cohort).delete()
-            session.query(ClinicalTrial).delete()
             session.query(Users).delete()
             session.query(DownloadableFiles).delete()
             session.query(TrialMetadata).delete()

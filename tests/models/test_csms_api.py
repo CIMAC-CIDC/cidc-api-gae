@@ -3,48 +3,21 @@ import os
 os.environ["TZ"] = "UTC"
 from copy import deepcopy
 from datetime import datetime
-from collections import OrderedDict
 import pytest
 
 from cidc_api.models import (
-    ClinicalTrial,
-    Cohort,
-    CollectionEvent,
-    insert_record_batch,
-    Sample,
-    Shipment,
     TrialMetadata,
 )
-from cidc_api.models.templates.csms_api import *
-from cidc_api.models.templates.file_metadata import Upload
-from cidc_api.models.templates.trial_metadata import Participant
+from cidc_api.models.csms_api import *
 
-from ...csms.data import manifests
-from ...csms.utils import validate_json_blob, validate_relational
+from ..csms.data import manifests
+from ..csms.utils import validate_json_blob
 
-from ...resources.test_trial_metadata import setup_user
+from ..resources.test_trial_metadata import setup_user
 
 
 def manifest_change_setup(cidc_api, monkeypatch):
     setup_user(cidc_api, monkeypatch)
-
-    # prepare relational db
-    ordered_records = OrderedDict()
-    ordered_records[ClinicalTrial] = [
-        ClinicalTrial(protocol_identifier="test_trial"),
-        ClinicalTrial(protocol_identifier="foo"),  # need a second valid trial
-    ]
-    ordered_records[CollectionEvent] = [
-        CollectionEvent(trial_id="test_trial", event_name="Baseline"),
-        CollectionEvent(trial_id="test_trial", event_name="Pre_Day_1_Cycle_2"),
-        CollectionEvent(trial_id="test_trial", event_name="On_Treatment"),
-    ]
-    ordered_records[Cohort] = [
-        Cohort(trial_id="test_trial", cohort_name="Arm_A"),
-        Cohort(trial_id="test_trial", cohort_name="Arm_Z"),
-    ]
-    errs = insert_record_batch(ordered_records)
-    assert len(errs) == 0
 
     # also checks for trial existence in JSON blobs
     metadata_json = {
@@ -70,13 +43,11 @@ def manifest_change_setup(cidc_api, monkeypatch):
             continue
 
         # insert manifest before we check for changes
-        insert_manifest_from_json(deepcopy(manifest), uploader_email="test@email.com")
         insert_manifest_into_blob(deepcopy(manifest), uploader_email="test@email.com")
         # should check out, but let's make sure
         validate_json_blob(
             TrialMetadata.select_for_update_by_trial_id("test_trial").metadata_json
         )
-        validate_relational("test_trial")
 
 
 def test_detect_changes_when_excluded(cidc_api, clean_db, monkeypatch):
@@ -85,8 +56,7 @@ def test_detect_changes_when_excluded(cidc_api, clean_db, monkeypatch):
         manifest = [m for m in manifests if m.get("excluded")][0]
 
         assert detect_manifest_changes(manifest, uploader_email="test@email.com") == (
-            {},
-            [],
+            []
         )
 
 
@@ -100,10 +70,9 @@ def test_change_protocol_identifier_error(cidc_api, clean_db, monkeypatch):
                 continue
 
             # Test critical changes throws Exception on samples
-            # Change trial_id or manifest_id is adding a new Shipment
-            ## but this means they'll conflict on the sample
             # a bad ID raises a no trial found like insert_manifest_...
             with pytest.raises(Exception, match="No trial found with id"):
+                # stored on samples, not manifest
                 new_manifest = deepcopy(manifest)
                 new_manifest["samples"] = [
                     {
@@ -113,9 +82,9 @@ def test_change_protocol_identifier_error(cidc_api, clean_db, monkeypatch):
                     for sample in new_manifest["samples"]
                 ]
                 detect_manifest_changes(new_manifest, uploader_email="test@email.com")
-            # this is why we needed a second valid trial to test this check
-            with pytest.raises(Exception, match="Change in critical field for"):
-                # CIDC trial_id = CSMS protocol_identifier
+
+            # a good ID raises a new manifst error
+            with pytest.raises(NewManifestError):
                 # stored on samples, not manifest
                 new_manifest = deepcopy(manifest)
                 new_manifest["samples"] = [
@@ -227,29 +196,9 @@ def test_manifest_non_critical_changes(cidc_api, clean_db, monkeypatch):
 
                 new_manifest = deepcopy(manifest)
                 new_manifest[key] = "foo"
-                records, changes = detect_manifest_changes(
+                changes = detect_manifest_changes(
                     new_manifest, uploader_email="test@email.com"
                 )
-                assert (
-                    len(records) == 1
-                    and Shipment in records
-                    and len(records[Shipment]) == 1
-                ), f"{key}: {records}\n{changes}"
-                assert getattr(records[Shipment][0], key) == "foo", (
-                    str(records) + "\n" + str(changes)
-                )
-                if key not in [
-                    "cimac_id",
-                    "cimac_participant_id",
-                    "cohort_name",
-                    "collection_event_name",
-                    "manifest_id",
-                    "json_data",
-                    "trial_id",
-                ]:
-                    assert records[Shipment][0].json_data[key] == "foo", (
-                        str(records) + "\n" + str(changes)
-                    )
 
                 assert len(changes) == 1 and changes[0] == Change(
                     entity_type="shipment",
@@ -257,9 +206,7 @@ def test_manifest_non_critical_changes(cidc_api, clean_db, monkeypatch):
                     trial_id=manifest["samples"][0]["protocol_identifier"],
                     changes={
                         key: (
-                            datetime.strptime(manifest[key], "%Y-%m-%d %H:%M:%S").date()
-                            if key.startswith("date")
-                            else manifest[key],
+                            manifest[key],
                             "foo",
                         )
                     },
@@ -301,38 +248,11 @@ def test_manifest_non_critical_changes_on_samples(cidc_api, clean_db, monkeypatc
                         for sample in new_manifest["samples"]
                     ]
 
-                records, changes = detect_manifest_changes(
+                changes = detect_manifest_changes(
                     new_manifest, uploader_email="test@email.com"
                 )
 
-                if key == "sample_manifest_type":
-                    assert (
-                        len(records) == 2
-                        and Sample in records
-                        and Upload in records
-                        and len(records[Upload]) == 1
-                    ), f"{key}: {records}\n{changes}"
-                else:
-                    assert (
-                        len(records) == 1
-                        and Shipment in records
-                        and len(records[Shipment]) == 1
-                    ), f"{key}: {records}\n{changes}"
-                    assert getattr(records[Shipment][0], key) == "foo", (
-                        str(records) + "\n" + str(changes)
-                    )
-                    if key not in [
-                        "cimac_id",
-                        "cimac_participant_id",
-                        "cohort_name",
-                        "collection_event_name",
-                        "manifest_id",
-                        "json_data",
-                        "trial_id",
-                    ]:
-                        assert records[Shipment][0].json_data[key] == "foo", (
-                            str(records) + "\n" + str(changes)
-                        )
+                if key != "sample_manifest_type":
                     assert len(changes) == 1 and changes[0] == Change(
                         entity_type="shipment",
                         manifest_id=manifest["manifest_id"],
@@ -408,7 +328,7 @@ def test_sample_non_critical_changes(cidc_api, clean_db, monkeypatch):
                         for n, sample in enumerate(new_manifest["samples"])
                     ]
 
-                records, changes = detect_manifest_changes(
+                changes = detect_manifest_changes(
                     new_manifest, uploader_email="test@email.com"
                 )
 
@@ -417,62 +337,6 @@ def test_sample_non_critical_changes(cidc_api, clean_db, monkeypatch):
                     key = "collection_event_name"
                 elif key == "fixation_or_stabilization_type":
                     key = "fixation_stabilization_type"
-
-                if key not in ["cohort_name", "participant_id"]:
-                    if not len(records) == 1:
-                        print(key)
-                        print(manifest)
-                        print(new_manifest)
-                    assert (
-                        len(records) == 1
-                        and Sample in records
-                        and len(records[Sample]) == 1
-                    ), f"{records}\n{changes}"
-                    assert (
-                        getattr(records[Sample][0], key)
-                        == new_manifest["samples"][0][key]
-                    ), f"{records}\n{changes}"
-
-                    if key not in [
-                        "cimac_id",
-                        "cimac_participant_id",
-                        "collection_event_name",
-                        "manifest_id",
-                        "json_data",
-                        "trial_id",
-                    ]:
-                        assert (
-                            key in records[Sample][0].json_data
-                            and records[Sample][0].json_data[key]
-                            == new_manifest["samples"][0][key]
-                        ), f"{records}\n{changes}"
-
-                elif key == "cohort_name":
-                    assert (
-                        len(records) == 1
-                        and Participant in records
-                        and len(records[Participant]) == 1
-                    ), f"{records}\n{changes}"
-                    assert (
-                        getattr(records[Participant][0], key)
-                        == new_manifest["samples"][0][key]
-                    ), f"{records}\n{changes}"
-
-                else:  # key == "participant_id":
-                    assert (
-                        len(records) == 1
-                        and Participant in records
-                        and len(records[Participant]) == 1
-                    ), f"{records}\n{changes}"
-                    assert (
-                        getattr(records[Participant][0], "trial_participant_id")
-                        == new_manifest["samples"][0][key]
-                    ), f"{records}\n{changes}"
-                    assert (
-                        "trial_participant_id" in records[Participant][0]
-                        and records[Participant][0]["trial_participant_id"]
-                        == new_manifest["samples"][0][key]
-                    ), f"{records}\n{changes}"
 
                 assert len(changes) == 1 and changes[0] == Change(
                     entity_type="sample",
@@ -515,12 +379,6 @@ def test_insert_manifest_into_blob(cidc_api, clean_db, monkeypatch):
         # blank db throws error
         with pytest.raises(Exception, match="No trial found with id"):
             insert_manifest_into_blob(manifest, uploader_email="test@email.com")
-
-        # also checks for trial existence in relational
-        errs = insert_record_batch(
-            {ClinicalTrial: [ClinicalTrial(protocol_identifier="test_trial")]}
-        )
-        assert len(errs) == 0
 
         metadata_json = {
             "protocol_identifier": "test_trial",
@@ -578,96 +436,3 @@ def test_insert_manifest_into_blob(cidc_api, clean_db, monkeypatch):
 
         with pytest.raises(Exception, match="already exists for trial"):
             insert_manifest_into_blob(manifest, uploader_email="test@email.com")
-
-
-def test_insert_manifest_from_json(cidc_api, clean_db, monkeypatch):
-    """test that insertion of manifest from json works as expected"""
-    # grab a completed manifest
-    manifest = [
-        m
-        for m in manifests
-        if m.get("status") in [None, "qc_complete"] and not m.get("excluded")
-    ][0]
-
-    with cidc_api.app_context():
-        setup_user(cidc_api, monkeypatch)
-
-        # blank db throws error
-        with pytest.raises(Exception, match="No trial found with id"):
-            insert_manifest_from_json(
-                deepcopy(manifest), uploader_email="test@email.com"
-            )
-
-        errs = insert_record_batch(
-            {ClinicalTrial: [ClinicalTrial(protocol_identifier="test_trial")]}
-        )
-        assert len(errs) == 0
-
-        # also checks for trial existence in JSON blobs
-        metadata_json = {
-            "protocol_identifier": "test_trial",
-            "participants": [],
-            "shipments": [],
-            "allowed_cohort_names": [],
-            "allowed_collection_event_names": [],
-        }
-        TrialMetadata(trial_id="test_trial", metadata_json=metadata_json).insert()
-
-        with pytest.raises(
-            Exception, match="No Collection event with trial_id, event_name"
-        ):
-            insert_manifest_from_json(
-                deepcopy(manifest), uploader_email="test@email.com"
-            )
-
-        errs = insert_record_batch(
-            {
-                CollectionEvent: [
-                    CollectionEvent(trial_id="test_trial", event_name="Baseline"),
-                    CollectionEvent(
-                        trial_id="test_trial", event_name="Pre_Day_1_Cycle_2"
-                    ),
-                    CollectionEvent(trial_id="test_trial", event_name="On_Treatment"),
-                ]
-            }
-        )
-        assert len(errs) == 0, errs
-
-        with pytest.raises(Exception, match="no Cohort with trial_id, cohort_name"):
-            insert_manifest_from_json(
-                deepcopy(manifest), uploader_email="test@email.com"
-            )
-
-        errs = insert_record_batch(
-            {
-                Cohort: [
-                    Cohort(trial_id="test_trial", cohort_name="Arm_A"),
-                    Cohort(trial_id="test_trial", cohort_name="Arm_Z"),
-                ]
-            }
-        )
-        assert len(errs) == 0
-
-        target = deepcopy(manifest)
-        with pytest.raises(NewManifestError):
-            detect_manifest_changes(target, uploader_email="test@email.com")
-
-        insert_manifest_from_json(target, uploader_email="test@email.com")
-        validate_relational("test_trial")
-
-        for other_manifest in [
-            m
-            for m in manifests
-            if m.get("status") in (None, "qc_complete")
-            and m != manifest
-            and not m.get("excluded")
-        ]:
-            insert_manifest_from_json(
-                deepcopy(other_manifest), uploader_email="test@email.com"
-            )
-            validate_relational("test_trial")
-
-        with pytest.raises(Exception, match="already exists for trial"):
-            insert_manifest_from_json(
-                deepcopy(manifest), uploader_email="test@email.com"
-            )
