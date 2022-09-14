@@ -9,7 +9,7 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
-## Version `0.27.0` - xx Sep 2022
+## Version `0.27.0` - 15 Sep 2022
 
 - `removed` relational db code
 
