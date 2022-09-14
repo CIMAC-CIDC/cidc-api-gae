@@ -133,10 +133,11 @@ def test_templates(cidc_api):
 
     # Generate and get a valid assay
     olink_path = os.path.join(
-        cidc_api.config["TEMPLATES_DIR"], "metadata", "olink_template.xlsx"
+        cidc_api.config["TEMPLATES_DIR"], "assays", "olink_template.xlsx"
     )
+
     assert not os.path.exists(olink_path)
-    res = client.get(f"{INFO_ENDPOINT}/templates/metadata/olink")
+    res = client.get(f"{INFO_ENDPOINT}/templates/assays/olink")
     assert res.status_code == 200
     with open(olink_path, "rb") as f:
         assert res.data == f.read()

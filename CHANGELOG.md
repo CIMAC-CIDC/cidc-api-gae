@@ -13,6 +13,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 
 - `removed` relational db code
 
+## Version `0.26.31` - 14 Sep 2022
+
+- `changed` schemas bump and migration for docs update / DM clean-up
+
 ## Version `0.26.30` - 31 Aug 2022
 
 - `fixed` bug in credentials handling
