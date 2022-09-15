@@ -6,9 +6,6 @@ to data resources, like endpoints that handle upload-related functionality.
 import os
 
 os.environ["TZ"] = "UTC"
-from cidc_api.models.templates.trial_metadata import ClinicalTrial
-from collections import OrderedDict
-from cidc_api.models.templates.utils import insert_record_batch
 from copy import deepcopy
 from unittest.mock import MagicMock
 from datetime import datetime
@@ -190,11 +187,6 @@ def setup_db_records(cidc_api):
         DownloadableFiles(**downloadable_files["json"], **extra).insert()
         Permissions(**permissions["json"], **extra).insert()
         UploadJobs(**upload_jobs["json"], **extra).insert()
-
-        records = OrderedDict()
-        records[ClinicalTrial] = [ClinicalTrial(protocol_identifier="foo")]
-        errs = insert_record_batch(records)
-        assert len(errs) == 0, "\n".join(str(e) for e in errs)
 
 
 def assert_dict_contains(base, target):
@@ -426,7 +418,6 @@ def test_endpoint_urls(cidc_api):
     expected_endpoints = {
         "/",
         "/admin/test_csms",
-        "/admin/load_from_blobs",
         "/downloadable_files/",
         "/downloadable_files/filelist",
         "/downloadable_files/compressed_batch",

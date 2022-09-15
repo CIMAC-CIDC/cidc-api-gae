@@ -9,7 +9,11 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
-## Version `0.26.31` - xx Sep 2022
+## Version `0.27.0` - 15 Sep 2022
+
+- `removed` relational db code
+
+## Version `0.26.31` - 14 Sep 2022
 
 - `changed` schemas bump and migration for docs update / DM clean-up
 
