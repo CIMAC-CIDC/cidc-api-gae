@@ -9,9 +9,14 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.1` - 16 Sep 2022
+
+- `added` encryption for participant IDs via CSMS API
+
 ## Version `0.27.0` - 15 Sep 2022
 
 - `removed` relational db code
+- `changed` CSMS API to rely solely on JSON and schemas
 
 ## Version `0.26.31` - 14 Sep 2022
 

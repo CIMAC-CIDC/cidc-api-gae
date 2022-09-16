@@ -2,18 +2,31 @@ import os
 
 os.environ["TZ"] = "UTC"
 from copy import deepcopy
-from datetime import datetime
 import pytest
 
 from cidc_api.models import (
     TrialMetadata,
 )
 from cidc_api.models.csms_api import *
+from cidc_api.config.settings import PRISM_ENCRYPT_KEY
+
+from cidc_schemas.prism.core import (
+    _check_encrypt_init,
+    _encrypt,
+    set_prism_encrypt_key,
+)
 
 from ..csms.data import manifests
 from ..csms.utils import validate_json_blob
 
 from ..resources.test_trial_metadata import setup_user
+
+
+# make sure that the encryption key is set
+try:
+    _check_encrypt_init()
+except:
+    set_prism_encrypt_key(PRISM_ENCRYPT_KEY)
 
 
 def manifest_change_setup(cidc_api, monkeypatch):
@@ -22,7 +35,15 @@ def manifest_change_setup(cidc_api, monkeypatch):
     # also checks for trial existence in JSON blobs
     metadata_json = {
         "protocol_identifier": "test_trial",
-        "participants": [],
+        "participants": [
+            # existing participant with encrypted participant_id
+            # to make sure that the CSMS API is encrypting new IDs as expected
+            {
+                "cimac_participant_id": "CTTTP04",
+                "participant_id": _encrypt("LOCAL 04"),
+                "samples": [],
+            },
+        ],
         "shipments": [],
         "allowed_cohort_names": ["Arm_A", "Arm_Z"],
         "allowed_collection_event_names": [
