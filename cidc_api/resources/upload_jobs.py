@@ -45,7 +45,11 @@ from ..config.logging import get_logger
 
 logger = get_logger(__name__)
 
-prism.set_prism_encrypt_key(PRISM_ENCRYPT_KEY)
+# make sure that the encryption key is set
+try:
+    prism.core._check_encrypt_init()
+except:
+    prism.set_prism_encrypt_key(PRISM_ENCRYPT_KEY)
 
 # TODO: consolidate ingestion blueprint into upload_jobs blueprint
 ingestion_bp = Blueprint("ingestion", __name__)

@@ -25,10 +25,17 @@ from typing import (
     Union,
 )
 
-from cidc_schemas.prism.core import load_and_validate_schema
+from cidc_schemas.prism.core import (
+    _check_encrypt_init,
+    _encrypt,
+    _ENCRYPTED_FIELD_LEN,
+    load_and_validate_schema,
+    set_prism_encrypt_key,
+)
 from .models import TrialMetadata, UploadJobStatus, UploadJobs
 from .models import with_default_session
 from ..config.logging import get_logger
+from ..config.settings import PRISM_ENCRYPT_KEY
 
 logger = get_logger(__name__)
 
@@ -45,6 +52,12 @@ TARGET_PROPERTIES_MAP: Dict[str, dict] = {
     "participant": PARTICIPANT_SCHEMA["properties"],
     "shipment": SHIPMENT_SCHEMA["properties"],
 }
+
+# make sure that the encryption key is set
+try:
+    _check_encrypt_init()
+except:
+    set_prism_encrypt_key(PRISM_ENCRYPT_KEY)
 
 
 def _get_all_values(target: str, old: dict, drop: List[str] = []) -> Dict[str, Any]:
@@ -238,6 +251,13 @@ def _process_csms_sample(csms_sample: dict):
         )
     else:
         csms_sample["collection_event_name"] = event_name
+
+    # encrypt participant ids if not already encrypted
+    if (
+        "participant_id" in csms_sample
+        and len(csms_sample["participant_id"]) != _ENCRYPTED_FIELD_LEN
+    ):
+        csms_sample["participant_id"] = _encrypt(csms_sample["participant_id"])
 
     # differences in naming convention
     processed_sample_type_map: Dict[str, str] = {
