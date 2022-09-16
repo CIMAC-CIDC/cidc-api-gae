@@ -257,9 +257,7 @@ def _process_csms_sample(csms_sample: dict):
         "participant_id" in csms_sample
         and len(csms_sample["participant_id"]) != _ENCRYPTED_FIELD_LEN
     ):
-        old: str = csms_sample["participant_id"]
         csms_sample["participant_id"] = _encrypt(csms_sample["participant_id"])
-        print(old, csms_sample["participant_id"])
 
     # differences in naming convention
     processed_sample_type_map: Dict[str, str] = {

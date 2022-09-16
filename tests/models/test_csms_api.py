@@ -41,6 +41,7 @@ def manifest_change_setup(cidc_api, monkeypatch):
             {
                 "cimac_participant_id": "CTTTP04",
                 "participant_id": _encrypt("LOCAL 04"),
+                "cohort_name": "Arm_A",
                 "samples": [],
             },
         ],
