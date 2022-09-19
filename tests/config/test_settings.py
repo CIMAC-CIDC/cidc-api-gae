@@ -23,11 +23,8 @@ def test_google_app_credentials(monkeypatch):
     )
 
     # Simulate application-startup conditions
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = ""
     os.environ["TESTING"] = "False"
 
     importlib.reload(settings)
-
-    assert os.environ["GOOGLE_APPLICATION_CREDENTIALS"].endswith(".json")
 
     os.environ["TESTING"] = "True"

@@ -1,9 +1,6 @@
 import os
 
 os.environ["TZ"] = "UTC"
-from cidc_api.models.templates.trial_metadata import Cohort, CollectionEvent
-from cidc_api.models.templates.utils import insert_record_batch
-from collections import OrderedDict
 from datetime import datetime
 from typing import Tuple
 from unittest.mock import MagicMock
@@ -11,7 +8,6 @@ from unittest.mock import MagicMock
 from cidc_api.resources.trial_metadata import trial_modifier_roles
 from cidc_api.models import (
     CIDCRole,
-    ClinicalTrial,
     DownloadableFiles,
     ROLES,
     Permissions,
@@ -23,7 +19,7 @@ from cidc_api.models import (
 from ..utils import mock_current_user, make_role, mock_gcloud_client
 
 from ..csms.data import manifests
-from ..csms.utils import validate_json_blob, validate_relational
+from ..csms.utils import validate_json_blob
 
 
 def setup_user(cidc_api, monkeypatch) -> int:
@@ -72,12 +68,6 @@ def setup_trial_metadata(cidc_api, user_id=None) -> Tuple[int, int]:
         }
         trial = TrialMetadata(trial_id=trial_id, metadata_json=metadata_json)
         trial.insert()
-
-        records = OrderedDict()
-        records[ClinicalTrial] = [ClinicalTrial(protocol_identifier=trial_id)]
-        records[CollectionEvent] = [CollectionEvent(event_name="event")]
-        errs = insert_record_batch(records)
-        assert len(errs) == 0, "\n".join(str(e) for e in errs)
 
         if grant_perm and user_id:
             Permissions(
@@ -320,10 +310,8 @@ def test_create_trial(cidc_api, clean_db, monkeypatch):
 
         # Clear created trial
         with cidc_api.app_context():
-            db_trial = ClinicalTrial.get_by_id(trial_id)
-            assert db_trial is not None
-
             trial = TrialMetadata.find_by_trial_id(trial_id)
+            assert trial is not None
             trial.delete()
 
 
@@ -403,17 +391,11 @@ def test_update_trial(cidc_api, clean_db, monkeypatch):
         with cidc_api.app_context():
             trial = TrialMetadata.find_by_id(trial.id)
 
-            db_trial = (
-                clean_db.query(ClinicalTrial)
-                .filter(ClinicalTrial.protocol_identifier == trial.trial_id)
-                .first()
-            )
-
-            assert db_trial is not None
-            assert set(db_trial.allowed_cohort_names) == set(
+            assert trial is not None
+            assert set(trial.metadata_json["allowed_cohort_names"]) == set(
                 new_metadata_json["allowed_cohort_names"]
             )
-            assert set(db_trial.allowed_collection_event_names) == set(
+            assert set(trial.metadata_json["allowed_collection_event_names"]) == set(
                 new_metadata_json["allowed_collection_event_names"]
             )
 
@@ -435,12 +417,11 @@ def test_update_trial(cidc_api, clean_db, monkeypatch):
         with cidc_api.app_context():
             trial = TrialMetadata.find_by_id(trial.id)
 
-            db_trial = ClinicalTrial.get_by_id(trial.trial_id)
-            assert db_trial is not None
-            assert set(db_trial.allowed_cohort_names) == set(
+            assert trial is not None
+            assert set(trial.metadata_json["allowed_cohort_names"]) == set(
                 new_metadata_json["allowed_cohort_names"]
             )
-            assert set(db_trial.allowed_collection_event_names) == set(
+            assert set(trial.metadata_json["allowed_collection_event_names"]) == set(
                 new_metadata_json["allowed_collection_event_names"]
             )
 
@@ -479,21 +460,8 @@ def test_add_new_manifest_from_json(cidc_api, clean_db, monkeypatch):
         "allowed_collection_event_names": ["Baseline", "Pre_Day_1_Cycle_2"],
     }
 
-    ordered_records = OrderedDict()
-    ordered_records[ClinicalTrial] = [ClinicalTrial(protocol_identifier="test_trial")]
-    ordered_records[CollectionEvent] = [
-        CollectionEvent(trial_id="test_trial", event_name="Baseline"),
-        CollectionEvent(trial_id="test_trial", event_name="Pre_Day_1_Cycle_2"),
-        CollectionEvent(trial_id="test_trial", event_name="On_Treatment"),
-    ]
-    ordered_records[Cohort] = [
-        Cohort(trial_id="test_trial", cohort_name="Arm_A"),
-        Cohort(trial_id="test_trial", cohort_name="Arm_Z"),
-    ]
     with cidc_api.app_context():
         TrialMetadata(trial_id="test_trial", metadata_json=metadata_json).insert()
-        errs = insert_record_batch(ordered_records)
-        assert len(errs) == 0
 
         client = cidc_api.test_client()
         for manifest in manifests:
@@ -509,7 +477,6 @@ def test_add_new_manifest_from_json(cidc_api, clean_db, monkeypatch):
                 "test_trial"
             ).metadata_json
             validate_json_blob(md_json)
-            validate_relational("test_trial")
 
         # reusing one returns an error
         manifest = [

@@ -45,7 +45,11 @@ from ..config.logging import get_logger
 
 logger = get_logger(__name__)
 
-prism.set_prism_encrypt_key(PRISM_ENCRYPT_KEY)
+# make sure that the encryption key is set
+try:
+    prism.core._check_encrypt_init()
+except:
+    prism.set_prism_encrypt_key(PRISM_ENCRYPT_KEY)
 
 # TODO: consolidate ingestion blueprint into upload_jobs blueprint
 ingestion_bp = Blueprint("ingestion", __name__)
@@ -491,19 +495,6 @@ def upload_manifest(
     # Publish that a manifest upload has been received
     gcloud_client.publish_patient_sample_update(manifest_upload.id)
 
-    # Relational db hook
-    from ..models.templates import TEMPLATE_MAP
-
-    template = TEMPLATE_MAP.get(template_type)
-    if template:
-        errs = template.read_and_insert(xlsx_file)
-        if errs:
-            logger.error(f"Relational errors: {errs}")
-        else:
-            logger.info("Relational success.")
-    else:
-        logger.error(f"Relational error: no template for type {template_type}")
-
     return jsonify({"metadata_json_patch": md_patch})
 
 
@@ -593,19 +584,6 @@ def upload_data_files(
     # Grant the user upload access to the upload bucket
     gcloud_client.grant_upload_access(user.email)
 
-    # Relational db hook
-    from ..models.templates import TEMPLATE_MAP
-
-    template = TEMPLATE_MAP.get(template_type)
-    if template:
-        errs = template.read_and_insert(xlsx_file)
-        if errs:
-            logger.error(f"Relational errors: {errs}")
-        else:
-            logger.info("Relational success.")
-    else:
-        logger.error(f"Relational error: no template for type {template_type}")
-
     response = {
         "job_id": job.id,
         "job_etag": job._etag,
@@ -694,8 +672,6 @@ def extra_assay_metadata():
 
     # Uncaught i.e. internal errors
     # TypeError thrown by parser itself if file is not the right type
-
-    # TODO: Relational hook for merge_extra_metadata
 
     # TODO: return something here?
     return jsonify({})

@@ -5,7 +5,6 @@ Any 'UPPER_CASE' variables will be exported as a key-value pair
 in the `SETTINGS` dictionary defined at the bottom of this file.
 """
 
-import tempfile
 import shutil
 from os import environ, path, mkdir
 
@@ -40,24 +39,9 @@ TEMPLATES_DIR = path.join("/tmp", "templates")
 if path.exists(TEMPLATES_DIR):
     shutil.rmtree(TEMPLATES_DIR)
 mkdir(TEMPLATES_DIR)
-for family in ["manifests", "metadata", "analyses"]:
+for family in ["assays", "manifests", "analyses"]:
     family_dir = path.join(TEMPLATES_DIR, family)
     mkdir(family_dir)
-
-# Download the credentials file to a temporary file,
-# then set the GOOGLE_APPLICATION_CREDENTIALS env variable
-# to its path.
-#
-# NOTE: doing this shouldn't be necessary from within App Engine,
-# but for some reason, google.cloud.storage.Blob.generate_signed_url
-# fails with a credentials-related error unless this is explicitly
-# set.
-if not environ.get("GOOGLE_APPLICATION_CREDENTIALS") and not TESTING:
-    secret_manager = get_secrets_manager()
-    _, creds_file_name = tempfile.mkstemp(".json")
-    with open(creds_file_name, "w") as creds_file:
-        creds_file.write(secret_manager.get("APP_ENGINE_CREDENTIALS"))
-    environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_file_name
 
 ### Configure prism encrypt ###
 if not TESTING:

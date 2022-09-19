@@ -9,6 +9,29 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.1` - 16 Sep 2022
+
+- `added` encryption for participant IDs via CSMS API
+
+## Version `0.27.0` - 15 Sep 2022
+
+- `removed` relational db code
+- `changed` CSMS API to rely solely on JSON and schemas
+
+## Version `0.26.31` - 14 Sep 2022
+
+- `changed` schemas bump and migration for docs update / DM clean-up
+
+## Version `0.26.30` - 31 Aug 2022
+
+- `fixed` bug in credentials handling
+
+## Version `0.26.29` - 31 Aug 2022
+
+- `changed` credentials handling for generating signed urls
+- `changed` default app run to debug False
+- `added` user input sanitization when getting a specific template
+
 ## Version `0.26.28` - 17 Aug 2022
 
 - `changed` bump schemas for microbiome metadata template changes and new shipping lab

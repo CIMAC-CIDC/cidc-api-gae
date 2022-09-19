@@ -1,8 +1,6 @@
 import os
 
 os.environ["TZ"] = "UTC"
-from cidc_api.models.templates.file_metadata import Upload
-from flask.globals import session
 from sqlalchemy.orm.session import Session
 from cidc_api.models.models import UploadJobs, with_default_session
 from typing import Any, Dict
@@ -10,13 +8,10 @@ from datetime import date, datetime
 from unittest.mock import MagicMock
 
 from cidc_api.csms import auth
-from cidc_api.models.templates import (
+from cidc_api.models.csms_api import (
     cimac_id_to_cimac_participant_id,
-    Participant,
-    Sample,
-    Shipment,
 )
-from cidc_api.models.templates.csms_api import _convert_samples
+from cidc_api.models.csms_api import _convert_csms_samples
 
 from .data import manifests, samples
 
@@ -106,137 +101,6 @@ def manifests_history(manifest_id: str) -> Dict[str, Any]:
     return ret
 
 
-@with_default_session
-def validate_relational(trial_id: str, *, session: Session):
-    """
-    Given a trial_id, validate that the data in the relational db tables match the test data provided by tests/csms/data.py
-    Checks Shipment, Participant, and Sample
-    """
-    global manifests, samples
-
-    shipments = session.query(Shipment).filter(Shipment.trial_id == trial_id).all()
-    for inst in shipments:
-        manifest = [
-            m
-            for m in manifests
-            if m.get("manifest_id") == inst.manifest_id
-            and m.get("status") in (None, "qc_complete")
-            and not m.get("excluded", True)
-        ]
-        assert (
-            len(manifest) == 1
-        ), f"Given manifest ID is not unique; for {inst.manifest_id} found {len(manifest)}"
-        manifest = manifest[0]
-
-        inst_samples = [
-            s
-            for s in samples
-            if s.get("manifest_id") == manifest["manifest_id"]
-            and s.get("status") in ["qc_complete", None]
-        ]
-
-        if any("assay_priority" in s for s in inst_samples):
-            assert (
-                len({s["assay_priority"] for s in inst_samples}) == 1
-            ), f"assay_priority not uniquely defined for manifest {inst.manifest_id}"
-            assert inst.assay_priority == inst_samples[0]["assay_priority"]
-        if any("assay_type" in s for s in inst_samples):
-            assert (
-                len({s["assay_type"] for s in inst_samples}) == 1
-            ), f"assay_type not uniquely defined for manifest {inst.manifest_id}"
-            assert inst.assay_type == inst_samples[0]["assay_type"]
-
-        for k, v in manifest.items():
-            if k in ["date_received", "date_shipped"]:
-                v = _convert_to_date(v).date()
-
-            if hasattr(inst, k) and k not in ["samples"]:
-                assert getattr(inst, k) == v, f"{k}: {getattr(inst, k)} != {v}"
-                if k in inst.json_data:
-                    if k in ["date_received", "date_shipped"]:
-                        v = v.strftime("%Y-%m-%d %H:%M:%S")
-                    assert inst.json_data[k] == v, f"{k}: {inst.json_data[k]} != {v}"
-
-    participants = session.query(Participant).filter(Participant.trial_id == trial_id)
-    for inst in participants:
-        inst_samples = [
-            s
-            for s in samples
-            if cimac_id_to_cimac_participant_id(s.get("cimac_id"), None)
-            == inst.cimac_participant_id
-            and s.get("status") in ["qc_complete", None]
-        ]
-
-        for s in inst_samples:
-            if "participant_id" in s:
-                s["trial_participant_id"] = s.pop("participant_id")
-
-            assert (
-                inst.trial_participant_id == s["trial_participant_id"]
-            ), f"participant_id not uniquely defined for participant {inst.cimac_participant_id}"
-            assert (
-                inst.json_data["trial_participant_id"] == s["trial_participant_id"]
-            ), f"participant_id not uniquely defined for participant {inst.cimac_participant_id}"
-
-        if any("cohort_name" in s for s in inst_samples):
-            assert (
-                len({s["cohort_name"] for s in inst_samples}) == 1
-            ), f"cohort_name not uniquely defined for participant {inst.cimac_participant_id}"
-            assert inst.cohort_name == inst_samples[0]["cohort_name"]
-
-    local_samples = session.query(Sample).filter(Sample.trial_id == trial_id)
-    for inst in local_samples:
-        inst_samples = [s for s in samples if s.get("cimac_id") == inst.cimac_id]
-        assert (
-            len(inst_samples) == 1
-        ), f"Sample not uniquely defined: {inst.primary_key_map()}\n{inst_samples}"
-        sample = inst_samples[0]
-
-        if "standardized_collection_event_name" in sample:
-            assert (
-                inst.collection_event_name
-                == sample["standardized_collection_event_name"]
-            ), f"{inst.collection_event_name} != {sample['standardized_collection_event_name']}"
-        else:
-            assert inst.collection_event_name == sample["collection_event_name"]
-
-        assert inst.cimac_participant_id == cimac_id_to_cimac_participant_id(
-            sample["cimac_id"], None
-        ), f"{inst.cimac_id} {inst.cimac_participant_id} != {sample['cimac_id']} {cimac_id_to_cimac_participant_id(sample['cimac_id'], None)}"
-
-        for k, v in sample.items():
-            if k in ["collection_event_name", "standardized_collection_event_name"]:
-                # already checked above
-                continue
-
-            if k == "participant_id":
-                k = "trial_participant_id"
-
-            if hasattr(inst, k):
-
-                if k == "processed_sample_type":
-                    processed_sample_type_map: Dict[str, str] = {
-                        "tissue_slide": "Fixed Slide",
-                        "tumor_tissue_dna": "Tissue Scroll",
-                        "plasma": "Plasma",
-                        "normal_tissue_dna": "Tissue Scroll",
-                        "h_and_e": "H&E-Stained Fixed Tissue Slide Specimen",
-                    }
-                    assert getattr(inst, k) == processed_sample_type_map.get(
-                        v, v
-                    ), f"{k}: {getattr(inst, k)} != {v}"
-                else:
-                    assert (
-                        type(v)(getattr(inst, k)) == v
-                    ), f"{k}: {getattr(inst, k)} != {v}: {type(v)}"
-                    if k in inst.json_data:
-                        assert (
-                            type(v)(inst.json_data[k]) == v
-                        ), f"{k}: {inst.json_data[k]} != {v}: {type(v)}"
-
-    assert session.query(Upload).filter(Upload.trial_id == trial_id).count() != 0
-
-
 def validate_json_blob(trial_md: dict):
     """
     Given a trial metadata blob, validate that the data matches the test data provided by tests/csms/data.py
@@ -304,7 +168,7 @@ def validate_json_blob(trial_md: dict):
                 len(this_sample) == 1
             ), f"Sample not uniquely defined: {sample['cimac_id']}, found {len(this_sample)}"
             _, this_sample = next(
-                _convert_samples(
+                _convert_csms_samples(
                     trial_md["protocol_identifier"], "manifest_id", this_sample, []
                 )
             )

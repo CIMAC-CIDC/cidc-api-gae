@@ -5,21 +5,12 @@ from werkzeug.exceptions import BadRequest
 from ..shared.auth import get_current_user, requires_auth
 from ..models import (
     CIDCRole,
-    ClinicalTrial,
-    insert_record_batch,
     IntegrityError,
     TrialMetadata,
     TrialMetadataSchema,
     TrialMetadataListSchema,
 )
-from ..models.templates.csms_api import (
-    insert_manifest_from_json,
-    insert_manifest_into_blob,
-)
-from ..models.templates.sync_schemas import (
-    update_trial_from_metadata_json,
-    _get_all_values,
-)
+from ..models.csms_api import insert_manifest_into_blob
 from ..shared.rest_utils import (
     with_lookup,
     marshal_response,
@@ -75,23 +66,6 @@ def create_trial_metadata(trial):
     except IntegrityError as e:
         raise BadRequest(str(e.orig))
 
-    # relational hook validates by insert
-    errs = insert_record_batch(
-        {
-            ClinicalTrial: [
-                ClinicalTrial(
-                    # borrowing from sync_schemas since we're already unmarshalling
-                    # better handled by a UI change to {key: value}, then old=**request.json
-                    **_get_all_values(target=ClinicalTrial, old=trial.metadata_json)
-                )
-            ]
-        }
-    )
-    if errs:
-        raise BadRequest(
-            f"Errors in relational add: {len(errs)}\n" + "\n".join(str(e) for e in errs)
-        )
-
     return trial
 
 
@@ -132,12 +106,6 @@ def update_trial_metadata_by_trial_id(trial, trial_updates):
 
     trial.update(changes=trial_updates)
 
-    errs = update_trial_from_metadata_json(trial.metadata_json)
-    if errs:
-        raise BadRequest(
-            f"Errors in relational add: {len(errs)}\n" + "\n".join(str(e) for e in errs)
-        )
-
     return trial
 
 
@@ -145,9 +113,6 @@ def update_trial_metadata_by_trial_id(trial, trial_updates):
 @requires_auth("new_manifest", [CIDCRole.ADMIN.value])
 def add_new_manifest_from_json():
     try:
-        # relational hook
-        insert_manifest_from_json(request.json, uploader_email=get_current_user().email)
-
         # schemas JSON blob hook
         insert_manifest_into_blob(request.json, uploader_email=get_current_user().email)
 
