@@ -158,6 +158,12 @@ def validate_json_blob(trial_md: dict):
             assert (
                 len({s["cohort_name"] for s in inst_samples}) == 1
             ), f"cohort_name not uniquely defined for participant {partic['cimac_participant_id']}"
+            if "cohort_name" not in partic:
+                print("partic", partic)
+                print("inst_samples", inst_samples)
+            if "cohort_name" not in inst_samples[0]:
+                print("inst_sample", inst_samples[0])
+                print("the partic", partic)
             assert partic["cohort_name"] == inst_samples[0]["cohort_name"]
 
         for sample in partic["samples"]:

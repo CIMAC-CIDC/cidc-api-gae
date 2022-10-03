@@ -330,6 +330,7 @@ class CIDCRole(EnumBaseClass):
     DEVOPS = "devops"
     NCI_BIOBANK_USER = "nci-biobank-user"
     NETWORK_VIEWER = "network-viewer"
+    PACT_USER = "pact-user"
 
 
 ROLES = [role.value for role in CIDCRole]
@@ -364,6 +365,13 @@ class Users(CommonColumns):
     def is_nci_user(self) -> bool:
         """Returns true if this user is an NCI Biobank user."""
         return self.role == CIDCRole.NCI_BIOBANK_USER.value
+
+    def has_download_permissions(self) -> bool:
+        """Returns false if this user is a Network Viewer or PACT User."""
+        return self.role not in (
+            CIDCRole.NETWORK_VIEWER.value,
+            CIDCRole.PACT_USER.value,
+        )
 
     @with_default_session
     def update_accessed(self, session: Session, commit: bool = True):
@@ -597,8 +605,6 @@ class Permissions(CommonColumns):
                 orig=f"`granted_by_user` user must exist, but no user found with id {self.granted_by_user}",
             )
 
-        is_network_viewer = grantee.role == CIDCRole.NETWORK_VIEWER.value
-
         logger.info(
             f"admin-action: {grantor.email} gave {grantee.email} the permission {self.upload_type or 'all assays'} on {self.trial_id or 'all trials'}"
         )
@@ -639,7 +645,7 @@ class Permissions(CommonColumns):
         super().insert(session=session, commit=True)
 
         # Don't make any GCS changes if this user doesn't have download access
-        if is_network_viewer:
+        if not grantee.has_download_permissions():
             return
 
         try:
@@ -682,7 +688,7 @@ class Permissions(CommonColumns):
             raise NoResultFound(f"no user with id {deleted_by}")
 
         # Only make GCS ACL changes if this user has download access
-        if grantee.role != CIDCRole.NETWORK_VIEWER.value:
+        if grantee.has_download_permissions():
             try:
                 # Revoke ACL permission in GCS
                 revoke_download_access(grantee.email, self.trial_id, self.upload_type)
@@ -830,7 +836,7 @@ class Permissions(CommonColumns):
         Grant each of the given `user`'s permissions. Idempotent.
         """
         # Don't make any GCS changes if this user doesn't have download access
-        if user.role == CIDCRole.NETWORK_VIEWER.value:
+        if not user.has_download_permissions():
             return
 
         perms = Permissions.find_for_user(user.id, session=session)
@@ -851,7 +857,7 @@ class Permissions(CommonColumns):
         Revoke each of the given `user`'s permissions. Idempotent.
         """
         # Don't make any GCS changes if this user doesn't have download access
-        if user.role == CIDCRole.NETWORK_VIEWER.value:
+        if not user.has_download_permissions():
             return
 
         perms = Permissions.find_for_user(user.id, session=session)
