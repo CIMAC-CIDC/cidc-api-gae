@@ -215,7 +215,11 @@ def generate_filelist(args):
 @downloadable_files_bp.route("/download_url", methods=["GET"])
 @requires_auth(
     "download_url",
-    allowed_roles=[role for role in ROLES if role != CIDCRole.NETWORK_VIEWER.value],
+    allowed_roles=[
+        role
+        for role in ROLES
+        if role not in (CIDCRole.NETWORK_VIEWER.value, CIDCRole.PACT_USER.value)
+    ],
 )
 @use_args({"id": fields.Str(required=True)}, location="query")
 def get_download_url(args):

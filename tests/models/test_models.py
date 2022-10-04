@@ -1132,6 +1132,22 @@ def test_permissions_insert(clean_db, monkeypatch, caplog):
     gcloud_client.grant_lister_access.assert_not_called()
     gcloud_client.grant_download_access.assert_not_called()
 
+    # If granting a permission to a "pact-user", no GCS IAM actions are taken
+    _insert.reset_mock()
+    gcloud_client.reset_mocks()
+    user.role = CIDCRole.PACT_USER.value
+    user.update()
+    perm = Permissions(
+        granted_to_user=user.id,
+        trial_id=trial.trial_id,
+        upload_type="ihc",
+        granted_by_user=user.id,
+    )
+    perm.insert()
+    _insert.assert_called_once()
+    gcloud_client.grant_lister_access.assert_not_called()
+    gcloud_client.grant_download_access.assert_not_called()
+
 
 @db_test
 def test_permissions_broad_perms(clean_db, monkeypatch):
@@ -1369,6 +1385,21 @@ def test_permissions_delete(clean_db, monkeypatch, caplog):
     gcloud_client.revoke_lister_access.assert_not_called()
     gcloud_client.revoke_download_access.assert_not_called()
 
+    # If revoking a permission from a "pact-user", no GCS IAM actions are taken
+    gcloud_client.reset_mocks()
+    user.role = CIDCRole.PACT_USER.value
+    user.update()
+    perm = Permissions(
+        granted_to_user=user.id,
+        trial_id=trial.trial_id,
+        upload_type="ihc",
+        granted_by_user=user.id,
+    )
+    perm.insert()
+    perm.delete(deleted_by=user)
+    gcloud_client.revoke_lister_access.assert_not_called()
+    gcloud_client.revoke_download_access.assert_not_called()
+
 
 @db_test
 def test_permissions_grant_user_permissions(clean_db, monkeypatch):
@@ -1405,6 +1436,12 @@ def test_permissions_grant_user_permissions(clean_db, monkeypatch):
     )
 
     # IAM permissions not granted to network viewers
+    Permissions.grant_user_permissions(user=user)
+    gcloud_client.grant_lister_access.assert_not_called()
+    gcloud_client.grant_download_access.assert_not_called()
+
+    # IAM permissions still not granted to pact users
+    user.role = CIDCRole.PACT_USER.value
     Permissions.grant_user_permissions(user=user)
     gcloud_client.grant_lister_access.assert_not_called()
     gcloud_client.grant_download_access.assert_not_called()
