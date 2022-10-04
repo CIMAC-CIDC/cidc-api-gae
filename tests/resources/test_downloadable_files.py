@@ -515,6 +515,11 @@ def test_get_download_url(cidc_api, clean_db, monkeypatch):
     res = client.get(f"/downloadable_files/download_url?id={file_id}")
     assert res.status_code == 401
 
+    # pact users aren't allowed to get download urls either
+    make_role(user_id, CIDCRole.PACT_USER.value, cidc_api)
+    res = client.get(f"/downloadable_files/download_url?id={file_id}")
+    assert res.status_code == 401
+
 
 def test_log_multiple_errors(caplog):
     """Check that the log_multiple_errors function doesn't throw an error itself."""
