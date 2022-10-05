@@ -343,6 +343,24 @@ assay_facets: Facets = {
         ),
         "HLA": FacetConfig(["/rna/analysis/neoantigen/genotype.json"]),
     },
+    "MIBI": {
+        "Multichannel OME TIFFs": FacetConfig(
+            ["/mibi/multichannel_image.ome.tiff"],
+            "Analysis-ready multilayer OME-TIFF image file",
+        ),
+        "Segmentation Masks": FacetConfig(
+            ["/mibi/cluster_labels.tif"],
+            "TIF-formatted whole cell segmentation masks for each multiplexed image",
+        ),
+        "Channel Names": FacetConfig(
+            ["/mibi/channel_names.csv"],
+            "CSV-formatted table of each channel and the corresponding mass",
+        ),
+        "Single-cell Data": FacetConfig(
+            ["/mibi/single_cell_table.csv"],
+            "Single cell data table containing eg integrated expression values, XY location"
+        ),
+    },
     "mIF": {
         "Source Images": FacetConfig(
             [
