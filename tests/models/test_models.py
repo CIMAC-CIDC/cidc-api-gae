@@ -1,3 +1,4 @@
+from copy import deepcopy
 import pandas as pd
 import io
 import logging
@@ -1472,85 +1473,191 @@ def test_permissions_grant_download_permissions_for_upload_job(clean_db, monkeyp
     """
     #  copied from
     gcloud_client = mock_gcloud_client(monkeypatch)
-    user = Users(email="test@user.com")
-    user.insert()
     trial = TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA)
-    trial.insert()
+    trial2_metadata = deepcopy(METADATA)
+    trial2_metadata[prism.PROTOCOL_ID_FIELD_NAME] += "2"
+    trial2 = TrialMetadata(
+        trial_id=trial2_metadata[prism.PROTOCOL_ID_FIELD_NAME], metadata_json=METADATA
+    )
+    user1 = Users(email="test@user.com")
+    user2 = Users(email="test2@user.com")
+    user3 = Users(email="test3@user.com")
 
+    trial.insert(), trial2.insert()
+    user1.insert(), user2.insert(), user3.insert()
+
+    # Set up UploadJobs for testing: status to simulate a completed but not ingested upload
+    upload_trial_ihc = UploadJobs.create(
+        upload_type="ihc",
+        uploader_email=user1.email,
+        gcs_file_map={},
+        metadata={prism.PROTOCOL_ID_FIELD_NAME: trial.trial_id},
+        gcs_xlsx_uri="",
+        commit=False,
+    )
+    upload_trial_ihc.status = UploadJobStatus.UPLOAD_COMPLETED.value
+    upload_trial_ihc.ingestion_success(trial)
+
+    upload_trial_wes = UploadJobs.create(
+        upload_type="wes_bam",
+        uploader_email=user1.email,
+        gcs_file_map={},
+        metadata={prism.PROTOCOL_ID_FIELD_NAME: trial.trial_id},
+        gcs_xlsx_uri="",
+        commit=False,
+    )
+    upload_trial_wes.status = UploadJobStatus.UPLOAD_COMPLETED.value
+    upload_trial_wes.ingestion_success(trial)
+
+    upload_trial2_wes = UploadJobs.create(
+        upload_type="wes_bam",
+        uploader_email=user1.email,
+        gcs_file_map={},
+        metadata={prism.PROTOCOL_ID_FIELD_NAME: trial2.trial_id},
+        gcs_xlsx_uri="",
+        commit=False,
+    )
+    upload_trial2_wes.status = UploadJobStatus.UPLOAD_COMPLETED.value
+    upload_trial2_wes.ingestion_success(trial2)
+
+    upload_trial2_rna = UploadJobs.create(
+        upload_type="rna_fastq",
+        uploader_email=user1.email,
+        gcs_file_map={},
+        metadata={prism.PROTOCOL_ID_FIELD_NAME: trial2.trial_id},
+        gcs_xlsx_uri="",
+        commit=False,
+    )
+    upload_trial2_rna.status = UploadJobStatus.UPLOAD_COMPLETED.value
+    upload_trial2_rna.ingestion_success(trial2)
+
+    upload_trial_clinical = UploadJobs.create(
+        upload_type="clinical_data",
+        uploader_email=user1.email,
+        gcs_file_map={},
+        metadata={prism.PROTOCOL_ID_FIELD_NAME: trial.trial_id},
+        gcs_xlsx_uri="",
+        commit=False,
+    )
+    upload_trial_clinical.status = UploadJobStatus.UPLOAD_COMPLETED.value
+    upload_trial_clinical.ingestion_success(trial)
+
+    # Test uploads:
+    #   trial ihc
+    #   trial clinical_data
+    # Permissions to add:
+    #   user1: trial/wes_bam, trial/ihc, trial/rna, trial/plasma, trial/clinical_data]
+    #   user2: */ihc, trial2/wes_bam, trial2/rna_fastq
+    #   user3: trial/*, */wes_bam
+    # Tests to run:
+    #   trial ihc - single, cross-trial, cross-assay
+    #       user1 (trial/ihc), user2 (*/ihc), user3 (trial/*)
+    #   trial wes_bam - single, cross-assay, NO cross-trial
+    #       user1 (trial/wes_bam), user3 (trial/*)
+    #   trial2 wes_bam - single, cross-trial, NO cross-assay
+    #       user2 (trial/wes_bam), user3 (*/wes_bam)
+    #   trial2 rna_fastq - single assay, NO cross-assay, NO cross-trial
+    #       user2 (trial2/rna)
+    #   trial clinical_data - single clinical_data, NO cross-assay, NO cross-trial
+    #       user1 (trial/clinical_data)
     upload_types = ["wes_bam", "ihc", "rna_fastq", "plasma", "clinical_data"]
     for upload_type in upload_types:
         Permissions(
-            granted_to_user=user.id,
+            granted_to_user=user1.id,
             trial_id=trial.trial_id,
             upload_type=upload_type,
-            granted_by_user=user.id,
+            granted_by_user=user1.id,
         ).insert()
 
-    # Add second user for testing multiple users
-    user2 = Users(email="test2@user.com")
-    user2.insert()
-    # Set up UploadJobs for testing
-    # copied from test_assay_upload_ingestion_success
-    assay_upload = UploadJobs.create(
-        upload_type="ihc",
-        uploader_email=user.email,
-        gcs_file_map={},
-        metadata={prism.PROTOCOL_ID_FIELD_NAME: trial.trial_id},
-        gcs_xlsx_uri="",
-        commit=False,
-    )
-    # Add extra perm on different user for trial / all and all / ihc
-    # Tests second user and cross-assay, cross-trial permissions
-    Permissions(
-        granted_to_user=user2.id,
-        trial_id=trial.trial_id,
-        upload_type=None,
-        granted_by_user=user.id,
-    ).insert()
     Permissions(
         granted_to_user=user2.id,
         trial_id=None,
-        upload_type=assay_upload.upload_type,
-        granted_by_user=user.id,
+        upload_type=upload_trial_ihc.upload_type,
+        granted_by_user=user1.id,
+    ).insert()
+    upload_types = ["wes_bam", "rna_fastq"]
+    for upload_type in upload_types:
+        Permissions(
+            granted_to_user=user2.id,
+            trial_id=trial2.trial_id,
+            upload_type=upload_type,
+            granted_by_user=user1.id,
+        ).insert()
+
+    Permissions(
+        granted_to_user=user3.id,
+        trial_id=trial.trial_id,
+        upload_type=None,
+        granted_by_user=user1.id,
+    ).insert()
+    Permissions(
+        granted_to_user=user3.id,
+        trial_id=None,
+        upload_type="wes_bam",
+        granted_by_user=user1.id,
     ).insert()
     clean_db.commit()
 
-    # Update assay_upload status to simulate a completed but not ingested upload
-    assay_upload.status = UploadJobStatus.UPLOAD_COMPLETED.value
-    assay_upload.ingestion_success(trial)
-
-    # trigger and assert
     gcloud_client.reset_mocks()
+    # trigger and assert
     Permissions.grant_download_permissions_for_upload_job(
-        assay_upload, session=clean_db
+        upload_trial_ihc, session=clean_db
     )
     gcloud_client.grant_lister_access.assert_has_calls(
-        [call(user.email), call(user2.email)]
+        [call(user1.email), call(user2.email), call(user3.email)]
     )
     gcloud_client.grant_download_access.assert_called_once_with(
-        [user.email, user2.email], assay_upload.trial_id, assay_upload.upload_type
+        [user1.email, user2.email, user3.email],
+        upload_trial_ihc.trial_id,
+        upload_trial_ihc.upload_type,
     )
 
-    # Test that clinical_data doesn't get from cross-assay permissions
-    clinical_upload = UploadJobs.create(
-        upload_type="clinical_data",
-        uploader_email=user.email,
-        gcs_file_map={},
-        metadata={prism.PROTOCOL_ID_FIELD_NAME: trial.trial_id},
-        gcs_xlsx_uri="",
-        commit=False,
-    )
-    clinical_upload.status = UploadJobStatus.UPLOAD_COMPLETED.value
-    clinical_upload.ingestion_success(trial)
     gcloud_client.reset_mocks()
-
     # trigger and assert
     Permissions.grant_download_permissions_for_upload_job(
-        clinical_upload, session=clean_db
+        upload_trial_wes, session=clean_db
     )
-    gcloud_client.grant_lister_access.assert_has_calls([call(user.email)])
+    gcloud_client.grant_lister_access.assert_has_calls(
+        [call(user1.email), call(user3.email)]
+    )
     gcloud_client.grant_download_access.assert_called_once_with(
-        [user.email], clinical_upload.trial_id, clinical_upload.upload_type
+        [user1.email, user3.email],
+        upload_trial_wes.trial_id,
+        upload_trial_wes.upload_type,
+    )
+
+    gcloud_client.reset_mocks()
+    # trigger and assert
+    Permissions.grant_download_permissions_for_upload_job(
+        upload_trial2_wes, session=clean_db
+    )
+    gcloud_client.grant_lister_access.assert_has_calls(
+        [call(user2.email), call(user3.email)]
+    )
+    gcloud_client.grant_download_access.assert_called_once_with(
+        [user2.email, user3.email],
+        upload_trial2_wes.trial_id,
+        upload_trial2_wes.upload_type,
+    )
+
+    gcloud_client.reset_mocks()
+    # trigger and assert
+    Permissions.grant_download_permissions_for_upload_job(
+        upload_trial2_rna, session=clean_db
+    )
+    gcloud_client.grant_lister_access.assert_has_calls([call(user2.email)])
+    gcloud_client.grant_download_access.assert_called_once_with(
+        [user2.email], upload_trial2_rna.trial_id, upload_trial2_rna.upload_type
+    )
+
+    gcloud_client.reset_mocks()
+    # trigger and assert
+    Permissions.grant_download_permissions_for_upload_job(
+        upload_trial_clinical, session=clean_db
+    )
+    gcloud_client.grant_lister_access.assert_has_calls([call(user1.email)])
+    gcloud_client.grant_download_access.assert_called_once_with(
+        [user1.email], upload_trial_clinical.trial_id, upload_trial_clinical.upload_type
     )
 
 
