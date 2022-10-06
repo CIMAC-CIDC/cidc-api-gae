@@ -876,14 +876,25 @@ class Permissions(CommonColumns):
     def grant_download_permissions_for_upload_job(
         cls, upload: "UploadJobs", session: Session
     ) -> None:
+        """
+        For a given UploadJob, issue all relevant Permissions on Google
+        Loads all cross-trial permissions for the upload_type
+            and the cross-assay permissions for the trial_id
+        """
+        # Permissions with matching trial_id or cross-trial single-assay
+        # upload.trial_id can't be None
         filters = [
             or_(cls.trial_id == upload.trial_id, cls.trial_id == None),
         ]
+
+        # Permissions with matching upload_type or cross-assay single-trial
         if upload.upload_type == "clinical_data":
+            # clinical_data is not included in cross-assay
             filters.append(cls.upload_type == upload.upload_type)
         else:
+            # upload.upload_type can't be None
             filters.append(
-                or_(cls.upload_type == upload.upload_type, cls.trial_id == None)
+                or_(cls.upload_type == upload.upload_type, cls.upload_type == None)
             )
 
         perms = session.query(cls).filter(*filters).all()
