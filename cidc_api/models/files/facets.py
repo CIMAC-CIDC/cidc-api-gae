@@ -358,7 +358,7 @@ assay_facets: Facets = {
         ),
         "Single-cell Data": FacetConfig(
             ["/mibi/single_cell_table.csv"],
-            "Single cell data table containing eg integrated expression values, XY location"
+            "Single cell data table containing eg integrated expression values, XY location",
         ),
     },
     "mIF": {
