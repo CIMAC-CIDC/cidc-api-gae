@@ -150,6 +150,7 @@ def test_build_trial_upload_prefixes(monkeypatch):
         "foo/elisa",
         "foo/hande",
         "foo/ihc",
+        "foo/mibi",
         "foo/microbiome",
         "foo/microbiome_analysis",
         "foo/mif",
