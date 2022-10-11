@@ -612,6 +612,15 @@ def test_facet_groups_for_links(cidc_api, clean_db, monkeypatch):
                 "Analysis Ready|IHC",
             ],
         },
+        "mibi": {
+            "analyzed": [],
+            "received": [
+                "Assay Type|MIBI|Multichannel OME TIFFs",
+                "Assay Type|MIBI|Segmentation Masks",
+                "Assay Type|MIBI|Channel Names",
+                "Assay Type|MIBI|Single-cell Data",
+            ],
+        },
         "microbiome": {
             "analyzed": [
                 "Assay Type|Microbiome|Batch-level Summary Plots",
