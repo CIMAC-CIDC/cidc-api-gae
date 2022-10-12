@@ -9,6 +9,15 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.5` - 12 Oct 2022
+
+- `changed` staging uploader role to temp replacement
+
+## Version `0.27.4` - 10 Oct 2022
+
+- `changed` schemas bump for MIBI support
+- `added` facets for MIBI files
+
 ## Version `0.27.3` - 06 Oct 2022
 
 - `fixed` bug in permissions application, where cross-trial permissions were used instead of cross-assay permissions
