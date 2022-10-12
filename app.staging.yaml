@@ -33,5 +33,5 @@ env_variables:
   GOOGLE_PATIENT_SAMPLE_TOPIC: "patient_sample_update"
   GOOGLE_ARTIFACT_UPLOAD_TOPIC: "artifact_upload"
   GOOGLE_GRANT_DOWNLOAD_PERMISSIONS_TOPIC: "grant_download_perms"
-  GOOGLE_UPLOAD_ROLE: "projects/cidc-dfci-staging/roles/objectUploader"
+  GOOGLE_UPLOAD_ROLE: "projects/cidc-dfci-staging/roles/tempObjectUploader"
   GOOGLE_LISTER_ROLE: "projects/cidc-dfci-staging/roles/CustomRoleLister"
