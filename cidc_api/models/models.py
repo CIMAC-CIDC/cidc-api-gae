@@ -112,6 +112,7 @@ from ..shared.gcloud_client import (
     revoke_download_access,
     revoke_intake_access,
     revoke_lister_access,
+    revoke_bigquery_access,
 )
 from ..config.logging import get_logger
 
@@ -439,6 +440,7 @@ class Users(CommonColumns):
         ]
         for u in disabled_users:
             Permissions.revoke_user_permissions(u, session=session)
+            revoke_bigquery_access(u.email)
 
         return [u.email for u in disabled_users]
 

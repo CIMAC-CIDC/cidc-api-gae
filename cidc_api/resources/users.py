@@ -16,6 +16,7 @@ from ..shared.rest_utils import (
     unmarshal_request,
     use_args_with_pagination,
 )
+from ..shared.gcloud_client import grant_bigquery_access, revoke_bigquery_access
 from ..models import (
     Users,
     UserSchema,
@@ -117,6 +118,7 @@ def update_user(user: Users, user_updates: Users):
     # If a user is being awarded their first role, add an approval date
     if not user.role and "role" in user_updates:
         user_updates["approval_date"] = datetime.now()
+        grant_bigquery_access([user.email])
 
     # If this user is being re-enabled after being disabled, update their last
     # access date to now so that they aren't disabled again tomorrow and
@@ -124,10 +126,12 @@ def update_user(user: Users, user_updates: Users):
     if user.disabled and user_updates.get("disabled") == False:
         user_updates["_accessed"] = datetime.now()
         Permissions.grant_user_permissions(user)
+        grant_bigquery_access([user.email])
 
     # If this user is being disabled, remove all of their download permissions.
     if not user.disabled and user_updates.get("disabled") == True:
         Permissions.revoke_user_permissions(user)
+        revoke_bigquery_access(user.email)
 
     # this is not user-input due to @with_lookup, so safe to return
     user.update(changes=user_updates)

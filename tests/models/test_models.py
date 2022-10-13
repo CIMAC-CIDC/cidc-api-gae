@@ -260,9 +260,14 @@ def test_duplicate_user(clean_db):
 def test_disable_inactive_users(clean_db, monkeypatch):
     """Check that the disable_inactive_users method disables users appropriately"""
     revoke_user_permissions = MagicMock()
+    revoke_bigquery_access = MagicMock()
     monkeypatch.setattr(
         "cidc_api.models.models.Permissions.revoke_user_permissions",
         revoke_user_permissions,
+    )
+    monkeypatch.setattr(
+        "cidc_api.models.models.revoke_bigquery_access",
+        revoke_bigquery_access,
     )
 
     # Create two users who should be disabled, and one who should not
@@ -293,6 +298,7 @@ def test_disable_inactive_users(clean_db, monkeypatch):
     assert [u.email for u in users if not u.disabled] == ["3@"]
 
     assert revoke_user_permissions.call_count == 2
+    assert revoke_bigquery_access.call_count == 2
 
 
 TRIAL_ID = "cimac-12345"
@@ -959,7 +965,7 @@ def test_downloadable_files_data_category_prefix():
 
 
 @db_test
-def test_downloadable_files_get_related_files(clean_db):
+def test_downloadable_files_get_related_files(clean_db, cidc_api):
     # Create a trial to avoid constraint errors
     TrialMetadata.create(trial_id=TRIAL_ID, metadata_json=METADATA)
 
@@ -1006,12 +1012,13 @@ def test_downloadable_files_get_related_files(clean_db):
     ]
 
     # Check that get_related_files returns what we expect
-    for file_group in related_file_groups:
-        for file_record in file_group:
-            other_ids = [f.id for f in file_group if f.id != file_record.id]
-            related_files = file_record.get_related_files()
-            assert set([f.id for f in related_files]) == set(other_ids)
-            assert len(related_files) == len(other_ids)
+    with cidc_api.app_context():
+        for file_group in related_file_groups:
+            for file_record in file_group:
+                other_ids = [f.id for f in file_group if f.id != file_record.id]
+                related_files = file_record.get_related_files()
+                assert set([f.id for f in related_files]) == set(other_ids)
+                assert len(related_files) == len(other_ids)
 
 
 def test_with_default_session(cidc_api, clean_db):
