@@ -346,11 +346,15 @@ def test_grant_bigquery_access(monkeypatch):
 def test_revoke_upload_access(monkeypatch):
     def set_iam_policy(policy):
         assert any([f"user:rando" in b["members"] for b in policy.bindings])
+        print(policy.bindings)
         assert all([f"user:{EMAIL}" not in b["members"] for b in policy.bindings])
 
     _mock_gcloud_storage_client(
         monkeypatch,
-        [{"role": GOOGLE_UPLOAD_ROLE, "members": {"user:rando", f"user:{EMAIL}"}}],
+        [
+            {"role": GOOGLE_UPLOAD_ROLE, "members": {"user:rando"}},
+            {"role": GOOGLE_UPLOAD_ROLE, "members": {f"user:{EMAIL}"}},
+        ],
         set_iam_policy,
     )
 
