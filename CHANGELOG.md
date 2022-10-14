@@ -9,6 +9,11 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.8` - 14 Oct 2022
+
+- `added` credentialing to dataset update
+- `fixed` project id bug
+
 ## Version `0.27.7` - 14 Oct 2022
 
 - `added` protobuf package version for old generated code
