@@ -14,9 +14,12 @@ from sqlalchemy.orm.session import Session
 from typing import Any, BinaryIO, Callable, Dict, List, Optional, Set, Union
 
 import requests
-from google.cloud import storage, pubsub
+from google.cloud import storage, pubsub, bigquery
+from google.cloud.bigquery.enums import EntityTypes
 from google.oauth2.service_account import Credentials
 from werkzeug.datastructures import FileStorage
+import googleapiclient.discovery
+from google.api_core.iam import Policy
 
 from ..config.settings import (
     GOOGLE_INTAKE_ROLE,
@@ -26,6 +29,7 @@ from ..config.settings import (
     GOOGLE_UPLOAD_TOPIC,
     GOOGLE_ACL_DATA_BUCKET,
     GOOGLE_LISTER_ROLE,
+    GOOGLE_BIGQUERY_USER_ROLE,
     GOOGLE_CLOUD_PROJECT,
     GOOGLE_EMAILS_TOPIC,
     GOOGLE_PATIENT_SAMPLE_TOPIC,
@@ -44,6 +48,8 @@ from cidc_schemas.prism.constants import ASSAY_TO_FILEPATH
 logger = get_logger(__name__)
 
 _storage_client = None
+_bigquery_client = None
+_crm_service = None
 
 
 def _get_storage_client() -> storage.Client:
@@ -64,6 +70,23 @@ def _get_storage_client() -> storage.Client:
     return _storage_client
 
 
+def _get_crm_service() -> googleapiclient.discovery.Resource:
+    """
+    Initializes a Cloud Resource Manager service.
+    """
+    global _crm_service
+    if _crm_service is None:
+        secret_manager = get_secrets_manager()
+
+        credentials = Credentials.from_service_account_info(
+            json.loads(secret_manager.get("APP_ENGINE_CREDENTIALS"))
+        )
+        _crm_service = googleapiclient.discovery.build(
+            "cloudresourcemanager", "v1", credentials=credentials
+        )
+    return _crm_service
+
+
 def _get_bucket(bucket_name: str) -> storage.Bucket:
     """
     Get the bucket with name `bucket_name` from GCS.
@@ -73,6 +96,36 @@ def _get_bucket(bucket_name: str) -> storage.Bucket:
     storage_client = _get_storage_client()
     bucket = storage_client.bucket(bucket_name)
     return bucket
+
+
+def _get_project_policy(project: str) -> Policy:
+    """
+    Get the project policy for with the name 'project'.
+    """
+    crm_service = _get_crm_service()
+    policy = (
+        crm_service.projects()
+        .getIamPolicy(
+            resource=project,
+            body={},
+        )
+        .execute()
+    )
+    return policy
+
+
+def _get_bigquery_dataset(dataset_id: str) -> bigquery.Dataset:
+    """
+    Get the bigquery dataset with the id 'dataset_id'.
+    makes an API request to pull this with the bigquery client
+    """
+    global _bigquery_client
+    if _bigquery_client is None:
+        _bigquery_client = bigquery.Client()
+
+    dataset = _bigquery_client.get_dataset(dataset_id)  # Make an API request.
+
+    return dataset
 
 
 _xlsx_gcs_uri_format = (
@@ -136,7 +189,7 @@ def grant_lister_access(user_email: str) -> None:
     """
     logger.info(f"granting list to {user_email}")
     bucket = _get_bucket(GOOGLE_ACL_DATA_BUCKET)
-    grant_iam_access(bucket, GOOGLE_LISTER_ROLE, user_email, expiring=False)
+    grant_storage_iam_access(bucket, GOOGLE_LISTER_ROLE, user_email, expiring=False)
 
 
 def revoke_lister_access(user_email: str) -> None:
@@ -147,7 +200,7 @@ def revoke_lister_access(user_email: str) -> None:
     """
     logger.info(f"revoking list to {user_email}")
     bucket = _get_bucket(GOOGLE_ACL_DATA_BUCKET)
-    revoke_iam_access(bucket, GOOGLE_LISTER_ROLE, user_email)
+    revoke_storage_iam_access(bucket, GOOGLE_LISTER_ROLE, user_email)
 
 
 def grant_upload_access(user_email: str) -> None:
@@ -159,7 +212,7 @@ def grant_upload_access(user_email: str) -> None:
     """
     logger.info(f"granting upload to {user_email}")
     bucket = _get_bucket(GOOGLE_UPLOAD_BUCKET)
-    grant_iam_access(bucket, GOOGLE_UPLOAD_ROLE, user_email, expiring=False)
+    grant_storage_iam_access(bucket, GOOGLE_UPLOAD_ROLE, user_email, expiring=False)
 
 
 def revoke_upload_access(user_email: str) -> None:
@@ -168,7 +221,29 @@ def revoke_upload_access(user_email: str) -> None:
     """
     logger.info(f"revoking upload from {user_email}")
     bucket = _get_bucket(GOOGLE_UPLOAD_BUCKET)
-    revoke_iam_access(bucket, GOOGLE_UPLOAD_ROLE, user_email)
+    revoke_storage_iam_access(bucket, GOOGLE_UPLOAD_ROLE, user_email)
+
+
+def grant_bigquery_access(user_emails: List[str]) -> None:
+    """
+    Grant a user's access to run bigquery queries on project.
+    Grant access to public level bigquery tables.
+    """
+    logger.info(f"granting bigquery access to {user_emails}")
+    project = "CIDC-DFCI" if ENV == "prod" else "CIDC-DFCI-STAGING"
+    policy = _get_project_policy(project)
+    grant_bigquery_iam_access(policy, project, user_emails)
+
+
+def revoke_bigquery_access(user_email: str) -> None:
+    """
+    Revoke a user's access to run bigquery queries on project.
+    Revoke access to public level bigquery tables.
+    """
+    logger.info(f"revoking bigquery access from {user_email}")
+    project = "CIDC-DFCI" if ENV == "prod" else "CIDC-DFCI-STAGING"
+    policy = _get_project_policy(project)
+    revoke_bigquery_iam_access(policy, project, user_email)
 
 
 def get_intake_bucket_name(user_email: str) -> str:
@@ -200,7 +275,7 @@ def create_intake_bucket(user_email: str) -> storage.Bucket:
         bucket = storage_client.create_bucket(bucket)
 
     # Grant the user appropriate permissions
-    grant_iam_access(bucket, GOOGLE_INTAKE_ROLE, user_email)
+    grant_storage_iam_access(bucket, GOOGLE_INTAKE_ROLE, user_email)
 
     return bucket
 
@@ -213,7 +288,7 @@ def refresh_intake_access(user_email: str) -> None:
     bucket = _get_bucket(bucket_name)
 
     if bucket.exists():
-        grant_iam_access(bucket, GOOGLE_INTAKE_ROLE, user_email)
+        grant_storage_iam_access(bucket, GOOGLE_INTAKE_ROLE, user_email)
 
 
 def revoke_intake_access(user_email: str) -> None:
@@ -224,7 +299,7 @@ def revoke_intake_access(user_email: str) -> None:
     bucket = _get_bucket(bucket_name)
 
     if bucket.exists():
-        revoke_iam_access(bucket, GOOGLE_INTAKE_ROLE, user_email)
+        revoke_storage_iam_access(bucket, GOOGLE_INTAKE_ROLE, user_email)
 
 
 def upload_xlsx_to_intake_bucket(
@@ -455,7 +530,7 @@ def _build_trial_upload_prefixes(
         }
 
 
-def grant_iam_access(
+def grant_storage_iam_access(
     bucket: storage.Bucket,
     role: str,
     user_email: str,
@@ -471,13 +546,15 @@ def grant_iam_access(
     policy.version = 3
 
     # remove the existing binding if one exists so that we can recreate it with an updated TTL.
-    _find_and_pop_iam_binding(policy, role, user_email)
+    _find_and_pop_storage_iam_binding(policy, role, user_email)
 
     if not expiring:
         # special value -1 for non-expiring
-        binding = _build_iam_binding(bucket.name, role, user_email, ttl_days=-1)
+        binding = _build_storage_iam_binding(bucket.name, role, user_email, ttl_days=-1)
     else:
-        binding = _build_iam_binding(bucket.name, role, user_email)  # use default
+        binding = _build_storage_iam_binding(
+            bucket.name, role, user_email
+        )  # use default
     # insert the binding into the policy
     policy.bindings.append(binding)
 
@@ -488,6 +565,61 @@ def grant_iam_access(
         raise e
 
 
+def grant_bigquery_iam_access(
+    policy: Policy, project: str, user_emails: List[str]
+) -> None:
+    """
+    Grant all 'user_emails' the "roles/bigquery.jobUser" role on 'project'.
+    If we are in the production environment, all 'user_emails' also get access to
+    the public bigquery dataset in prod.
+    """
+    roles = [b["role"] for b in policy["bindings"]]
+
+    if (
+        GOOGLE_BIGQUERY_USER_ROLE in roles
+    ):  # if the role is already in the policy, add the users
+        binding = next(
+            b for b in policy["bindings"] if b["role"] == GOOGLE_BIGQUERY_USER_ROLE
+        )
+        for user_email in user_emails:
+            binding["members"].append(user_member(user_email))
+    else:  # otherwise create the role and add to policy
+        binding = {
+            "role": GOOGLE_BIGQUERY_USER_ROLE,
+            "members": [
+                user_member(user_email) for user_email in user_emails
+            ],  # convert format
+        }
+        policy["bindings"].append(binding)
+
+    # try to set the new policy with edits
+    try:
+        _crm_service.projects().setIamPolicy(
+            resource=project,
+            body={
+                "policy": policy,
+            },
+        ).execute()
+    except Exception as e:
+        logger.error(str(e))
+        raise e
+
+    # grant dataset level access to public dataset
+    dataset_id = project + ".public"
+    dataset = _get_bigquery_dataset(dataset_id)
+    entries = list(dataset.access_entries)
+    for user_email in user_emails:
+        entries.append(
+            bigquery.AccessEntry(
+                role="READER",
+                entity_type=EntityTypes.USER_BY_EMAIL,
+                entity_id=user_email,
+            )
+        )
+    dataset.access_entries = entries
+    _bigquery_client.update_dataset(dataset, ["access_entries"])  # Make an API request.
+
+
 # Arbitrary upper bound on the number of GCS IAM bindings we expect a user to have for uploads
 MAX_REVOKE_ALL_ITERATIONS = 250
 
@@ -495,14 +627,14 @@ MAX_REVOKE_ALL_ITERATIONS = 250
 def revoke_nonexpiring_iam_access(
     bucket: storage.Bucket, role: str, user_email: str
 ) -> None:
-    """Revoke a bucket IAM policy change made by calling `grant_iam_access` with expiring=False."""
+    """Revoke a bucket IAM policy change made by calling `grant_storage_iam_access` with expiring=False."""
     # see https://cloud.google.com/storage/docs/access-control/using-iam-permissions#code-samples_3
     policy = bucket.get_iam_policy(requested_policy_version=3)
     policy.version = 3
 
     # find and remove all matching policy bindings for this user if any exist
     for i in range(GOOGLE_MAX_DOWNLOAD_PERMISSIONS):
-        removed_binding = _find_and_pop_iam_binding(policy, role, user_email)
+        removed_binding = _find_and_pop_storage_iam_binding(policy, role, user_email)
 
         if removed_binding is None:
             if i == 0:
@@ -518,15 +650,17 @@ def revoke_nonexpiring_iam_access(
         raise e
 
 
-def revoke_iam_access(bucket: storage.Bucket, role: str, user_email: str) -> None:
-    """Revoke a bucket IAM policy made by calling `grant_iam_access`."""
+def revoke_storage_iam_access(
+    bucket: storage.Bucket, role: str, user_email: str
+) -> None:
+    """Revoke a bucket IAM policy made by calling `grant_storage_iam_access`."""
     # see https://cloud.google.com/storage/docs/access-control/using-iam-permissions#code-samples_3
     policy = bucket.get_iam_policy(requested_policy_version=3)
     policy.version = 3
 
     # find and remove any matching policy binding for this user
     for i in range(MAX_REVOKE_ALL_ITERATIONS):
-        removed_binding = _find_and_pop_iam_binding(policy, role, user_email)
+        removed_binding = _find_and_pop_storage_iam_binding(policy, role, user_email)
         if removed_binding is None:
             if i == 0:
                 warnings.warn(
@@ -560,10 +694,55 @@ def revoke_all_download_access(user_email: str) -> None:
         report.result()
 
 
+def revoke_bigquery_iam_access(policy: Policy, project: str, user_email: str) -> None:
+    """
+    Revoke 'user_email' the "roles/bigquery.jobUser" role on 'project'.
+    If we are in the production environment, 'user_email' also get access
+    revoked from the public bigquery dataset in prod.
+    """
+    # find and remove user on binding
+    binding = next(
+        b for b in policy["bindings"] if b["role"] == GOOGLE_BIGQUERY_USER_ROLE
+    )
+    if "members" in binding and user_member(user_email) in binding["members"]:
+        binding["members"].remove(user_member(user_email))
+
+    # try update of the policy
+    try:
+        policy = (
+            _crm_service.projects()
+            .setIamPolicy(
+                resource=project,
+                body={
+                    "policy": policy,
+                },
+            )
+            .execute()
+        )
+    except Exception as e:
+        logger.error(str(e))
+        raise e
+
+    # remove dataset level access
+    dataset_id = project + ".public"
+    dataset = _get_bigquery_dataset(dataset_id)
+    entries = list(dataset.access_entries)
+
+    dataset.access_entries = [
+        entry for entry in entries if entry.entity_id != user_email
+    ]
+
+    dataset = _bigquery_client.update_dataset(
+        dataset,
+        # Update just the `access_entries` property of the dataset.
+        ["access_entries"],
+    )  # Make an API request.
+
+
 user_member = lambda email: f"user:{email}"
 
 
-def _build_iam_binding(
+def _build_storage_iam_binding(
     bucket: str,
     role: str,
     user_email: str,
@@ -613,7 +792,7 @@ def _build_iam_binding(
     return ret
 
 
-def _find_and_pop_iam_binding(
+def _find_and_pop_storage_iam_binding(
     policy: storage.bucket.Policy,
     role: str,
     user_email: str,
