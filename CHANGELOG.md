@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.7` - 14 Oct 2022
+
+- `added` protobuf package version for old generated code
+
 ## Version `0.27.6` - 13 Oct 2022
 
 - `added` biquery permission delivery/revoking on role assignment
