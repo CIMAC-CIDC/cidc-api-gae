@@ -190,7 +190,7 @@ def test_update_user(cidc_api, clean_db, monkeypatch):
     assert res.json["role"] == "cidc-admin"
     assert res.json["approval_date"] is not None
     _accessed = res.json["_accessed"]
-    grant_bigquery_access = MagicMock()
+    grant_bigquery_access.assert_called()
 
     # Disabling a user revokes that user's permssions.
     mock_permissions = MagicMock()
@@ -218,6 +218,7 @@ def test_update_user(cidc_api, clean_db, monkeypatch):
     assert res.status_code == 200
     assert res.json["_accessed"] > _accessed
     mock_permissions.grant_user_permissions.assert_called()
+    grant_bigquery_access.assert_called()
 
     # Trying to update a non-existing user yields 404
     res = client.patch(

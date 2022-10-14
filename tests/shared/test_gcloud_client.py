@@ -1,4 +1,3 @@
-from email import policy
 import json
 import os
 import re
@@ -346,8 +345,8 @@ def test_grant_bigquery_access(monkeypatch):
 
 def test_revoke_upload_access(monkeypatch):
     def set_iam_policy(policy):
-        assert f"user:rando" in policy.bindings[0]["members"]
-        assert f"user:{EMAIL}" not in policy[1]["members"]
+        assert any([f"user:rando" in b["members"] for b in policy.bindings])
+        assert all([f"user:{EMAIL}" not in b["members"] for b in policy.bindings])
 
     _mock_gcloud_storage_client(
         monkeypatch,
