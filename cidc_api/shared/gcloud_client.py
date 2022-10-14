@@ -121,7 +121,12 @@ def _get_bigquery_dataset(dataset_id: str) -> bigquery.Dataset:
     """
     global _bigquery_client
     if _bigquery_client is None:
-        _bigquery_client = bigquery.Client()
+        secret_manager = get_secrets_manager()
+
+        credentials = Credentials.from_service_account_info(
+            json.loads(secret_manager.get("APP_ENGINE_CREDENTIALS"))
+        )
+        _bigquery_client = bigquery.Client(credentials=credentials)
 
     dataset = _bigquery_client.get_dataset(dataset_id)  # Make an API request.
 
@@ -230,7 +235,7 @@ def grant_bigquery_access(user_emails: List[str]) -> None:
     Grant access to public level bigquery tables.
     """
     logger.info(f"granting bigquery access to {user_emails}")
-    project = "CIDC-DFCI" if ENV == "prod" else "CIDC-DFCI-STAGING"
+    project = "cidc-dfci" if ENV == "prod" else "cidc-dfci-staging"
     policy = _get_project_policy(project)
     grant_bigquery_iam_access(policy, project, user_emails)
 
@@ -241,7 +246,7 @@ def revoke_bigquery_access(user_email: str) -> None:
     Revoke access to public level bigquery tables.
     """
     logger.info(f"revoking bigquery access from {user_email}")
-    project = "CIDC-DFCI" if ENV == "prod" else "CIDC-DFCI-STAGING"
+    project = "cidc-dfci" if ENV == "prod" else "cidc-dfci-staging"
     policy = _get_project_policy(project)
     revoke_bigquery_iam_access(policy, project, user_email)
 
