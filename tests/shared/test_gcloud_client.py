@@ -1,13 +1,17 @@
 import json
 import os
+import re
 
 os.environ["TZ"] = "UTC"
 from io import BytesIO
 from unittest.mock import call, MagicMock
 from datetime import datetime
+from typing import List
 
 from werkzeug.datastructures import FileStorage
 from google.api_core.iam import Policy
+from google.cloud.bigquery.enums import EntityTypes
+from google.cloud import bigquery
 
 from cidc_api.shared import gcloud_client
 from cidc_api.config import settings
@@ -18,8 +22,10 @@ from cidc_api.shared.gcloud_client import (
     grant_download_access_to_blob_names,
     grant_lister_access,
     grant_upload_access,
+    grant_bigquery_iam_access,
     refresh_intake_access,
     revoke_all_download_access,
+    revoke_bigquery_iam_access,
     revoke_download_access_from_blob_names,
     revoke_download_access,
     revoke_intake_access,
@@ -27,7 +33,7 @@ from cidc_api.shared.gcloud_client import (
     revoke_upload_access,
     upload_xlsx_to_gcs,
     upload_xlsx_to_intake_bucket,
-    _build_iam_binding,
+    _build_storage_iam_binding,
     _build_trial_upload_prefixes,
     _pseudo_blob,
     _xlsx_gcs_uri_format,
@@ -40,6 +46,7 @@ from cidc_api.config.settings import (
     GOOGLE_LISTER_ROLE,
     GOOGLE_UPLOAD_BUCKET,
     GOOGLE_UPLOAD_ROLE,
+    GOOGLE_BIGQUERY_USER_ROLE,
 )
 
 ID = 123
@@ -75,7 +82,6 @@ def _mock_gcloud_storage_client(
         mock_client.list_blobs returns [mock_client.blobs[0]] if prefix == "10021/wes" else mock_client.blobs
     """
     api_request = MagicMock()
-    api_request.return_value = {"bindings": iam_bindings}
     monkeypatch.setattr(
         "google.cloud.storage.blob.Blob.get_iam_policy", lambda *a, **kw: api_request
     )
@@ -91,7 +97,7 @@ def _mock_gcloud_storage_client(
     # mocking `google.cloud.storage.Client()` to not actually create a client
     # mock ACL-related `client.list_blobs` to return fake objects entirely
     # mock ACL-related `client.get_blob` to return first fake blob
-    mock_client = MagicMock()
+    mock_client = MagicMock(name="mock_client")
     mock_client.blobs = [
         MagicMock(),
         MagicMock(),
@@ -114,11 +120,6 @@ def _mock_gcloud_storage_client(
     # then check calls to b.acl.[grant/revoke]_[role] for b in mock_client.blobs
     # note the return value mock_client.list_blobs depends solely on the `prefix` kwargs
 
-    # mocking `gcloud_client._get_storage_client` to not actually create a client
-    monkeypatch.setattr(
-        gcloud_client, "_get_storage_client", lambda *a, **kw: mock_client
-    )
-
     mock_client.encode_and_publish = MagicMock()
     monkeypatch.setattr(
         gcloud_client,
@@ -126,7 +127,72 @@ def _mock_gcloud_storage_client(
         mock_client.encode_and_publish,
     )
 
+    mock_bucket = MagicMock(name="mock_bucket")
+    mock_policy = MagicMock(name="policy")
+    mock_policy.bindings = iam_bindings
+    mock_bucket.get_iam_policy.return_value = mock_policy
+    mock_bucket.set_iam_policy = lambda policy: set_iam_policy(None, policy)
+    mock_client.bucket.return_value = mock_bucket
+
+    # mocking `gcloud_client._get_storage_client` to not actually create a client
+    monkeypatch.setattr(
+        gcloud_client, "_get_storage_client", lambda *a, **kw: mock_client
+    )
+
     return mock_client
+
+
+def _mock_gcloud_bigquery_client(
+    monkeypatch,
+    access_entry=List[bigquery.AccessEntry],
+    set_iam_policy_fn=None,
+    update_dataset_fn=None,
+) -> None:
+    """
+    Mocks the crm_service, bigquery_client, and bigquery dataset
+
+    Parameters
+    ----------
+    monkeypatch
+        needed for mocking
+    access_entry : List[bigquery.AccessEntry]
+        returned by dataset.acess_entries
+        mocks the google return of the existing access entries on the objects
+    set_iam_policy_fn : Callable = None
+        single arg will be the updated IAM policy and project to updaate
+        use to assert that changes have been made while also mocking google call
+    update_dataset_fn : Callable = None
+        single arg will be the updated IAM dataset and element to be updated
+        use to assert that changes have been made while also mocking google call
+    """
+    # mocking _get_crm_service to not actually get a service
+    mock_crm = MagicMock()
+    monkeypatch.setattr(gcloud_client, "_crm_service", mock_crm)
+    projects = MagicMock()
+    mock_crm.projects.return_value = projects
+    # setIamPolicy = MagicMock()
+    # projects.setIamPolicy = setIamPolicy
+
+    def set_iam_policy(resource, body):
+        set_iam_policy_fn(resource, body)
+        return MagicMock()
+
+    monkeypatch.setattr(projects, "setIamPolicy", set_iam_policy)
+
+    mock_bq_client = MagicMock()
+    monkeypatch.setattr(gcloud_client, "_bigquery_client", mock_bq_client)
+
+    def update_dataset(dataset, element):
+        update_dataset_fn(dataset, element)
+
+    monkeypatch.setattr(mock_bq_client, "update_dataset", update_dataset)
+
+    mock_dataset = MagicMock(name="dataset")
+    mock_dataset.access_entries = access_entry
+
+    monkeypatch.setattr(
+        gcloud_client, "_get_bigquery_dataset", lambda *a, **kw: mock_dataset
+    )
 
 
 def test_build_trial_upload_prefixes(monkeypatch):
@@ -181,8 +247,18 @@ def test_grant_lister_access(monkeypatch):
     _mock_gcloud_storage_client(
         monkeypatch,
         [
-            {"role": GOOGLE_LISTER_ROLE, "members": ["user:rando"]},
-            {"role": GOOGLE_LISTER_ROLE, "members": [f"user:{EMAIL}"]},
+            {"role": GOOGLE_LISTER_ROLE, "members": {"user:rando"}},
+        ],
+        set_iam_policy,
+    )
+
+    grant_lister_access(EMAIL)
+
+    _mock_gcloud_storage_client(
+        monkeypatch,
+        [
+            {"role": GOOGLE_LISTER_ROLE, "members": {"user:rando"}},
+            {"role": GOOGLE_LISTER_ROLE, "members": {f"user:{EMAIL}"}},
         ],
         set_iam_policy,
     )
@@ -203,8 +279,18 @@ def test_revoke_lister_access(monkeypatch):
     _mock_gcloud_storage_client(
         monkeypatch,
         [
-            {"role": GOOGLE_LISTER_ROLE, "members": ["user:rando"]},
-            {"role": GOOGLE_LISTER_ROLE, "members": [f"user:{EMAIL}"]},
+            {"role": GOOGLE_LISTER_ROLE, "members": {"user:rando"}},
+            {"role": GOOGLE_LISTER_ROLE, "members": {f"user:{EMAIL}"}},
+        ],
+        set_iam_policy,
+    )
+
+    revoke_lister_access(EMAIL)
+
+    _mock_gcloud_storage_client(
+        monkeypatch,
+        [
+            {"role": GOOGLE_LISTER_ROLE, "members": {"user:rando"}},
         ],
         set_iam_policy,
     )
@@ -214,8 +300,9 @@ def test_revoke_lister_access(monkeypatch):
 
 def test_grant_upload_access(monkeypatch):
     def set_iam_policy(policy):
-        assert f"user:rando" in policy[GOOGLE_UPLOAD_ROLE]
-        assert f"user:{EMAIL}" in policy[GOOGLE_UPLOAD_ROLE]
+        assert len(policy.bindings) == 2
+        assert f"user:rando" in policy.bindings[0]["members"]
+        assert f"user:{EMAIL}" in policy.bindings[1]["members"]
 
     _mock_gcloud_storage_client(
         monkeypatch,
@@ -226,18 +313,90 @@ def test_grant_upload_access(monkeypatch):
     grant_upload_access(EMAIL)
 
 
+def test_grant_bigquery_access(monkeypatch):
+    def set_iam_policy(resource, body):
+        assert resource == "cidc-dfci-staging"
+        assert f"user:rando" in body["policy"]["bindings"][0]["members"]
+        assert f"user:{EMAIL}" in body["policy"]["bindings"][0]["members"]
+
+    def update_dataset(dataset, element):
+        assert element == ["access_entries"]
+        assert dataset.access_entries[0].entity_id == access_entry.entity_id
+        assert dataset.access_entries[1].entity_id == EMAIL
+
+    access_entry = bigquery.AccessEntry(
+        role="READER",
+        entity_type=EntityTypes.USER_BY_EMAIL,
+        entity_id="rando",
+    )
+
+    _mock_gcloud_bigquery_client(
+        monkeypatch,
+        [access_entry],
+        set_iam_policy,
+        update_dataset,
+    )
+
+    policy = {
+        "bindings": [{"role": GOOGLE_BIGQUERY_USER_ROLE, "members": ["user:rando"]}]
+    }
+    grant_bigquery_iam_access(policy, [EMAIL])
+
+
 def test_revoke_upload_access(monkeypatch):
     def set_iam_policy(policy):
-        assert f"user:rando" in policy[GOOGLE_UPLOAD_ROLE]
-        assert f"user:{EMAIL}" not in policy[GOOGLE_UPLOAD_ROLE]
+        assert any([f"user:rando" in b["members"] for b in policy.bindings])
+        print(policy.bindings)
+        assert all([f"user:{EMAIL}" not in b["members"] for b in policy.bindings])
 
     _mock_gcloud_storage_client(
         monkeypatch,
-        [{"role": GOOGLE_UPLOAD_ROLE, "members": ["user:rando", f"user:{EMAIL}"]}],
+        [
+            {"role": GOOGLE_UPLOAD_ROLE, "members": {"user:rando"}},
+            {"role": GOOGLE_UPLOAD_ROLE, "members": {f"user:{EMAIL}"}},
+        ],
         set_iam_policy,
     )
 
     revoke_upload_access(EMAIL)
+
+
+def test_revoke_bigquery_access(monkeypatch):
+    def set_iam_policy(resource, body):
+        assert resource == "cidc-dfci-staging"
+        assert f"user:rando" in body["policy"]["bindings"][0]["members"]
+
+    def update_dataset(dataset, element):
+        assert element == ["access_entries"]
+        assert dataset.access_entries[0].entity_id == access_entry_1.entity_id
+
+    access_entry_1 = bigquery.AccessEntry(
+        role="READER",
+        entity_type=EntityTypes.USER_BY_EMAIL,
+        entity_id="rando",
+    )
+    access_entry_2 = bigquery.AccessEntry(
+        role="READER",
+        entity_type=EntityTypes.USER_BY_EMAIL,
+        entity_id=EMAIL,
+    )
+
+    _mock_gcloud_bigquery_client(
+        monkeypatch,
+        [access_entry_1, access_entry_2],
+        set_iam_policy,
+        update_dataset,
+    )
+
+    policy = {
+        "bindings": [
+            {
+                "role": GOOGLE_BIGQUERY_USER_ROLE,
+                "members": ["user:rando", f"user:{EMAIL}"],
+            }
+        ]
+    }
+    revoke_bigquery_iam_access(policy, EMAIL)
 
 
 def test_create_intake_bucket(monkeypatch):
@@ -254,16 +413,20 @@ def test_create_intake_bucket(monkeypatch):
     )
 
     def set_iam_policy(policy):
-        assert len(policy.bindings) == 1, str(policy.bindings)
-        assert policy.bindings[0]["role"] == GOOGLE_INTAKE_ROLE
-        assert policy.bindings[0]["members"] == {f"user:{EMAIL}"}
+        assert len(policy.bindings) == 3, str(policy.bindings)
+        assert policy.bindings[0]["role"] == GOOGLE_LISTER_ROLE
+        assert policy.bindings[0]["members"] == {f"user:rando"}
+        assert policy.bindings[1]["role"] == GOOGLE_LISTER_ROLE
+        assert policy.bindings[1]["members"] == {f"user:{EMAIL}"}
+        assert policy.bindings[2]["role"] == GOOGLE_INTAKE_ROLE
+        assert policy.bindings[2]["members"] == {f"user:{EMAIL}"}
 
     create_intake_bucket(EMAIL)
     _mock_gcloud_storage_client(
         monkeypatch,
         [
-            {"role": GOOGLE_LISTER_ROLE, "members": ["user:rando"]},
-            {"role": GOOGLE_LISTER_ROLE, "members": [f"user:{EMAIL}"]},
+            {"role": GOOGLE_LISTER_ROLE, "members": {"user:rando"}},
+            {"role": GOOGLE_LISTER_ROLE, "members": {f"user:{EMAIL}"}},
         ],
         set_iam_policy,
     )
@@ -289,17 +452,18 @@ def test_create_intake_bucket(monkeypatch):
 def test_refresh_intake_access(monkeypatch):
     _mock_gcloud_storage_client(
         monkeypatch,
-        _build_iam_binding(GOOGLE_INTAKE_BUCKET, GOOGLE_INTAKE_ROLE, EMAIL),
+        _build_storage_iam_binding(GOOGLE_INTAKE_BUCKET, GOOGLE_INTAKE_ROLE, EMAIL),
         lambda i: i,
     )
 
-    grant_iam_access = MagicMock()
+    grant_storage_iam_access = MagicMock()
     monkeypatch.setattr(
-        "cidc_api.shared.gcloud_client.grant_iam_access", grant_iam_access
+        "cidc_api.shared.gcloud_client.grant_storage_iam_access",
+        grant_storage_iam_access,
     )
 
     refresh_intake_access(EMAIL)
-    args, kwargs = grant_iam_access.call_args_list[0]
+    args, kwargs = grant_storage_iam_access.call_args_list[0]
     assert args[0].name.startswith(GOOGLE_INTAKE_BUCKET)
     assert args[1:] == (GOOGLE_INTAKE_ROLE, EMAIL)
 
@@ -307,17 +471,18 @@ def test_refresh_intake_access(monkeypatch):
 def test_revoke_intake_access(monkeypatch):
     _mock_gcloud_storage_client(
         monkeypatch,
-        _build_iam_binding(GOOGLE_INTAKE_BUCKET, GOOGLE_INTAKE_ROLE, EMAIL),
+        _build_storage_iam_binding(GOOGLE_INTAKE_BUCKET, GOOGLE_INTAKE_ROLE, EMAIL),
         lambda i: i,
     )
 
-    revoke_iam_access = MagicMock()
+    revoke_storage_iam_access = MagicMock()
     monkeypatch.setattr(
-        "cidc_api.shared.gcloud_client.revoke_iam_access", revoke_iam_access
+        "cidc_api.shared.gcloud_client.revoke_storage_iam_access",
+        revoke_storage_iam_access,
     )
 
     revoke_intake_access(EMAIL)
-    args, _ = revoke_iam_access.call_args_list[0]
+    args, _ = revoke_storage_iam_access.call_args_list[0]
     assert args[0].name.startswith(GOOGLE_INTAKE_BUCKET)
     assert args[1:] == (GOOGLE_INTAKE_ROLE, EMAIL)
 

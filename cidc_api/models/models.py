@@ -112,6 +112,7 @@ from ..shared.gcloud_client import (
     revoke_download_access,
     revoke_intake_access,
     revoke_lister_access,
+    revoke_bigquery_access,
 )
 from ..config.logging import get_logger
 
@@ -439,6 +440,7 @@ class Users(CommonColumns):
         ]
         for u in disabled_users:
             Permissions.revoke_user_permissions(u, session=session)
+            revoke_bigquery_access(u.email)
 
         return [u.email for u in disabled_users]
 
@@ -2334,7 +2336,11 @@ class DownloadableFiles(CommonColumns):
             )
             file_filters.append(
                 or_(
-                    DownloadableFiles.trial_id.in_(full_trial_perms),
+                    # don't include clinical_data in cross-trial permission
+                    and_(
+                        DownloadableFiles.trial_id.in_(full_trial_perms),
+                        DownloadableFiles.upload_type != "clinical_data",
+                    ),
                     DownloadableFiles.upload_type.in_(full_type_perms),
                     df_tuples.in_(trial_type_perms),
                 )

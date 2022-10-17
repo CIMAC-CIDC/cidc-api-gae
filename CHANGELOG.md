@@ -9,6 +9,28 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.10` - 17 Oct 2022
+
+- `fixed` reference to environment project name reference vs hard coded
+
+## Version `0.27.9` - 17 Oct 2022
+
+- `fixed` bug in building user permissions for files on the portal
+  - allowed users with cross-assay permissions to see clinical data files
+  
+## Version `0.27.8` - 14 Oct 2022
+
+- `added` credentialing to dataset update
+- `fixed` project id bug
+
+## Version `0.27.7` - 14 Oct 2022
+
+- `added` protobuf package version for old generated code
+
+## Version `0.27.6` - 13 Oct 2022
+
+- `added` biquery permission delivery/revoking on role assignment
+
 ## Version `0.27.5` - 12 Oct 2022
 
 - `changed` staging uploader role to temp replacement

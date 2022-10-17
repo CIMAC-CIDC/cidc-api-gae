@@ -73,6 +73,7 @@ GOOGLE_UPLOAD_ROLE = environ["GOOGLE_UPLOAD_ROLE"]
 GOOGLE_LISTER_ROLE = environ["GOOGLE_LISTER_ROLE"]
 GOOGLE_INTAKE_ROLE = "roles/storage.objectAdmin"  # same across environments
 GOOGLE_DOWNLOAD_ROLE = "roles/storage.objectViewer"  # same across environments
+GOOGLE_BIGQUERY_USER_ROLE = "roles/bigquery.jobUser"  # same across environments
 GOOGLE_PATIENT_SAMPLE_TOPIC = environ["GOOGLE_PATIENT_SAMPLE_TOPIC"]
 GOOGLE_EMAILS_TOPIC = environ["GOOGLE_EMAILS_TOPIC"]
 GOOGLE_ARTIFACT_UPLOAD_TOPIC = environ["GOOGLE_ARTIFACT_UPLOAD_TOPIC"]
