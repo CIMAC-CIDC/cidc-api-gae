@@ -98,15 +98,15 @@ def _get_bucket(bucket_name: str) -> storage.Bucket:
     return bucket
 
 
-def _get_project_policy(project: str) -> Policy:
+def _get_project_policy() -> Policy:
     """
-    Get the project policy for with the name 'project'.
+    Get the project policy.
     """
     crm_service = _get_crm_service()
     policy = (
         crm_service.projects()
         .getIamPolicy(
-            resource=project,
+            resource=GOOGLE_CLOUD_PROJECT,
             body={},
         )
         .execute()
@@ -235,9 +235,8 @@ def grant_bigquery_access(user_emails: List[str]) -> None:
     Grant access to public level bigquery tables.
     """
     logger.info(f"granting bigquery access to {user_emails}")
-    project = "cidc-dfci" if ENV == "prod" else "cidc-dfci-staging"
-    policy = _get_project_policy(project)
-    grant_bigquery_iam_access(policy, project, user_emails)
+    policy = _get_project_policy()
+    grant_bigquery_iam_access(policy, user_emails)
 
 
 def revoke_bigquery_access(user_email: str) -> None:
@@ -246,9 +245,8 @@ def revoke_bigquery_access(user_email: str) -> None:
     Revoke access to public level bigquery tables.
     """
     logger.info(f"revoking bigquery access from {user_email}")
-    project = "cidc-dfci" if ENV == "prod" else "cidc-dfci-staging"
-    policy = _get_project_policy(project)
-    revoke_bigquery_iam_access(policy, project, user_email)
+    policy = _get_project_policy()
+    revoke_bigquery_iam_access(policy, user_email)
 
 
 def get_intake_bucket_name(user_email: str) -> str:
@@ -570,11 +568,9 @@ def grant_storage_iam_access(
         raise e
 
 
-def grant_bigquery_iam_access(
-    policy: Policy, project: str, user_emails: List[str]
-) -> None:
+def grant_bigquery_iam_access(policy: Policy, user_emails: List[str]) -> None:
     """
-    Grant all 'user_emails' the "roles/bigquery.jobUser" role on 'project'.
+    Grant all 'user_emails' the "roles/bigquery.jobUser" role on project.
     If we are in the production environment, all 'user_emails' also get access to
     the public bigquery dataset in prod.
     """
@@ -600,7 +596,7 @@ def grant_bigquery_iam_access(
     # try to set the new policy with edits
     try:
         _crm_service.projects().setIamPolicy(
-            resource=project,
+            resource=GOOGLE_CLOUD_PROJECT,
             body={
                 "policy": policy,
             },
@@ -610,7 +606,7 @@ def grant_bigquery_iam_access(
         raise e
 
     # grant dataset level access to public dataset
-    dataset_id = project + ".public"
+    dataset_id = GOOGLE_CLOUD_PROJECT + ".public"
     dataset = _get_bigquery_dataset(dataset_id)
     entries = list(dataset.access_entries)
     for user_email in user_emails:
@@ -699,9 +695,9 @@ def revoke_all_download_access(user_email: str) -> None:
         report.result()
 
 
-def revoke_bigquery_iam_access(policy: Policy, project: str, user_email: str) -> None:
+def revoke_bigquery_iam_access(policy: Policy, user_email: str) -> None:
     """
-    Revoke 'user_email' the "roles/bigquery.jobUser" role on 'project'.
+    Revoke 'user_email' the "roles/bigquery.jobUser" role on project.
     If we are in the production environment, 'user_email' also get access
     revoked from the public bigquery dataset in prod.
     """
@@ -717,7 +713,7 @@ def revoke_bigquery_iam_access(policy: Policy, project: str, user_email: str) ->
         policy = (
             _crm_service.projects()
             .setIamPolicy(
-                resource=project,
+                resource=GOOGLE_CLOUD_PROJECT,
                 body={
                     "policy": policy,
                 },
@@ -729,7 +725,7 @@ def revoke_bigquery_iam_access(policy: Policy, project: str, user_email: str) ->
         raise e
 
     # remove dataset level access
-    dataset_id = project + ".public"
+    dataset_id = GOOGLE_CLOUD_PROJECT + ".public"
     dataset = _get_bigquery_dataset(dataset_id)
     entries = list(dataset.access_entries)
 
