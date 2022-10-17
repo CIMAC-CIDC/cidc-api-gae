@@ -2336,7 +2336,11 @@ class DownloadableFiles(CommonColumns):
             )
             file_filters.append(
                 or_(
-                    DownloadableFiles.trial_id.in_(full_trial_perms),
+                    # don't include clinical_data in cross-trial permission
+                    and_(
+                        DownloadableFiles.trial_id.in_(full_trial_perms),
+                        DownloadableFiles.upload_type != "clinical_data",
+                    ),
                     DownloadableFiles.upload_type.in_(full_type_perms),
                     df_tuples.in_(trial_type_perms),
                 )

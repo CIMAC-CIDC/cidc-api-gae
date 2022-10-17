@@ -9,6 +9,11 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.9` - 17 Oct 2022
+
+- `fixed` bug in building user permissions for files on the portal
+  - allowed users with cross-assay permissions to see clinical data files
+  
 ## Version `0.27.8` - 14 Oct 2022
 
 - `added` credentialing to dataset update
