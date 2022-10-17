@@ -315,7 +315,7 @@ def test_grant_upload_access(monkeypatch):
 
 def test_grant_bigquery_access(monkeypatch):
     def set_iam_policy(resource, body):
-        assert resource == "cidc-dfci"
+        assert resource == "cidc-dfci-staging"
         assert f"user:rando" in body["policy"]["bindings"][0]["members"]
         assert f"user:{EMAIL}" in body["policy"]["bindings"][0]["members"]
 
@@ -340,7 +340,7 @@ def test_grant_bigquery_access(monkeypatch):
     policy = {
         "bindings": [{"role": GOOGLE_BIGQUERY_USER_ROLE, "members": ["user:rando"]}]
     }
-    grant_bigquery_iam_access(policy, "cidc-dfci", [EMAIL])
+    grant_bigquery_iam_access(policy, [EMAIL])
 
 
 def test_revoke_upload_access(monkeypatch):
@@ -363,7 +363,7 @@ def test_revoke_upload_access(monkeypatch):
 
 def test_revoke_bigquery_access(monkeypatch):
     def set_iam_policy(resource, body):
-        assert resource == "cidc-dfci"
+        assert resource == "cidc-dfci-staging"
         assert f"user:rando" in body["policy"]["bindings"][0]["members"]
 
     def update_dataset(dataset, element):
@@ -396,7 +396,7 @@ def test_revoke_bigquery_access(monkeypatch):
             }
         ]
     }
-    revoke_bigquery_iam_access(policy, "cidc-dfci", EMAIL)
+    revoke_bigquery_iam_access(policy, EMAIL)
 
 
 def test_create_intake_bucket(monkeypatch):
