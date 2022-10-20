@@ -490,7 +490,6 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
         },
         "analysis": {
             "atacseq_analysis": [{"records": records * 12}],
-            "ctdna_analysis": {"batches": [{"records": records * 5}]},
             "wes_analysis": {
                 "pair_runs": [
                     {
@@ -596,7 +595,6 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "atacseq": 0.0,
                 "atacseq_analysis": 0.0,
                 "ctdna": 0.0,
-                "ctdna_analysis": 0.0,
                 "cytof": 5.0,
                 "cytof_analysis": 2.0,
                 "olink": 8.0,
@@ -626,7 +624,6 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "expected_assays": ["ihc", "olink"],
                 "elisa": 7.0,
                 "ctdna": 3.0,
-                "ctdna_analysis": 5.0,
                 "cytof": 0.0,
                 "cytof_analysis": 0.0,
                 "olink": 0.0,

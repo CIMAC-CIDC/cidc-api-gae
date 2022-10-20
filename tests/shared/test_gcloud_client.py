@@ -210,7 +210,6 @@ def test_build_trial_upload_prefixes(monkeypatch):
     assert _build_trial_upload_prefixes("foo", None) == {
         "foo/atacseq",
         "foo/ctdna",
-        "foo/ctdna_analysis",
         "foo/cytof",
         "foo/cytof_analysis",
         "foo/elisa",
@@ -218,7 +217,6 @@ def test_build_trial_upload_prefixes(monkeypatch):
         "foo/ihc",
         "foo/mibi",
         "foo/microbiome",
-        "foo/microbiome_analysis",
         "foo/mif",
         "foo/misc_data",
         "foo/nanostring",

@@ -1749,16 +1749,6 @@ class TrialMetadata(CommonColumns):
                 jsonb_array_elements(metadata_json#>'{analysis,atacseq_analysis}') batch
         """
 
-        ctdna_analysis_subquery = """
-            select
-                trial_id,
-                'ctdna_analysis' as key,
-                jsonb_array_length(batch->'records') as value
-            from
-                trial_metadata,
-                jsonb_array_elements(metadata_json#>'{analysis,ctdna_analysis,batches}') batch
-        """
-
         # Build up a JSON object mapping analysis types to arrays of excluded samples.
         # The resulting object will have structure like:
         # {
@@ -1889,8 +1879,6 @@ class TrialMetadata(CommonColumns):
                     {cytof_analysis_subquery}
                     union all
                     {atacseq_analysis_subquery}
-                    union all
-                    {ctdna_analysis_subquery}
                 ) q
                 group by trial_id, key
             ) sample_summaries

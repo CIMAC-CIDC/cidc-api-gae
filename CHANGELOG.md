@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.11` - 20 Oct 2022
+
+- `changed` faceting for the previous microbiome and ctDNA analysis files
+
 ## Version `0.27.10` - 17 Oct 2022
 
 - `fixed` reference to environment project name reference vs hard coded
