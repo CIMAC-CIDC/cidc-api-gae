@@ -595,16 +595,14 @@ def test_facet_groups_for_links(cidc_api, clean_db, monkeypatch):
 
     assert facets == {
         "ctdna": {
-            "analyzed": [
+            "analyzed": [],
+            "received": [
+                "Assay Type|ctDNA|Demultiplexed Source BAMs",
                 "Assay Type|ctDNA|Genome-wide Plots",
                 "Assay Type|ctDNA|Bias / QC Plots",
                 "Assay Type|ctDNA|Optimal Solutions",
                 "Assay Type|ctDNA|Other Solutions",
                 "Assay Type|ctDNA|Batch-level Summary Plots",
-                "Analysis Ready|ctDNA",
-            ],
-            "received": [
-                "Assay Type|ctDNA|Demultiplexed Source BAMs",
             ],
         },
         "clinical_participants": {
@@ -662,13 +660,11 @@ def test_facet_groups_for_links(cidc_api, clean_db, monkeypatch):
             ],
         },
         "microbiome": {
-            "analyzed": [
-                "Assay Type|Microbiome|Batch-level Summary Plots",
-                "Analysis Ready|Microbiome",
-            ],
+            "analyzed": [],
             "received": [
                 "Assay Type|Microbiome|Source",
                 "Assay Type|Microbiome|OTU Tables",
+                "Assay Type|Microbiome|Batch-level Summary Plots",
             ],
         },
         "mif": {
