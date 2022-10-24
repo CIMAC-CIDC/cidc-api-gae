@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.12` - 24 Oct 2022
+
+- `changed` schemas bump for  biofx pipeline integration updates
+
 ## Version `0.27.11` - 20 Oct 2022
 
 - `changed` faceting for the previous microbiome and ctDNA analysis files
