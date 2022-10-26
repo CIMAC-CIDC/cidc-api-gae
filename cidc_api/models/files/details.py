@@ -1177,4 +1177,30 @@ details_dict = {
         "Plots showing analysis summary for microbiome.",
         "",
     ),
+    # mibi
+    "/mibi/metadata.tsv": FileDetails(
+        "miscellaneous",
+        "TSV-formatted table containing metadata about the run",
+        "",
+    ),
+    "/mibi/multichannel_image.ome.tiff": FileDetails(
+        "miscellaneous",
+        "Analysis-ready multilayer OME-TIFF image file",
+        "",
+    ),
+    "/mibi/cluster_labels.tif": FileDetails(
+        "miscellaneous",
+        "TIF-formatted whole cell segmentation masks for each multiplexed image",
+        "",
+    ),
+    "/mibi/channel_names.csv": FileDetails(
+        "miscellaneous",
+        "CSV-formatted table of each channel and the corresponding mass",
+        "",
+    ),
+    "/mibi/single_cell_table.csv": FileDetails(
+        "miscellaneous",
+        "Single cell data table containing eg integrated expression values, XY location",
+        "",
+    ),
 }

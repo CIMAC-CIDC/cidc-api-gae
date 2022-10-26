@@ -344,6 +344,10 @@ assay_facets: Facets = {
         "HLA": FacetConfig(["/rna/analysis/neoantigen/genotype.json"]),
     },
     "MIBI": {
+        "Metadata Sheet": FacetConfig(
+            ["/mibi/metadata.tsv"],
+            "TSV-formatted table containing metadata about the run",
+        ),
         "Multichannel OME TIFFs": FacetConfig(
             ["/mibi/multichannel_image.ome.tiff"],
             "Analysis-ready multilayer OME-TIFF image file",
