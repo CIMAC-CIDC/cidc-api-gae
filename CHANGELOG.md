@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.16` - 27 Oct 2022
+
+- `changed` schemas bump for clinical data bug fix
+
 ## Version `0.27.15` - 27 Oct 2022
 
 - `changed` schemas bump for clinical data bug fix
