@@ -335,7 +335,7 @@ class CIDCRole(EnumBaseClass):
 
 
 ROLES = [role.value for role in CIDCRole]
-ORGS = ["CIDC", "DFCI", "ICAHN", "STANFORD", "ANDERSON"]
+ORGS = ["CIDC", "DFCI", "ICAHN", "STANFORD", "ANDERSON", "N/A"]
 
 
 class Users(CommonColumns):

@@ -653,6 +653,7 @@ def test_facet_groups_for_links(cidc_api, clean_db, monkeypatch):
         "mibi": {
             "analyzed": [],
             "received": [
+                "Assay Type|MIBI|Metadata Sheet",
                 "Assay Type|MIBI|Multichannel OME TIFFs",
                 "Assay Type|MIBI|Segmentation Masks",
                 "Assay Type|MIBI|Channel Names",
