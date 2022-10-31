@@ -125,8 +125,11 @@ def update_user(user: Users, user_updates: Users):
     # refresh their IAM permissions.
     if user.disabled and user_updates.get("disabled") == False:
         user_updates["_accessed"] = datetime.now()
-        Permissions.grant_user_permissions(user)
-        grant_bigquery_access([user.email])
+
+        # don't grant permissions unless they've be approved
+        if user.approval_date:
+            Permissions.grant_user_permissions(user)
+            grant_bigquery_access([user.email])
 
     # If this user is being disabled, remove all of their download permissions.
     if not user.disabled and user_updates.get("disabled") == True:
