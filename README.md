@@ -290,7 +290,7 @@ JWTs are a lot like passports - they convey personal information, they’re issu
 
 ##### Authorization
 
-The CIDC API takes a _role-based access control _approach to implementing its authorization policy. Each user is assigned a role (like _cidc-admin_, _cimac-biofx-user_, etc.), and the actions they’re allowed to take in the system are restricted based on that role. For the most part, any two users with the same role will be allowed to take the same actions in the CIDC system. 
+The CIDC API takes a _role-based access control_ approach to implementing its authorization policy. Each user is assigned a role (like _cidc-admin_, _cimac-biofx-user_, etc.), and the actions they’re allowed to take in the system are restricted based on that role. For the most part, any two users with the same role will be allowed to take the same actions in the CIDC system. 
 
 The one exception to the role-based access control rule is file access authorization, which is configured at the specific user account level for non-admin users via trial/assay permissions.
 
