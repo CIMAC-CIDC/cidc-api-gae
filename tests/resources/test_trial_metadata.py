@@ -56,13 +56,31 @@ def setup_trial_metadata(cidc_api, user_id=None) -> Tuple[int, int]:
                             "type_of_sample": "Other",
                             "collection_event_name": "event",
                             "parent_sample_id": "",
+                            "processed_sample_derivative": "Tumor DNA",
                         }
                     ],
                 }
             ],
             "allowed_collection_event_names": [] if n == 2 else ["event"],
             "allowed_cohort_names": [],
-            "assays": {},
+            "assays": {}
+            if n == 2
+            else {
+                "wes": [
+                    {
+                        "assay_creator": "DFCI",
+                        "bait_set": "whole_exome_illumina_coding_v1",
+                        "read_length": 100,
+                        "sequencer_platform": "MiSeq",
+                        "records": [
+                            {
+                                "cimac_id": f"CTTTPP1SS.01",
+                                "files": {"bam": [{"upload_placeholder": "foo"}]},
+                            },
+                        ],
+                    }
+                ]
+            },
             "analysis": {},
             "shipments": [],
         }
@@ -355,6 +373,7 @@ def test_update_trial(cidc_api, clean_db, monkeypatch):
             metadata = trial.metadata_json.copy()
             if field == "participants":
                 metadata["participants"] = []
+                metadata["assays"] = {}  # remove all references to the CIMAC ID
             elif field == "protocol_identifier":
                 metadata["protocol_identifier"] = "uh oh!"
             else:
@@ -364,7 +383,7 @@ def test_update_trial(cidc_api, clean_db, monkeypatch):
                 headers={"If-Match": trial._etag},
                 json={"metadata_json": metadata},
             )
-            assert res.status_code == 400
+            assert res.status_code == 400, field
             assert (
                 res.json["_error"]["message"]
                 == f"updating metadata_json['{field}'] via the API is prohibited"
