@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## 31 Oct 2022
+
+- `changed` updated readme
+
 ## Version `0.27.17` - 31 Oct 2022
 
 - `changed` only grant permissions on user reenable if they're approved
