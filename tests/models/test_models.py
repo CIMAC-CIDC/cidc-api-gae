@@ -680,7 +680,6 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "total_participants": 8,
                 "total_samples": 8,
                 "expected_assays": [],
-
                 "atacseq": 0.0,
                 "atacseq_analysis": 0.0,
                 "clinical_participants": 0,
@@ -699,7 +698,6 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "wes_analysis": 0.0,
                 "wes_tumor_only": 0.0,
                 "wes_tumor_only_analysis": 0.0,
-
                 "excluded_samples": {
                     "tcr_analysis": make_records(0, 4),
                     "rna_level1_analysis": make_records(0, 2),
@@ -712,7 +710,6 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "total_participants": 14,
                 "total_samples": 20,
                 "expected_assays": ["ihc", "olink"],
-
                 "atacseq": 13.0,
                 "atacseq_analysis": 12.0,
                 "clinical_participants": 7,
@@ -731,7 +728,6 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "wes_analysis": 2.0,  # combined with wes_analysis_old
                 "wes_tumor_only": 1.0,
                 "wes_tumor_only_analysis": 2.0,  # combined with wes_tumor_only_analysis_old
-                
                 "excluded_samples": {
                     "wes_analysis": make_records(
                         0, 2
