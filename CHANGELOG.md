@@ -9,8 +9,9 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
-## Version `0.27.18` - 2 Nov 2022
+## Version `0.27.18` - 4 Nov 2022
 
+- `changed` schemas bump for new local file path description
 - `changed` how trial and network participants and samples are counted for
   - only count samples and participants that have associated assay data
   - does NOT affect assay-level counts for the Data Overview dashboard
