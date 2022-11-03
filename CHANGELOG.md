@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.18` - 3 Nov 2022
+
+- `changed` schemas bump for adding TCR meta csv
+
 ## 31 Oct 2022
 
 - `changed` updated readme
