@@ -112,7 +112,10 @@ If you wish to connect to the staging Cloud SQL instance via the postgres REPL, 
 ```bash
 # Download the proxy
 curl https://raw.githubusercontent.com/CIMAC-CIDC/cidc-devops/master/scripts/cidc_sql_proxy.sh -o /usr/local/bin/cidc_sql_proxy
+
+# Prepare the proxy 
 chmod +x /usr/local/bin/cidc_sql_proxy
+cidc_sql_proxy install
 
 # Run the proxy
 cidc_sql_proxy staging # or cidc_sql_proxy prod
