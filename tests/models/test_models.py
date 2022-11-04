@@ -1,4 +1,6 @@
 from copy import deepcopy
+from deepdiff import DeepDiff
+from typing import Dict, List
 import pandas as pd
 import io
 import logging
@@ -441,9 +443,18 @@ def test_partial_patch_trial_metadata(clean_db):
 @db_test
 def test_trial_metadata_get_summaries(clean_db, monkeypatch):
     """Check that trial data summaries are computed as expected"""
+
+    def int_to_cimac_id(num: int) -> str:
+        ret = "".join(["ABCDEFGHIJ"[int(d)] for d in str(num)])
+        to_add = max(0, 6 - len(ret))
+        return "C" + "0" * to_add + ret + "00.01"
+
     # Add some trials
-    records = [{"fake": "record"}]
-    cytof_record_with_output = [{"output_files": {"foo": "bar"}}]
+    def make_records(start: int, end: int, **kwargs) -> List[Dict[str, str]]:
+        ret = [{"cimac_id": int_to_cimac_id(i)} for i in range(start, end)]
+        [r.update(kwargs) for r in ret]
+        return ret
+
     tm1 = {
         **METADATA,
         # deliberately override METADATA['protocol_identifier']
@@ -451,81 +462,106 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
         "participants": [
             {
                 "samples": [
-                    {"cimac_id": "t1", "processed_sample_derivative": "Tumor DNA"},
-                    {"cimac_id": "t2", "processed_sample_derivative": "Tumor DNA"},
-                    {"cimac_id": "n1", "processed_sample_derivative": "not"},
-                    {"cimac_id": "n2", "processed_sample_derivative": "not"},
+                    {
+                        "cimac_id": "C000000T1",
+                        "processed_sample_derivative": "Tumor DNA",
+                    },
+                    {
+                        "cimac_id": "C000000T2",
+                        "processed_sample_derivative": "Tumor DNA",
+                    },
+                    {"cimac_id": "C000000N1", "processed_sample_derivative": "not"},
+                    {"cimac_id": "C000000N2", "processed_sample_derivative": "not"},
                 ]
             },
             {
                 "samples": [
-                    {"cimac_id": "t3", "processed_sample_derivative": "Tumor DNA"},
-                    {"cimac_id": "t4", "processed_sample_derivative": "Tumor DNA"},
-                    {"cimac_id": "n3", "processed_sample_derivative": "not"},
+                    {
+                        "cimac_id": "C000000T3",
+                        "processed_sample_derivative": "Tumor DNA",
+                    },
+                    {
+                        "cimac_id": "C000000T4",
+                        "processed_sample_derivative": "Tumor DNA",
+                    },
+                    {"cimac_id": "C000000N3", "processed_sample_derivative": "not"},
                 ]
             },
         ],
         "expected_assays": ["ihc", "olink"],
         "assays": {
-            "atacseq": [{"records": records * 13}],
-            "ctdna": [{"records": records * 3}],
+            "atacseq": [{"records": make_records(0, 13)}],  # 13 samples, 13 partics
+            "ctdna": [{"records": make_records(0, 3)}],  # 0 new samples, 0 new partics
             "wes": [
+                # wes_tumor_only = 1, wes = 3
                 {
-                    "records": [{"cimac_id": f"t{n}"} for n in range(1, 5)]
-                    + [{"cimac_id": f"n{n}"} for n in range(1, 4)]
+                    "records": [
+                        {"cimac_id": f"C000000T{n}"} for n in range(1, 5)
+                    ]  # 4 samples, 1 new partic
+                    + [
+                        {"cimac_id": f"C000000N{n}"} for n in range(1, 4)
+                    ]  # 3 samples, 0 new partic
                 },
-            ],  # wes_tumor_only = 1, wes = 3
-            "rna": [{"records": records * 2}],
-            "mif": [
-                {"records": records * 3},
-                {"records": records},
-                {"records": records},
             ],
-            "elisa": [{"assay_xlsx": {"number_of_samples": 7}}],
-            "nanostring": [
-                {"runs": [{"samples": records * 2}]},
-                {"runs": [{"samples": records * 1}]},
+            "rna": [{"records": make_records(0, 2)}],  # 0 new samples, 0 new partics
+            "mif": [  # 0 new samples, 0 new partics
+                {"records": make_records(0, 3)},
+                {"records": make_records(3, 4)},
+                {"records": make_records(4, 5)},
             ],
-            "hande": [{"records": records * 5}],
+            "elisa": [
+                {  # 0 new samples, 0 new partics
+                    "assay_xlsx": {"samples": [int_to_cimac_id(i) for i in range(7)]}
+                }
+            ],
+            "nanostring": [  # 0 new samples, 0 new partics
+                {"runs": [{"samples": make_records(0, 2)}]},
+                {"runs": [{"samples": make_records(2, 3)}]},
+            ],
+            "hande": [{"records": make_records(0, 5)}],  # 0 new samples, 0 new partics
         },
         "analysis": {
-            "atacseq_analysis": [{"records": records * 12}],
+            # not checked for samples, partics
+            "atacseq_analysis": [{"records": make_records(0, 12)}],
             "wes_analysis": {
                 "pair_runs": [
                     {
-                        "tumor": {"cimac_id": "t1"},
-                        "normal": {"cimac_id": "n1"},
+                        "tumor": {"cimac_id": "C000000T1"},
+                        "normal": {"cimac_id": "C000000N1"},
                     },  # no analysis data
                     # wes_analysis = 2; 1 here, 1 below
                     {
-                        "tumor": {"cimac_id": "t2"},
-                        "normal": {"cimac_id": "n2"},
+                        "tumor": {"cimac_id": "C000000T2"},
+                        "normal": {"cimac_id": "C000000N2"},
                         "report": {"report": "foo"},
                     },
                 ],
                 # these are excluded, so not adding fake assay data
-                "excluded_samples": records,
+                "excluded_samples": make_records(0, 1),
             },
             "wes_analysis_old": {
                 "pair_runs": [
                     # wes_analysis = 2; 1 here, 1 above
                     {
-                        "tumor": {"cimac_id": "t3"},
-                        "normal": {"cimac_id": "n3"},
+                        "tumor": {"cimac_id": "C000000T3"},
+                        "normal": {"cimac_id": "C000000N3"},
                         "report": {"report": "foo"},
                     },
                 ],
                 # these are excluded, so not adding fake assay data
-                "excluded_samples": records,
+                "excluded_samples": make_records(1, 2),
             },
             "wes_tumor_only_analysis": {
-                "runs": records,  # wes_tumor_only_analysis = 2; 1 here, 1 below
+                # wes_tumor_only_analysis = 2; 1 here, 1 below
+                "runs": make_records(0, 1, report={"report": "foo"}),
             },
             "wes_tumor_only_analysis_old": {
-                "runs": records,  # wes_tumor_only_analysis = 2; 1 here, 1 above
+                # wes_tumor_only_analysis = 2; 1 here, 1 above
+                "runs": make_records(1, 2, report={"report": "foo"}),
             },
         },
         "clinical_data": {
+            # not checked for samples, partics
             "records": [
                 {"clinical_file": {"participants": ["a", "b", "c"]}},
                 {"clinical_file": {"participants": ["a", "b", "d"]}},
@@ -536,39 +572,83 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
     tm2 = {
         **METADATA,
         # deliberately override METADATA['protocol_identifier']
-        "protocol_identifier": "tm1",
+        "protocol_identifier": "tm2",
         "participants": [{"samples": []}],
         "assays": {
             "cytof": [
+                # 5 samples, 5 participants
                 {
-                    "records": cytof_record_with_output * 2,
-                    "excluded_samples": records * 2,
+                    "records": make_records(0, 2, output_files={"foo": "bar"}),
+                    "excluded_samples": make_records(0, 2),
                 },
-                {"records": records * 2},
-                {"records": records},
+                {"records": make_records(2, 4)},
+                {"records": make_records(4, 5)},
             ],
-            "olink": {
+            "olink": {  # 3 new samples, 3 new partics
                 "batches": [
                     {
                         "records": [
-                            {"files": {"assay_npx": {"number_of_samples": 2}}},
-                            {"files": {"assay_npx": {"number_of_samples": 3}}},
+                            {
+                                "files": {
+                                    "assay_npx": {
+                                        "samples": [
+                                            int_to_cimac_id(i) for i in range(2)
+                                        ]
+                                    }
+                                }
+                            },
+                            {
+                                "files": {
+                                    "assay_npx": {
+                                        "samples": [
+                                            int_to_cimac_id(i) for i in range(2, 5)
+                                        ]
+                                    }
+                                }
+                            },
                         ]
                     },
-                    {"records": [{"files": {"assay_npx": {"number_of_samples": 3}}}]},
+                    {
+                        "records": [
+                            {
+                                "files": {
+                                    "assay_npx": {
+                                        "samples": [
+                                            int_to_cimac_id(i) for i in range(5, 8)
+                                        ]
+                                    }
+                                }
+                            }
+                        ]
+                    },
                 ]
             },
         },
         "analysis": {
-            "rna_analysis": {"level_1": records * 10, "excluded_samples": records * 2},
+            # not checked for samples, partics
+            "rna_analysis": {
+                "level_1": make_records(0, 10),
+                "excluded_samples": make_records(0, 2),
+            },
             "tcr_analysis": {
                 "batches": [
-                    {"records": records * 4, "excluded_samples": records * 3},
-                    {"records": records * 2, "excluded_samples": records * 1},
+                    {
+                        "records": make_records(0, 4),
+                        "excluded_samples": make_records(0, 3),
+                    },
+                    {
+                        "records": make_records(4, 6),
+                        "excluded_samples": make_records(3, 4),
+                    },
                 ]
             },
             "cytof_analysis": {
-                "batches": [{"records": records * 2, "excluded_samples": records * 2}]
+                "batches": [
+                    {
+                        "records": make_records(0, 2),
+                        "excluded_samples": make_records(0, 2),
+                    }
+                ]
             },
         },
     }
@@ -591,23 +671,23 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
     expected = sorted(
         [
             {
+                "trial_id": "tm2",
+                "file_size_bytes": 10,
+                "total_participants": 8,
+                "total_samples": 8,
                 "expected_assays": [],
                 "atacseq": 0.0,
                 "atacseq_analysis": 0.0,
+                "clinical_participants": 0,
                 "ctdna": 0.0,
                 "cytof": 5.0,
                 "cytof_analysis": 2.0,
-                "olink": 8.0,
-                "trial_id": "tm2",
-                "file_size_bytes": 10,
-                "total_participants": 1,
-                "total_samples": 0,
-                "clinical_participants": 0.0,
-                "rna": 0.0,
-                "nanostring": 0.0,
                 "elisa": 0.0,
                 "h&e": 0.0,
                 "mif": 0.0,
+                "nanostring": 0.0,
+                "olink": 8.0,
+                "rna": 0.0,
                 "rna_level1_analysis": 10.0,
                 "tcr_analysis": 6.0,
                 "wes": 0.0,
@@ -615,29 +695,29 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "wes_tumor_only": 0.0,
                 "wes_tumor_only_analysis": 0.0,
                 "excluded_samples": {
-                    "tcr_analysis": records * 4,
-                    "rna_level1_analysis": records * 2,
-                    "cytof_analysis": records * 2,
+                    "tcr_analysis": make_records(0, 4),
+                    "rna_level1_analysis": make_records(0, 2),
+                    "cytof_analysis": make_records(0, 2),
                 },
             },
             {
+                "trial_id": "tm1",
+                "file_size_bytes": 5,
+                "total_participants": 14,
+                "total_samples": 20,
                 "expected_assays": ["ihc", "olink"],
-                "elisa": 7.0,
+                "atacseq": 13.0,
+                "atacseq_analysis": 12.0,
+                "clinical_participants": 7,
                 "ctdna": 3.0,
                 "cytof": 0.0,
                 "cytof_analysis": 0.0,
-                "olink": 0.0,
-                "trial_id": "tm1",
-                "file_size_bytes": 5,
-                "total_participants": 2,
-                "total_samples": 7,
-                "clinical_participants": 7.0,
-                "atacseq": 13.0,
-                "atacseq_analysis": 12.0,
-                "rna": 2.0,
-                "nanostring": 3.0,
+                "elisa": 7.0,
                 "h&e": 5.0,
                 "mif": 5.0,
+                "nanostring": 3.0,
+                "olink": 0.0,
+                "rna": 2.0,
                 "rna_level1_analysis": 0.0,
                 "tcr_analysis": 0.0,
                 "wes": 3.0,
@@ -645,13 +725,16 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "wes_tumor_only": 1.0,
                 "wes_tumor_only_analysis": 2.0,  # combined with wes_tumor_only_analysis_old
                 "excluded_samples": {
-                    "wes_analysis": records * 2,  # combined with wes_analysis_old
+                    "wes_analysis": make_records(
+                        0, 2
+                    ),  # combined with wes_analysis_old
                 },
             },
         ],
         key=sorter,
     )
-    assert received == expected
+    for e, r in zip(expected, received):
+        assert DeepDiff(e, r, ignore_order=True) == {}, e["trial_id"]
     assert all("misc_data" not in entry for entry in received)
 
 

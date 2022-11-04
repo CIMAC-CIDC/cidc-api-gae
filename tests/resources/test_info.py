@@ -58,18 +58,37 @@ def test_info_data_overview(cidc_api, clean_db):
                         "participant_id": "x",
                         "samples": [
                             {
-                                "cimac_id": f"CTTTPP1SS.0{s}",
+                                "cimac_id": f"CTTTPP{p}SS.0{s}",
                                 "sample_location": "",
                                 "type_of_primary_container": "Other",
                                 "type_of_sample": "Other",
                                 "collection_event_name": "",
                                 "parent_sample_id": "",
+                                "processed_sample_derivative": "Tumor DNA",
                             }
                             for s in range(num_samples[p])
                         ],
                     }
                     for p in range(num_participants)
                 ],
+                "assays": {
+                    "wes": [
+                        {
+                            "assay_creator": "DFCI",
+                            "bait_set": "whole_exome_illumina_coding_v1",
+                            "read_length": 100,
+                            "sequencer_platform": "MiSeq",
+                            "records": [
+                                {
+                                    "cimac_id": f"CTTTPP{p}SS.0{s}",
+                                    "files": {"bam": [{"upload_placeholder": "foo"}]},
+                                }
+                                for s in range(num_samples[p])
+                            ],
+                        }
+                        for p in range(num_participants)
+                    ],
+                },
             },
         ).insert()
 
@@ -98,7 +117,7 @@ def test_info_data_overview(cidc_api, clean_db):
     assert res.json == {
         "num_assays": len(prism.SUPPORTED_ASSAYS),
         "num_trials": 3,
-        "num_participants": 15,
+        "num_participants": 9,
         "num_samples": 40,
         "num_files": 3,
         "num_bytes": 6,

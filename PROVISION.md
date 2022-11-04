@@ -13,7 +13,7 @@ The CIDC API service requires the following preconditions be satisfied before pr
 
 - There exist two Auth0 tenants, e.g., `cidc-test` and `cidc`, for staging and production instances of the application, both configured to use Google as an IDP.
 - There exist two Google Cloud Platform (GCP) projects, `CIDC-DFCI-STAGING` and `CIDC-DFCI`, for staging and production instances of the application.
-- The steps in [`cidc-devops/docs/provision.md`](https://github.com/CIMAC-CIDC/cidc-devops/blob/v2/docs/provision.md) have been completed for both projects.
+- The steps in [`cidc-devops/docs/provision.md`](https://github.com/CIMAC-CIDC/cidc-devops/blob/master/docs/provision.md) have been completed for both projects.
 
 ## Google App Engine
 
