@@ -450,13 +450,9 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
         return "C" + "0" * to_add + ret + "00.01"
 
     # Add some trials
-    def make_records(start: int, end: int) -> List[Dict[str, str]]:
-        return [{"cimac_id": int_to_cimac_id(i)} for i in range(start, end)]
-
-    def make_cytof_records_with_output(start: int, end: int) -> List[Dict[str, str]]:
-        ret = make_records(start, end)
-        for r in ret:
-            r.update({"output_files": {"foo": "bar"}})
+    def make_records(start: int, end: int, **kwargs) -> List[Dict[str, str]]:
+        ret = [{"cimac_id": int_to_cimac_id(i)} for i in range(start, end)]
+        [r.update(kwargs) for r in ret]
         return ret
 
     tm1 = {
@@ -557,11 +553,11 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
             },
             "wes_tumor_only_analysis": {
                 # wes_tumor_only_analysis = 2; 1 here, 1 below
-                "runs": make_records(0, 1),
+                "runs": make_records(0, 1, report={"report": "foo"}),
             },
             "wes_tumor_only_analysis_old": {
                 # wes_tumor_only_analysis = 2; 1 here, 1 above
-                "runs": make_records(1, 2),
+                "runs": make_records(1, 2, report={"report": "foo"}),
             },
         },
         "clinical_data": {
@@ -582,7 +578,7 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
             "cytof": [
                 # 5 samples, 5 participants
                 {
-                    "records": make_cytof_records_with_output(0, 2),
+                    "records": make_records(0, 2, output_files={"foo": "bar"}),
                     "excluded_samples": make_records(0, 2),
                 },
                 {"records": make_records(2, 4)},
