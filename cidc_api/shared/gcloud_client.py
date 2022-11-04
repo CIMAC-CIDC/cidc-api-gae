@@ -515,7 +515,14 @@ def _build_trial_upload_prefixes(
     if not trial_id:
         from ..models.models import TrialMetadata
 
-        trial_id = set([t.trial_id for t in TrialMetadata.list(session=session)])
+        trial_id = set(
+            [
+                t.trial_id
+                for t in session.query(TrialMetadata).add_columns(
+                    TrialMetadata.trial_id
+                )
+            ]
+        )
     else:
         trial_id = set([trial_id])
 

@@ -1256,43 +1256,6 @@ class TrialMetadata(CommonColumns):
 
     @classmethod
     @with_default_session
-    def _num_participants_query(cls, session: Session):
-        """
-        Build a query that counts the number of participants in each trial
-        """
-        participant_counts = func.jsonb_array_length(
-            cls.metadata_json.op("->")("participants")
-        ).alias("np")
-        return (
-            session.query(
-                cls.trial_id, func.sum(literal_column("np")).label("num_participants")
-            )
-            .select_from(cls, participant_counts)
-            .group_by(cls.trial_id)
-        )
-
-    @classmethod
-    @with_default_session
-    def _num_samples_query(cls, session: Session):
-        """
-        Build a query that counts the number of samples in each trial
-        """
-        participants_array = func.jsonb_array_elements(
-            cls.metadata_json.op("->")("participants")
-        ).alias("ps")
-        sample_counts = func.jsonb_array_length(
-            literal_column("ps").op("->")("samples")
-        ).alias("ns")
-        return (
-            session.query(
-                cls.trial_id, func.sum(literal_column("ns")).label("num_samples")
-            )
-            .select_from(cls, participants_array, sample_counts)
-            .group_by(cls.trial_id)
-        )
-
-    @classmethod
-    @with_default_session
     def list(
         cls,
         session: Session,
@@ -1303,7 +1266,8 @@ class TrialMetadata(CommonColumns):
         """
         List `TrialMetadata` records from the database with pruned metadata JSON blobs.
         If `file_bundle=True`, include the file bundle associated with each trial.
-        If `include_counts=True`, include participant and sample counts for this trial.
+        If `include_counts=True`, include participant and sample counts for this trial
+            using `TrialMetadata.get_summaries()`.
 
         NOTE: use find_by_id or find_by_trial_id to get the full metadata JSON blob
         for a particular trial. We don't want lists of trials to include full metadata,
@@ -1321,18 +1285,14 @@ class TrialMetadata(CommonColumns):
             columns.append(file_bundle_query.c.file_bundle)
             subqueries.append(file_bundle_query)
         if include_counts:
-            participant_counts = cls._num_participants_query().subquery()
-            sample_counts = cls._num_samples_query().subquery()
-            columns.extend(
-                [
-                    participant_counts.c.num_participants,
-                    case(
-                        [(participant_counts.c.num_participants == 0, 0)],
-                        else_=sample_counts.c.num_samples,
-                    ).label("num_samples"),
-                ]
-            )
-            subqueries.extend([participant_counts, sample_counts])
+            trial_summaries: List[dict] = cls.get_summaries()
+
+            participant_counts: Dict[str, int] = {
+                t["trial_id"]: t["total_participants"] for t in trial_summaries
+            }
+            sample_counts: Dict[str, int] = {
+                t["trial_id"]: t["total_samples"] for t in trial_summaries
+            }
 
         # Combine all query components
         query = session.query(*columns)
@@ -1352,6 +1312,12 @@ class TrialMetadata(CommonColumns):
             for column, value in result_dict.items():
                 if value is not None:
                     setattr(trial, column, value)
+
+            if include_counts:
+                setattr(
+                    trial, "num_participants", participant_counts.get(trial.trial_id, 0)
+                )
+                setattr(trial, "num_samples", sample_counts.get(trial.trial_id, 0))
 
             trials.append(trial)
 
@@ -1422,7 +1388,7 @@ class TrialMetadata(CommonColumns):
     @with_default_session
     def get_metadata_counts(cls, session: Session) -> dict:
         """
-        Return a dictionary with the following structure:
+        Return a dictionary using `TrialMetadata.get_summaries()` with the following structure:
         ```
             {
                 "num_trials": <count of all trials>,
@@ -1431,23 +1397,13 @@ class TrialMetadata(CommonColumns):
             }
         ```
         """
-        # Count all trials, participants, and samples in the database
-        [(num_trials, num_participants, num_samples)] = session.execute(
-            """
-            SELECT
-                COUNT(DISTINCT trial_id),
-                COUNT(participants),
-                SUM(jsonb_array_length(participants->'samples'))
-            FROM
-                trial_metadata,
-                LATERAL jsonb_array_elements(metadata_json->'participants') participants;
-            """
-        )
+
+        trial_summaries: List[dict] = cls.get_summaries(session=session)
 
         return {
-            "num_trials": num_trials,
-            "num_participants": num_participants,
-            "num_samples": num_samples,
+            "num_trials": len(trial_summaries),
+            "num_participants": sum(t["total_participants"] for t in trial_summaries),
+            "num_samples": sum(t["total_samples"] for t in trial_summaries),
         }
 
     @staticmethod
@@ -1461,47 +1417,38 @@ class TrialMetadata(CommonColumns):
                 "expected_assays": ..., # list of assays the trial should have data for
                 "file_size_bytes": ..., # total file size for the trial
                 "clinical_participants": ..., # number of participants with clinical data
-                "wes": ..., # wes sample count
+                "total_participants": ..., # number of unique participants with assay data
+                "total_samples": ..., # number of samples with assay data
                 "cytof": ..., # cytof sample count
-                ... # other assays
+                ... # other assays and analysis
             }
         ```
         NOTE: if the metadata model for any existing assays substantially changes,
         or if new assays are introduced that don't follow the typical structure
         (batches containing sample-level records), then this method will need to
         be updated to accommodate those changes.
-        """
-        # Compute the total count of participants for each trial
-        participants_subquery = """
-            select
-                trial_id,
-                'total_participants' as key,
-                jsonb_array_length(metadata_json->'participants') as value
-            from
-                trial_metadata
-        """
 
-        # Compute the total  count of samples for each trial
-        samples_subquery = """
-            select
-                trial_id,
-                'total_samples' as key,
-                sum(num_samples) as value
-            from
-                trial_metadata,
-                jsonb_array_elements(metadata_json->'participants') participants,
-                jsonb_array_length(participants->'samples') num_samples
-            group by trial_id
-        """
+        Only the assays are used for calculating `"total_participants"` and `"total_samples"`,
+        as all analyses are derived from assay data.
+        Each assay/analysis subquery is expected to return a set with `trial_id`, `key`,
+        and `cimac_id` which are used for both assay-level and overall counting.
 
+        There is a bit of complexity with the way that WES samples are counted:
+            - `"wes"` only counts tumor samples slated for paired wes_analysis
+            - `"wes_tumor_only"` counts all tumor samples NOT slated for paired wes_analysis
+            - `"wes_analysis"` counts tumor samples with paired wes_analysis
+            - `"wes_tumor_only_analysis"` counts (tumor) samples with tumor-only analysis
+        For `"total_[participants/samples]"`, ALL (ie tumor AND normal) WES assay samples are included.
+        """
         # Compute the total amount of data in bytes stored for each trial
         files_subquery = """
             select
                 trial_id,
-                'file_size_bytes' as key,
-                file_size_bytes as value
+                sum(file_size_bytes) as value
             from
                 downloadable_files
+            group by
+                trial_id
         """
 
         # Count how many participants have associated clinical data. The same
@@ -1510,7 +1457,6 @@ class TrialMetadata(CommonColumns):
         clinical_subquery = """
             select
                 trial_id,
-                'clinical_participants' as key,
                 count(distinct participants) as value
             from
                 trial_metadata,
@@ -1520,10 +1466,10 @@ class TrialMetadata(CommonColumns):
                 trial_id
         """
 
-        # Compute the number of samples associated with each assay type for
+        # Find all samples associated with each assay type for
         # assays whose metadata follows the typical structure: an array of batches,
         # with each batch containing an array of records, where each record
-        # corresponds to a unique sample.
+        # corresponds to a unique sample with a cimac_id.
         generic_assay_subquery = """
             select
                 trial_id,
@@ -1531,222 +1477,251 @@ class TrialMetadata(CommonColumns):
                     when key = 'hande' then 'h&e'
                     else key
                 end as key,
-                jsonb_array_length(batches->'records') as value
+                record->>'cimac_id' as cimac_id
             from
                 trial_metadata,
                 jsonb_each(metadata_json->'assays') assays,
-                jsonb_array_elements(value) batches
+                jsonb_array_elements(value) batches,
+                jsonb_array_elements(batches->'records') record
             where key not in ('olink', 'nanostring', 'elisa', 'wes', 'misc_data')
         """
 
-        # Compute the number of samples associated with nanostring uploads.
+        # Find all samples associated with nanostring uploads.
         # Nanostring metadata has a slightly different structure than typical
         # assays, where each batch has an array of runs, and each run has
-        # an array of sample-level entries.
+        # an array of sample-level entries each with a cimac_id.
         nanostring_subquery = """
             select
                 trial_id,
                 'nanostring' as key,
-                jsonb_array_length(runs->'samples') as value
+                sample->>'cimac_id' as cimac_id
             from
                 trial_metadata,
                 jsonb_array_elements(metadata_json#>'{assays,nanostring}') batches,
-                jsonb_array_elements(batches->'runs') runs
+                jsonb_array_elements(batches->'runs') runs,
+                jsonb_array_elements(runs->'samples') sample
         """
 
-        # Compute the number of samples associated with olink uploads.
+        # Find all samples associated with olink uploads.
         # Unlike other assays, olink metadata is an object at the top level
         # rather than an array of batches. This object has a "batches"
         # property that points to an array of batches, and each batch contains
         # an array of records. These records are *not* sample-level; rather,
-        # the number of samples corresponding to a given record is stored
-        # like: record["files"]["assay_npx"]["number_of_samples"].
+        # the samples corresponding to a given record are stored
+        # like: record["files"]["assay_npx"]["samples"].
         olink_subquery = """
             select
                 trial_id,
                 'olink' as key,
-                (records#>'{files,assay_npx,number_of_samples}')::text::integer as value
+                sample as cimac_id
             from
                 trial_metadata,
                 jsonb_array_elements(metadata_json#>'{assays,olink,batches}') batches,
-                jsonb_array_elements(batches->'records') records
+                jsonb_array_elements(batches->'records') records,
+                jsonb_array_elements_text(records#>'{files,assay_npx,samples}') sample
         """
 
-        # Compute the number of samples associated with elisa uploads.
+        # Find all samples associated with elisa uploads.
         # Unlike other assays, elisa metadata is an array of entries, each containing a single data file.
-        # The number of samples corresponding to a given entry is stored like:
-        # entry["assay_xlsx"]["number_of_samples"].
+        # The samples corresponding to a given entry are stored like:
+        # entry["assay_xlsx"]["samples"].
         elisa_subquery = """
             select
                 trial_id,
                 'elisa' as key,
-                (entry#>'{assay_xlsx,number_of_samples}')::text::integer as value
+                sample as cimac_id
             from
                 trial_metadata,
-                jsonb_array_elements(metadata_json#>'{assays,elisa}') entry
+                jsonb_array_elements(metadata_json#>'{assays,elisa}') entry,
+                jsonb_array_elements_text(entry#>'{assay_xlsx,samples}') sample
         """
 
-        # Count the tumor samples that have associated paired-analysis data.
-        # We are asserting that a tumor sample will not be used for multiple analyses.
+        # Find the tumor samples that have associated paired-analysis data.
         wes_analysis_subquery = """
             select
                 trial_id,
                 'wes_analysis' as key,
-                count(*) as value
+                pair#>>'{tumor,cimac_id}' as cimac_id
             from
                 trial_metadata,
                 jsonb_array_elements(metadata_json#>'{analysis,wes_analysis,pair_runs}') pair
             where
-                pair#>'{report,report}' is not null
-            group by
-                trial_id
+                pair#>>'{report,report}' is not null
             union all
             select
                 trial_id,
                 'wes_analysis' as key,
-                count(*) as value
+                pair#>>'{tumor,cimac_id}' as cimac_id
             from
                 trial_metadata,
                 jsonb_array_elements(metadata_json#>'{analysis,wes_analysis_old,pair_runs}') pair
             where
-                pair#>'{report,report}' is not null
-            group by
-                trial_id
+                pair#>>'{report,report}' is not null
         """
 
+        # Find the tumor samples that have associated tumor-only analysis data.
         wes_tumor_only_analysis_subquery = """
             select
                 trial_id,
                 'wes_tumor_only_analysis' as key,
-                jsonb_array_length(metadata_json#>'{analysis,wes_tumor_only_analysis,runs}') as value
+                run->>'cimac_id' as cimac_id
             from
-                trial_metadata
+                trial_metadata,
+                jsonb_array_elements(metadata_json#>'{analysis,wes_tumor_only_analysis,runs}') run
+            where
+                run#>>'{report,report}' is not null
             union all
             select
                 trial_id,
                 'wes_tumor_only_analysis' as key,
-                jsonb_array_length(metadata_json#>'{analysis,wes_tumor_only_analysis_old,runs}') as value
+                run->>'cimac_id' as cimac_id
             from
-                trial_metadata
+                trial_metadata,
+                jsonb_array_elements(metadata_json#>'{analysis,wes_tumor_only_analysis_old,runs}') run
+            where
+                run#>>'{report,report}' is not null
         """
 
-        # Count the tumor samples that will have associated paired-analysis data.
+        # Find the tumor samples that will have associated paired-analysis data.
         # We are asserting that a tumor sample will not be used for multiple analyses.
-        # This is the same as wes_analysis_subquery but without the requirement for a report,
+        # This is similar to the wes_analysis_subquery but without the requirement for a report,
         # which is the defining feature of analysis.
         wes_subquery = """
             select
                 trial_id,
                 'wes' as key,
-                count(*) as value
+                pair#>>'{tumor,cimac_id}' as cimac_id
             from
                 trial_metadata,
                 jsonb_array_elements(metadata_json#>'{analysis,wes_analysis,pair_runs}') pair
-            group by
-                trial_id
             union all
             select
                 trial_id,
                 'wes' as key,
-                count(*) as value
+                pair#>>'{tumor,cimac_id}' as cimac_id
             from
                 trial_metadata,
                 jsonb_array_elements(metadata_json#>'{analysis,wes_analysis_old,pair_runs}') pair
-            group by
-                trial_id
         """
 
-        # Count the tumor samples that DON'T have associated paired-analysis data.
-        # First, count the full number of tumor samples with WES data.
-        # Then, subtract the equivalent of wes_subquery.
+        # Find the tumor samples that WON'T have associated paired-analysis data.
+        # Get all tumor samples with WES data not in the equivalent of wes_subquery.
         wes_tumor_assay_subquery = """
             select
                 trial_id,
                 'wes_tumor_only' as key,
-                count(*) as value
+                record->>'cimac_id' as cimac_id
+            from
+                trial_metadata,
+                jsonb_array_elements(metadata_json#>'{assays,wes}') batch,
+                jsonb_array_elements(batch->'records') record
+            join (
+                select
+                    sample->>'cimac_id' as cimac_id
+                from
+                    trial_metadata,
+                    jsonb_array_elements(metadata_json->'participants') participant,
+                    jsonb_array_elements(participant->'samples') sample
+                
+                where
+                        sample->>'processed_sample_derivative' = 'Tumor DNA'
+                    or
+                        sample->>'processed_sample_derivative' = 'Tumor RNA'
+            ) sample_data
+            on
+                sample_data.cimac_id = record->>'cimac_id'
+            where
+                record->>'cimac_id' not in (
+                    select
+                        pair#>>'{tumor,cimac_id}'
+                    from
+                        trial_metadata,
+                        jsonb_array_elements(metadata_json#>'{analysis,wes_analysis,pair_runs}') pair
+                    union all
+                    select
+                        pair#>>'{tumor,cimac_id}'
+                    from
+                        trial_metadata,
+                        jsonb_array_elements(metadata_json#>'{analysis,wes_analysis_old,pair_runs}') pair
+                )
+        """
+
+        # Find ALL normal samples that have WES data.
+        # This is included in counting for total_participants and total_samples,
+        # but do not affect the assay-level counts which are tumor sample-specific for WES.
+        wes_normal_assay_subquery = """
+            select
+                trial_id,
+                'wes_normal' as key,
+                record->>'cimac_id' as cimac_id
             from
                 trial_metadata,
                 jsonb_array_elements(metadata_json#>'{assays,wes}') batch,
                 jsonb_array_elements(batch->'records') record
             join (
                     select
-                        sample->'cimac_id' as cimac_id
+                        sample->>'cimac_id' as cimac_id
                     from
                         trial_metadata,
                         jsonb_array_elements(metadata_json->'participants') participant,
                         jsonb_array_elements(participant->'samples') sample
-                    
                     where
-                            sample->>'processed_sample_derivative' = 'Tumor DNA'
-                        or
-                            sample->>'processed_sample_derivative' = 'Tumor RNA'
+                            sample->>'processed_sample_derivative' <> 'Tumor DNA'
+                        and
+                            sample->>'processed_sample_derivative' <> 'Tumor RNA'
                 ) sample_data
             on
-                sample_data.cimac_id = record->'cimac_id'
-            group by
-                trial_id
-            union all
-            select
-                trial_id,
-                'wes_tumor_only' as key,
-                -count(*) as value
-            from
-                trial_metadata,
-                jsonb_array_elements(metadata_json#>'{analysis,wes_analysis,pair_runs}') pair
-            group by
-                trial_id
-            union all
-            select
-                trial_id,
-                'wes_tumor_only' as key,
-                -count(*) as value
-            from
-                trial_metadata,
-                jsonb_array_elements(metadata_json#>'{analysis,wes_analysis_old,pair_runs}') pair
-            group by
-                trial_id
+                sample_data.cimac_id = record->>'cimac_id'
         """
 
+        # Find all samples associated with RNA analysis uploads.
+        # There is ONLY level_1
         rna_level1_analysis_subquery = """
             select
                 trial_id,
                 'rna_level1_analysis' as key,
-                jsonb_array_length(metadata_json#>'{analysis,rna_analysis,level_1}') as value
+                run->>'cimac_id' as cimac_id
             from
-                trial_metadata
+                trial_metadata,
+                jsonb_array_elements(metadata_json#>'{analysis,rna_analysis,level_1}') run
         """
 
+        # Find all samples associated with TCR analysis uploads.
         tcr_analysis_subquery = """
             select
                 trial_id,
                 'tcr_analysis' as key,
-                jsonb_array_length(batch->'records') as value
+                record->>'cimac_id' as cimac_id
             from
                 trial_metadata,
-                jsonb_array_elements(metadata_json#>'{analysis,tcr_analysis,batches}') batch
+                jsonb_array_elements(metadata_json#>'{analysis,tcr_analysis,batches}') batch,
+                jsonb_array_elements(batch->'records') record
         """
 
+        # Find all samples associated with CyTOF analysis uploads.
         cytof_analysis_subquery = """
             select
                 trial_id,
                 'cytof_analysis' as key,
-                case
-                    when record->'output_files' is not null then 1 else 0
-                end as value
+                record->>'cimac_id' as cimac_id
             from
                 trial_metadata,
                 jsonb_array_elements(metadata_json#>'{assays,cytof}') batch,
                 jsonb_array_elements(batch->'records') record
+            where
+                record->'output_files' is not null
         """
 
+        # Find all samples associated with ATACseq analysis uploads.
         atacseq_analysis_subquery = """
             select
                 trial_id,
                 'atacseq_analysis' as key,
-                jsonb_array_length(batch->'records') as value
+                record->>'cimac_id' as cimac_id
             from
                 trial_metadata,
-                jsonb_array_elements(metadata_json#>'{analysis,atacseq_analysis}') batch
+                jsonb_array_elements(metadata_json#>'{analysis,atacseq_analysis}') batch,
+                jsonb_array_elements(batch->'records') record
         """
 
         # Build up a JSON object mapping analysis types to arrays of excluded samples.
@@ -1834,63 +1809,102 @@ class TrialMetadata(CommonColumns):
         # All the subqueries produce the same set of columns, so UNION ALL
         # them together into a single query, aggregating results into
         # trial-level JSON dictionaries with the shape described in the docstring.
-        # NOTE: we use UNION ALL instead of just UNION to prevent unwanted
-        # de-duplication within subquery results.
+        # NOTE: we use UNION ALL for assay-level counts instead of just UNION to
+        # prevent any unwanted de-duplication within subquery results.
         combined_query = f"""
             select
-                jsonb_object_agg(sample_summaries.key, sample_summaries.value)
-                || jsonb_object_agg('excluded_samples', excluded_sample_lists.value)
-                || jsonb_object_agg('trial_id', sample_summaries.trial_id)
-                || jsonb_object_agg('expected_assays', expected_assays)
-            from (
+                jsonb_object_agg('trial_id', sample_counts.trial_id)
+                || jsonb_object_agg('excluded_samples', coalesce(excluded_sample_lists.value, '{{}}'::jsonb))
+                || jsonb_object_agg('expected_assays', coalesce(expected_assays, '[]'::jsonb))
+                || jsonb_object_agg('file_size_bytes', coalesce(file_sizes.value, 0))
+                || jsonb_object_agg('clinical_participants', coalesce(clinical_participants.value, 0))
+                || jsonb_build_object('total_participants', coalesce(total_participants, 0))
+                || jsonb_build_object('total_samples', coalesce(total_samples, 0))
+                || coalesce(sample_counts.sample_counts, '{{}}'::jsonb)
+            from ({expected_assays_subquery}) expected_assays
+            full join (
                 select
                     trial_id,
-                    key,
-                    sum(value) as value
+                    count(distinct cimac_id) as total_samples,
+                    count(distinct left(cimac_id, 7)) as total_participants
                 from (
-                    {participants_subquery}
-                    union all
-                    {samples_subquery}
-                    union all
-                    {files_subquery}
-                    union all
-                    {clinical_subquery}
-                    union all
                     {generic_assay_subquery}
-                    union all
+                    union
                     {nanostring_subquery}
-                    union all
+                    union
                     {olink_subquery}
-                    union all
+                    union
                     {elisa_subquery}
-                    union all
-                    {wes_analysis_subquery}
-                    union all
-                    {wes_tumor_only_analysis_subquery}
-                    union all
+                    union
                     {wes_subquery}
-                    union all
+                    union
                     {wes_tumor_assay_subquery}
-                    union all
-                    {rna_level1_analysis_subquery}
-                    union all
-                    {tcr_analysis_subquery}
-                    union all
-                    {cytof_analysis_subquery}
-                    union all
-                    {atacseq_analysis_subquery}
+                    union
+                    {wes_normal_assay_subquery}
+                ) assays
+                group by
+                    trial_id
+            ) total_counts
+            on expected_assays.trial_id = total_counts.trial_id
+            full join (
+                select
+                    trial_id,
+                    jsonb_object_agg(key, num_sample) as sample_counts
+                from (
+                    select
+                        trial_id,
+                        key,
+                        count(cimac_id) as num_sample
+                    from (
+                        {generic_assay_subquery}
+                        union all
+                        {nanostring_subquery}
+                        union all
+                        {olink_subquery}
+                        union all
+                        {elisa_subquery}
+                        union all
+                        {wes_subquery}
+                        union all
+                        {wes_tumor_assay_subquery}
+                        union all
+                        {wes_analysis_subquery}
+                        union all
+                        {wes_tumor_only_analysis_subquery}
+                        union all
+                        {rna_level1_analysis_subquery}
+                        union all
+                        {tcr_analysis_subquery}
+                        union all
+                        {cytof_analysis_subquery}
+                        union all
+                        {atacseq_analysis_subquery}
+                    ) assays_and_analysis
+                    group by
+                        trial_id, key
                 ) q
-                group by trial_id, key
-            ) sample_summaries
-            join ({expected_assays_subquery}) expected_assays
-            on sample_summaries.trial_id = expected_assays.trial_id
+                group by
+                    trial_id
+            ) sample_counts
+            on expected_assays.trial_id = sample_counts.trial_id
             full join ({excluded_samples_subquery}) excluded_sample_lists
-            on sample_summaries.trial_id = excluded_sample_lists.trial_id
-            group by sample_summaries.trial_id;
+            on expected_assays.trial_id = excluded_sample_lists.trial_id
+            full join ({files_subquery}) file_sizes
+            on expected_assays.trial_id = file_sizes.trial_id
+            full join ({clinical_subquery}) clinical_participants
+            on expected_assays.trial_id = clinical_participants.trial_id
+            group by
+                expected_assays.trial_id,
+                total_participants,
+                total_samples,
+                sample_counts.sample_counts
+            ;
         """
 
         # Run the query and extract the trial-level summary dictionaries
-        summaries = [summary for (summary,) in session.execute(combined_query)]
+        summaries = [
+            summary for (summary,) in session.execute(combined_query) if summary
+        ]
 
         # Shortcut to impute 0 values for assays where trials don't yet have data
         summaries = pd.DataFrame(summaries).fillna(0).to_dict("records")
