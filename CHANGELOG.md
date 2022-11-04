@@ -11,7 +11,8 @@ This Changelog tracks changes to this project. The notes below include a summary
 
 ## Version `0.27.18` - 4 Nov 2022
 
-- `changed` schemas bump for new local file path description
+- `fixed` WES TO counts also need to require a report
+  - since tumor-normal pairing manifest schemas change
 - `changed` how trial and network participants and samples are counted for
   - only count samples and participants that have associated assay data
   - does NOT affect assay-level counts for the Data Overview dashboard

@@ -1568,6 +1568,8 @@ class TrialMetadata(CommonColumns):
             from
                 trial_metadata,
                 jsonb_array_elements(metadata_json#>'{analysis,wes_tumor_only_analysis,runs}') run
+            where
+                run#>'{report,report}' is not null
             union all
             select
                 trial_id,
@@ -1576,6 +1578,8 @@ class TrialMetadata(CommonColumns):
             from
                 trial_metadata,
                 jsonb_array_elements(metadata_json#>'{analysis,wes_tumor_only_analysis_old,runs}') run
+            where
+                run#>'{report,report}' is not null
         """
 
         # Find the tumor samples that will have associated paired-analysis data.
