@@ -9,7 +9,7 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
-## Version `0.27.19` - 3 Nov 2022
+## Version `0.27.19` - 8 Nov 2022
 
 - `changed` schemas bump for adding batch to TCR meta csv
 
