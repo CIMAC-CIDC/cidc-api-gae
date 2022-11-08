@@ -13,6 +13,7 @@ from google.api_core.iam import Policy
 from google.cloud.bigquery.enums import EntityTypes
 from google.cloud import bigquery
 
+from cidc_schemas import prism
 from cidc_api.shared import gcloud_client
 from cidc_api.config import settings
 from cidc_api.shared.gcloud_client import (
@@ -195,18 +196,27 @@ def _mock_gcloud_bigquery_client(
     )
 
 
-def test_build_trial_upload_prefixes(monkeypatch):
+def test_build_trial_upload_prefixes(clean_db, cidc_api):
     fake_trial_ids = ["foo", "bar", "baz"]
 
     from cidc_api.models.models import TrialMetadata
 
-    mock_list = MagicMock()
-    mock_list.return_value = [MagicMock(trial_id=t) for t in fake_trial_ids]
-    monkeypatch.setattr(TrialMetadata, "list", mock_list)
+    with cidc_api.app_context():
+        for trial_id in fake_trial_ids:
+            TrialMetadata(
+                trial_id=trial_id,
+                metadata_json={
+                    prism.PROTOCOL_ID_FIELD_NAME: trial_id,
+                    "participants": [],
+                    "allowed_cohort_names": ["Arm_Z"],
+                    "allowed_collection_event_names": [],
+                },
+            ).insert(session=clean_db)
 
-    assert set(_build_trial_upload_prefixes(None, "rna_bam")) == set(
-        f"{t}/rna" for t in fake_trial_ids
-    )
+        assert set(
+            _build_trial_upload_prefixes(None, "rna_bam", session=clean_db)
+        ) == set(f"{t}/rna" for t in fake_trial_ids)
+
     assert _build_trial_upload_prefixes("foo", None) == {
         "foo/atacseq",
         "foo/ctdna",
