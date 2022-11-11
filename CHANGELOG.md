@@ -9,7 +9,18 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
-## Version `0.27.19` - 4 Nov 2022
+## Version `0.27.21` - 10 Nov 2022
+
+- `changed` schemas bump for derive files returning None instead of error when no derivation is defined
+
+## Version `0.27.20` - 08 Nov 2022
+
+- `changed` schemas bumps for
+  - adding batch to TCR meta csv
+  - handling of clinical CSV files to strip any initial BOM
+  - updated tumor-normal attempted pairing CSV
+
+## Version `0.27.19` - 04 Nov 2022
 
 - `fixed` WES TO counts also need to require a report
   - since tumor-normal pairing manifest schemas change
@@ -18,7 +29,7 @@ This Changelog tracks changes to this project. The notes below include a summary
   - does NOT affect assay-level counts for the Data Overview dashboard
   - DOES affect counts for Browse Data > Trial Table and Home Page
   
-## Version `0.27.18` - 3 Nov 2022
+## Version `0.27.18` - 03 Nov 2022
 
 - `changed` schemas bump for adding TCR meta csv
 
