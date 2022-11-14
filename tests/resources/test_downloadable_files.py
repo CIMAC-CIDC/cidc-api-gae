@@ -626,6 +626,7 @@ def test_facet_groups_for_links(cidc_api, clean_db, monkeypatch):
                 "Assay Type|CyTOF|Cell Counts",
                 "Assay Type|CyTOF|Labeled Source",
                 "Assay Type|CyTOF|Analysis Results",
+                "Assay Type|CyTOF|Control Files Analysis",
                 "Assay Type|CyTOF|Key",
             ],
             "received": [
@@ -720,7 +721,7 @@ def test_facet_groups_for_links(cidc_api, clean_db, monkeypatch):
                 "Assay Type|TCR|Reports",
                 "Analysis Ready|TCR",
             ],
-            "received": ["Assay Type|TCR|Source"],
+            "received": ["Assay Type|TCR|Source", "Assay Type|TCR|Misc."],
         },
         "wes": {
             "analyzed": [
@@ -740,14 +741,11 @@ def test_facet_groups_for_links(cidc_api, clean_db, monkeypatch):
                 "Assay Type|WES|Error Documentation",
                 "Analysis Ready|WES Analysis",
             ],
-            "received": ["Assay Type|WES|Source", "Analysis Ready|WES Assay"],
+            "received": ["Assay Type|WES|Source"],
         },
         "wes_tumor_only": {
             "analyzed": [
                 "Assay Type|WES Tumor-Only|TcellExtrect",
-                "Assay Type|WES Tumor-Only|Germline",
-                "Assay Type|WES Tumor-Only|Purity",
-                "Assay Type|WES Tumor-Only|Clonality",
                 "Assay Type|WES Tumor-Only|Copy Number",
                 "Assay Type|WES Tumor-Only|Error Documentation",
                 "Assay Type|WES Tumor-Only|Neoantigen",
@@ -755,9 +753,10 @@ def test_facet_groups_for_links(cidc_api, clean_db, monkeypatch):
                 "Assay Type|WES Tumor-Only|Alignment",
                 "Assay Type|WES Tumor-Only|Metrics",
                 "Assay Type|WES Tumor-Only|HLA Type",
+                "Assay Type|WES Tumor-Only|RNA",
                 "Assay Type|WES Tumor-Only|Report",
                 "Assay Type|WES Tumor-Only|MSI",
             ],
-            "received": ["Assay Type|WES|Source", "Analysis Ready|WES Assay"],
+            "received": ["Assay Type|WES|Source"],
         },
     }

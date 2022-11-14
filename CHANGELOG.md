@@ -9,6 +9,12 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## 14 Nov 2022
+
+- `removed` facets not used in the database or derived from current templates
+- `added` facets missing from definitions that ARE used in the database
+  - exclude metadata templates from facets/details
+
 ## Version `0.27.21` - 10 Nov 2022
 
 - `changed` schemas bump for derive files returning None instead of error when no derivation is defined
