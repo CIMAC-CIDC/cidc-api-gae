@@ -552,12 +552,22 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "excluded_samples": make_records(1, 2),
             },
             "wes_tumor_only_analysis": {
-                # wes_tumor_only_analysis = 2; 1 here, 1 below
-                "runs": make_records(0, 1, report={"report": "foo"}),
+                "runs": [
+                    # wes_tumor_only_analysis = 2; 1 here, 1 below
+                    {
+                        "tumor": {"cimac_id": "C000000T4"},
+                        "report": {"report": "foo"},
+                    },
+                ],
             },
             "wes_tumor_only_analysis_old": {
-                # wes_tumor_only_analysis = 2; 1 here, 1 above
-                "runs": make_records(1, 2, report={"report": "foo"}),
+                "runs": [
+                    # wes_tumor_only_analysis = 2; 1 here, 1 above
+                    {
+                        "tumor": {"cimac_id": "C000000T5"},
+                        "report": {"report": "foo"},
+                    },
+                ],
             },
         },
         "clinical_data": {

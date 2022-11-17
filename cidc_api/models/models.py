@@ -1564,7 +1564,7 @@ class TrialMetadata(CommonColumns):
             select
                 trial_id,
                 'wes_tumor_only_analysis' as key,
-                run->>'cimac_id' as cimac_id
+                run>>#'{tumor,cimac_id}' as cimac_id
             from
                 trial_metadata,
                 jsonb_array_elements(metadata_json#>'{analysis,wes_tumor_only_analysis,runs}') run
@@ -1574,7 +1574,7 @@ class TrialMetadata(CommonColumns):
             select
                 trial_id,
                 'wes_tumor_only_analysis' as key,
-                run->>'cimac_id' as cimac_id
+                run#>>'{tumor,cimac_id}' as cimac_id
             from
                 trial_metadata,
                 jsonb_array_elements(metadata_json#>'{analysis,wes_tumor_only_analysis_old,runs}') run
