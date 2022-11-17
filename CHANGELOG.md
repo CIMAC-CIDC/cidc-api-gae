@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## 17 Nov 2022
+
+- `fixed` wes_tumor_only_analysis dashboard counting
+
 ## 14 Nov 2022
 
 - `removed` facets not used in the database or derived from current templates
