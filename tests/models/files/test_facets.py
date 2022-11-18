@@ -6,7 +6,6 @@ from cidc_api.models.files.facets import (
     build_trial_facets,
     build_data_category_facets,
     get_facet_groups_for_paths,
-    FacetConfig,
 )
 
 

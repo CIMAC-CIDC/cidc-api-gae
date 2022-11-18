@@ -1,6 +1,6 @@
 from collections import defaultdict
 from copy import deepcopy
-from typing import Dict, List, Optional, Union, Any
+from typing import Any, Dict, List, Optional, Union
 
 from werkzeug.exceptions import BadRequest
 
@@ -55,10 +55,10 @@ assay_facets: Facets = {
             [
                 "/cytof/spike_in.fcs",
                 "/cytof/source_.fcs",
-                "/cytof/normalized_and_debarcoded.fcs",
+                "/cytof/debarcoding_key.csv",
                 "/cytof/processed.fcs",
-                "/cytof/control_.fcs",
-                "/cytof/control__spike_in.fcs",
+                "/cytof/controls/processed.fcs",
+                "/cytof/controls/spike_in.fcs",
             ],
             "De-barcoded, concatenated and de-multipled fcs files",
         ),
@@ -86,6 +86,9 @@ assay_facets: Facets = {
             ["/cytof_analysis/reports.zip", "/cytof_analysis/analysis.zip"],
             "Results package from Astrolabe analysis",
         ),
+        "Control Files Analysis": FacetConfig(
+            ["/cytof_analysis/control_files_analysis.zip"],
+        ),
         "Key": FacetConfig(
             [
                 "/cytof_analysis/assignment.csv",
@@ -100,14 +103,11 @@ assay_facets: Facets = {
             [
                 "/wes/r1_L.fastq.gz",
                 "/wes/r2_L.fastq.gz",
-                "/wes/r1_.fastq.gz",
-                "/wes/r2_.fastq.gz",
                 "/wes/reads_.bam",
             ]
         ),
         "Germline": FacetConfig(
             [
-                "/wes/analysis/vcfcompare.txt",
                 "/wes/analysis/tumor/haplotyper_targets.vcf.gz",
                 "/wes/analysis/normal/haplotyper_targets.vcf.gz",
                 "/wes/analysis/tumor/haplotyper_output.vcf",
@@ -201,14 +201,12 @@ assay_facets: Facets = {
         ),
         "Report": FacetConfig(
             [
-                "/wes/analysis/wes_version.txt",
                 "/wes/analysis/tumor_mutational_burden.tsv",
                 "/wes/analysis/report.tar.gz",
                 "/wes/analysis/wes_run_version.tsv",
                 "/wes/analysis/config.yaml",
                 "/wes/analysis/metasheet.csv",
                 "/wes/analysis/wes_sample.json",
-                "/wes/analysis/xhla_report_hla.json",
                 "/wes/analysis/tumor_germline_overlap.tsv",
             ]
         ),
@@ -223,19 +221,6 @@ assay_facets: Facets = {
     },
     "WES Tumor-Only": {
         "TcellExtrect": FacetConfig(["/wes_tumor_only/analysis/tcellextrect.txt"]),
-        "Germline": FacetConfig(
-            [
-                "/wes_tumor_only/analysis/vcfcompare.txt",
-                "/wes_tumor_only/analysis/tumor/haplotyper_targets.vcf.gz",
-            ]
-        ),
-        "Purity": FacetConfig(["/wes_tumor_only/analysis/optimal_purity_value.txt"]),
-        "Clonality": FacetConfig(
-            [
-                "/wes_tumor_only/analysis/clonality_pyclone.tsv",
-                "/wes_tumor_only/analysis/clonality_table.tsv",
-            ]
-        ),
         "Copy Number": FacetConfig(
             [
                 "/wes_tumor_only/analysis/copynumber_cnvcalls.txt",
@@ -245,7 +230,6 @@ assay_facets: Facets = {
         "Error Documentation": FacetConfig(["/wes_tumor_only/analysis/error.yaml"]),
         "Neoantigen": FacetConfig(
             [
-                "/wes_tumor_only/analysis/vcf_tnscope_filter_neoantigen.vcf",
                 "/wes_tumor_only/analysis/combined_filtered.tsv",
             ]
         ),
@@ -256,7 +240,10 @@ assay_facets: Facets = {
                 "/wes_tumor_only/analysis/vcf_gz_tnscope_filter.vcf.gz",
                 "/wes_tumor_only/analysis/maf_tnscope_filter.maf",
                 "/wes_tumor_only/analysis/tnscope_exons.vcf.gz",
-                "/wes_tumor_only/analysis/vcf_compare.txt",
+                "/wes_tumor_only/analysis/tnscope_output_twist.vcf",
+                "/wes_tumor_only/analysis/tnscope_output_twist.maf",
+                "/wes_tumor_only/analysis/tnscope_output_twist_filtered.vcf",
+                "/wes_tumor_only/analysis/tnscope_output_twist_filtered.maf",
             ]
         ),
         "Alignment": FacetConfig(
@@ -274,21 +261,25 @@ assay_facets: Facets = {
         ),
         "HLA Type": FacetConfig(
             [
+                "/wes_tumor_only/analysis/tumor/hla_final_result.txt",
                 "/wes_tumor_only/analysis/tumor/optitype_result.tsv",
                 "/wes_tumor_only/analysis/tumor/xhla_report_hla.json",
                 "/wes_tumor_only/analysis/HLA_results.tsv",
             ]
         ),
+        "RNA": FacetConfig(
+            [
+                "/wes_tumor_only/analysis/vcf_tnscope_filter_neoantigen.vcf",
+                "/wes_tumor_only/analysis/haplotyper.vcf.gz",
+            ]
+        ),
         "Report": FacetConfig(
             [
-                "/wes_tumor_only/analysis/wes_version.txt",
-                "/wes_tumor_only/analysis/tumor_mutational_burden.tsv",
                 "/wes_tumor_only/analysis/report.tar.gz",
                 "/wes_tumor_only/analysis/wes_run_version.tsv",
                 "/wes_tumor_only/analysis/config.yaml",
                 "/wes_tumor_only/analysis/metasheet.csv",
                 "/wes_tumor_only/analysis/wes_sample.json",
-                "/wes_tumor_only/analysis/xhla_report_hla.json",
             ]
         ),
         "MSI": FacetConfig(["/wes_tumor_only/analysis/msisensor.txt"]),
@@ -304,6 +295,7 @@ assay_facets: Facets = {
                 "/rna/analysis/star/sorted.bam.stat.txt",
                 "/rna/analysis/star/transcriptome.bam",
                 "/rna/analysis/star/chimeric_out_junction.junction",
+                "/rna/analysis/star/chimeric_out.junction",
             ]
         ),
         "Quality": FacetConfig(
@@ -398,7 +390,7 @@ assay_facets: Facets = {
             "Data files from image analysis software indicating the cell type assignments, phenotypes and other scoring metrics and thresholds.",
         ),
         "QC Info": FacetConfig(
-            ["mif/report.zip"],
+            ["/mif/qc_report.zip"],
             "Spreadsheets containing info regarding Quality Control from pathology and reasoning for expected failures.",
         ),
     },
@@ -439,7 +431,9 @@ assay_facets: Facets = {
                 "/tcr/replicate_/i2.fastq.gz",
             ]
         ),
-        "Misc.": FacetConfig(["/tcr/SampleSheet.csv" "/tcr_analysis/summary_info.csv"]),
+        "Misc.": FacetConfig(
+            ["/tcr/SampleSheet.csv", "/tcr_analysis/summary_info.csv"]
+        ),
         "Analysis Data": FacetConfig(
             ["/tcr_analysis/tra_clone.csv", "/tcr_analysis/trb_clone.csv"],
             "Data files indicating TRA & TRB clones' UMI counts",
@@ -451,7 +445,7 @@ assay_facets: Facets = {
     "ELISA": {"Data": FacetConfig(["/elisa/assay.xlsx"])},
     "ctDNA": {
         "Demultiplexed Source BAMs": FacetConfig(
-            ["/ctdna/demultiplexed.bam"],
+            ["/ctdna/demultiplexed.bam", "/ctdna/demultiplexed.bam.bai"],
             "Demultiplexed BAM files (and indexes) generated from circulating tumor DNA.",
         ),
         "Genome-wide Plots": FacetConfig(
@@ -496,14 +490,10 @@ assay_facets: Facets = {
 }
 
 clinical_facets: Facets = {
-    "Participants Info": FacetConfig(
-        ["Clinical Type|Participants Info|participants.csv", "csv|participants info"]
-    ),
-    "Samples Info": FacetConfig(
-        ["Clinical Type|Samples Info|samples.csv", "csv|samples info"]
-    ),
+    "Participants Info": FacetConfig(["csv|participants info"]),
+    "Samples Info": FacetConfig(["csv|samples info"]),
     "Clinical Data": FacetConfig(
-        ["/clinical/.xlsx", "/clinical/."],
+        ["/clinical/."],
         "Files containing clinical data supplied by the trial team.",
     ),
 }
@@ -525,7 +515,6 @@ analysis_ready_facets = {
     ),
     "RNA": FacetConfig(["/rna/analysis/salmon/quant.sf"]),
     "WES Analysis": FacetConfig(["/wes/analysis/report.tar.gz"]),
-    "WES Assay": FacetConfig(["maf|combined maf"]),
     "TCR": FacetConfig(["/tcr_analysis/report_trial.tar.gz"]),
     "mIF": FacetConfig(["/mif/roi_/cell_seg_data.txt"]),
 }
