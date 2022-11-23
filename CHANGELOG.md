@@ -9,6 +9,14 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## 23 Nov 2022
+
+- `fixed` plotly dash error on profile shipments dropdown
+
+## Version `0.27.22` - 17 Nov 2022
+
+- `changed` schemas bump wes new bait set swap
+
 ## 17 Nov 2022
 
 - `fixed` wes_tumor_only_analysis dashboard counting
