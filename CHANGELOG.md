@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.23` - 28 Nov 2022
+
+- `changed` schemas bump for WES analysis template folder update
+
 ## 23 Nov 2022
 
 - `fixed` plotly dash error on profile shipments dropdown
