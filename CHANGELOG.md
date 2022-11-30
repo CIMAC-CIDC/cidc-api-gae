@@ -9,6 +9,12 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.24` - 30 Nov 2022
+
+- `removed` references to permission system in cloud functions for biofx
+- `removed` unused is_group option in granting permissions
+  - was only used by the above now-removed permissioning system
+
 ## 29 Nov 2022
 
 - `changed` all analysis files added to analysis ready facet and download
