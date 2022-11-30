@@ -9,9 +9,11 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
-## 30 Nov 2022
+## Version `0.27.24` - 30 Nov 2022
 
 - `removed` references to permission system in cloud functions for biofx
+- `removed` unused is_group option in granting permissions
+  - was only used by the above now-removed permissioning system
 
 ## 29 Nov 2022
 
