@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## 29 Nov 2022
+
+- `changed` all analysis files added to analysis ready facet and download
+
 ## Version `0.27.23` - 28 Nov 2022
 
 - `changed` schemas bump for WES analysis template folder update
