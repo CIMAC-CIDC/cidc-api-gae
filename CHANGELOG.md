@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.25` - 01 Dec 2022
+
+- `changed` schemas bump for dateparser version bump
+
 ## 01 Dec 2022
 
 - `added` space handling to downloadable filelist.tsv url
