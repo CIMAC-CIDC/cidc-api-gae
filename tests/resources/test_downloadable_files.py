@@ -66,7 +66,7 @@ def setup_downloadable_files(cidc_api) -> Tuple[int, int, int]:
         )
 
     wes_file = make_file(
-        trial_id_1, "wes/.../reads_123.bam", "wes_bam", "/wes/r1_L.fastq.gz"
+        trial_id_1, "wes/.../reads 123.bam", "wes_bam", "/wes/r1_L.fastq.gz"
     )
     cytof_file = make_file(
         trial_id_2, "cytof/.../analysis.zip", "cytof", "/cytof_analysis/analysis.zip"
@@ -280,7 +280,7 @@ def test_get_filelist(cidc_api, clean_db, monkeypatch):
     assert "text/tsv" in res.headers["Content-Type"]
     assert "filename=filelist.tsv" in res.headers["Content-Disposition"]
     assert res.data.decode("utf-8") == (
-        f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_1}/wes/.../reads_123.bam\t{trial_id_1}_wes_..._reads_123.bam\n"
+        f'"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_1}/wes/.../reads 123.bam"\t{trial_id_1}_wes_..._reads_123.bam\n'
     )
 
     # Give the user a cross-assay permission
@@ -299,7 +299,7 @@ def test_get_filelist(cidc_api, clean_db, monkeypatch):
     assert "text/tsv" in res.headers["Content-Type"]
     assert "filename=filelist.tsv" in res.headers["Content-Disposition"]
     assert res.data.decode("utf-8") == (
-        f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_1}/wes/.../reads_123.bam\t{trial_id_1}_wes_..._reads_123.bam\n"
+        f'"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_1}/wes/.../reads 123.bam"\t{trial_id_1}_wes_..._reads_123.bam\n'
     )
 
     # Admins don't need permissions to get files
@@ -309,9 +309,9 @@ def test_get_filelist(cidc_api, clean_db, monkeypatch):
 
     assert sorted(res.data.decode("utf-8").strip().split("\n")) == sorted(
         [
-            f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_1}/wes/.../reads_123.bam\t{trial_id_1}_wes_..._reads_123.bam",
-            f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_2}/cytof/.../analysis.zip\t{trial_id_2}_cytof_..._analysis.zip",
-            f"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_1}/clinical/.../file.csv\t{trial_id_1}_clinical_..._file.csv",
+            f'"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_1}/wes/.../reads 123.bam"\t{trial_id_1}_wes_..._reads_123.bam',
+            f'"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_2}/cytof/.../analysis.zip"\t{trial_id_2}_cytof_..._analysis.zip',
+            f'"gs://{GOOGLE_ACL_DATA_BUCKET}/{trial_id_1}/clinical/.../file.csv"\t{trial_id_1}_clinical_..._file.csv',
         ]
     )
 
