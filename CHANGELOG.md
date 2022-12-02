@@ -12,8 +12,8 @@ This Changelog tracks changes to this project. The notes below include a summary
 ## Version `0.27.26` - 02 Dec 2022
 
 - `changed` schemas bump for updated ASSAY_TO_FILEPATH constant
-- `changed` permissions handling to handle each trial instead of each trial / upload_type
 - `changed` get GCS blob names to deduplicate across upload_types
+- `changed` permissions handling to handle each trial instead of each trial / upload_type
 
 ## Version `0.27.25` - 01 Dec 2022
 
