@@ -717,7 +717,9 @@ class Permissions(CommonColumns):
     @staticmethod
     @with_default_session
     def get_for_trial_type(
-        trial_id: Optional[str], upload_type: Optional[str], session: Session
+        trial_id: Optional[str],
+        upload_type: Optional[Union[str, List[str]]],
+        session: Session,
     ) -> List["Permissions"]:
         """
         Check if a Permissions record exists for the given user, trial, and type.
@@ -757,11 +759,21 @@ class Permissions(CommonColumns):
     @staticmethod
     @with_default_session
     def get_user_emails_for_trial_upload(
-        trial_id: Optional[str], upload_type: Optional[str], session
+        trial_id: Optional[str], upload_type: Optional[Union[str, List[str]]], session
     ) -> Dict[str, Dict[str, List[str]]]:
-        permissions_list: List[Permissions] = Permissions.get_for_trial_type(
-            trial_id=trial_id, upload_type=upload_type, session=session
-        )
+
+        if upload_type is None or isinstance(upload_type, str):
+            permissions_list: List[Permissions] = Permissions.get_for_trial_type(
+                trial_id=trial_id, upload_type=upload_type, session=session
+            )
+        else:
+            permissions_list: List[Permissions] = []
+            for upload in upload_type:
+                permissions_list.extend(
+                    Permissions.get_for_trial_type(
+                        trial_id=trial_id, upload_type=upload, session=session
+                    )
+                )
 
         permissions_dict: Dict[str, Dict[str, List[Permissions]]] = defaultdict(
             lambda: defaultdict(list)
@@ -842,9 +854,20 @@ class Permissions(CommonColumns):
         # if they have any download permissions, they need the CIDC Lister role
         if len(perms):
             grant_lister_access(user.email)
+
+        # separate permissions by trial, as they are strictly non-overlapping
+        perms_by_trial: Dict[str, List[Permissions]] = defaultdict(list)
         for perm in perms:
+            perms_by_trial[perm.trial_id].append(perm)
+        perms_by_trial = dict(perms_by_trial)
+
+        for trial_id, trial_perms in perms_by_trial.items():
             # Regrant each permission: idempotent.
-            grant_download_access(user.email, perm.trial_id, perm.upload_type)
+            grant_download_access(
+                user_email_list=user.email,
+                trial_id=trial_id,
+                upload_type=[p.upload_type for p in trial_perms],
+            )
 
         # Regrant all of the user's intake bucket upload permissions, if they have any
         refresh_intake_access(user.email)

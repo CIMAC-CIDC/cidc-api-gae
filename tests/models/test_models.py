@@ -1517,7 +1517,11 @@ def test_permissions_grant_user_permissions(clean_db, monkeypatch):
     user.insert(), user2.insert()
     trial = TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA)
     trial.insert()
+    trial2 = TrialMetadata(trial_id=TRIAL_ID + "2", metadata_json=METADATA)
+    trial2.metadata_json[prism.PROTOCOL_ID_FIELD_NAME] += "2"
+    trial2.insert()
 
+    # each trial handled individually, so all together
     upload_types = ["wes_bam", "ihc", "rna_fastq", "plasma"]
     for upload_type in upload_types:
         Permissions(
@@ -1526,12 +1530,30 @@ def test_permissions_grant_user_permissions(clean_db, monkeypatch):
             upload_type=upload_type,
             granted_by_user=user.id,
         ).insert()
+    # each trial handled individually, so separate from above
+    Permissions(
+        granted_to_user=user.id,
+        trial_id=trial2.trial_id,
+        upload_type="ihc",
+        granted_by_user=user.id,
+    ).insert()
+    gcloud_client.grant_lister_access.assert_not_called()
+    gcloud_client.grant_download_access.assert_not_called()
+
+    # other user and so ignored
     Permissions(
         granted_to_user=user2.id,
         trial_id=trial.trial_id,
         upload_type="ihc",
         granted_by_user=user.id,
+    ).insert()
+    gcloud_client.grant_lister_access.assert_called_once_with(user2.email)
+    gcloud_client.grant_download_access.assert_called_once_with(
+        user2.email,
+        trial.trial_id,
+        "ihc",
     )
+    gcloud_client.reset_mock()
 
     # IAM permissions not granted to network viewers
     Permissions.grant_user_permissions(user=user)
@@ -1548,17 +1570,19 @@ def test_permissions_grant_user_permissions(clean_db, monkeypatch):
     user.role = CIDCRole.CIMAC_USER.value
     Permissions.grant_user_permissions(user=user)
     gcloud_client.grant_lister_access.assert_called_once_with(user.email)
-    gcloud_client.grant_download_access.assert_has_calls(
-        [
-            call(
-                user.email,
-                trial.trial_id,
-                upload_type,
+    gcloud_client.grant_download_access.call_count == 2
+    for this_call in gcloud_client.grant_download_access.call_args_list:
+        _, kwargs = this_call
+        if kwargs["trial_id"] == trial2.trial_id:
+            assert this_call == call(
+                user_email_list=user.email,
+                trial_id=trial2.trial_id,
+                upload_type=["ihc"],
             )
-            for upload_type in upload_types
-        ],
-        any_order=True,
-    )
+        else:
+            assert kwargs["user_email_list"] == user.email
+            assert kwargs["trial_id"] == trial.trial_id
+            assert sorted(kwargs["upload_type"]) == sorted(upload_types)
 
     refresh_intake_access.assert_called_once_with(user.email)
 
