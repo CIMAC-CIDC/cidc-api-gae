@@ -6,8 +6,8 @@ import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Output, Input
 
-from .dash_utils import create_new_dashboard
 from ..models import UploadJobStatus, UploadJobs, CIDCRole, TrialMetadata
+from .dash_utils import create_new_dashboard
 from ..shared.auth import requires_auth
 
 
@@ -103,16 +103,12 @@ shipments_dashboard.layout = html.Div(
 
 
 @shipments_dashboard.callback(
-    Output(TRIAL_DROPDOWN, "options"), Input(TRIAL_DROPDOWN, "children")
+    Output(TRIAL_DROPDOWN, "options"), Input(TRIAL_DROPDOWN, "value")
 )
 @requires_auth("dash.shipments.trial_ids", [CIDCRole.ADMIN.value])
 def populate_trial_ids(trial_ids):
     """Load available trial_ids into the trial id dropdown."""
-    if not trial_ids:
-        return [
-            {"label": t, "value": t} for t in TrialMetadata.get_distinct("trial_id")
-        ]
-    return trial_ids
+    return [{"label": t, "value": t} for t in TrialMetadata.get_distinct("trial_id")]
 
 
 @shipments_dashboard.callback(

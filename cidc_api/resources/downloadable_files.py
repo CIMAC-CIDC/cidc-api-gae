@@ -199,7 +199,8 @@ def generate_filelist(args):
     tsv = b""
     for url in urls:
         flat_url = url.replace("/", "_")
-        full_gcs_uri = f"gs://{GOOGLE_ACL_DATA_BUCKET}/{url}"
+        flat_url = flat_url.replace(" ", "_")
+        full_gcs_uri = f'"gs://{GOOGLE_ACL_DATA_BUCKET}/{url}"'
         tsv += bytes(f"{full_gcs_uri}\t{flat_url}\n", "utf-8")
 
     buffer = BytesIO(tsv)
