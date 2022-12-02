@@ -112,7 +112,7 @@ def _mock_gcloud_storage_client(
     mock_client.blobs[1].acl.user.return_value = mock_client.blob_users[1]
 
     def mock_list_blobs(*a, prefix: str = "", **kw):
-        if prefix == "10021/wes":
+        if prefix == "10021/wes/":
             return [mock_client.blobs[0]]
         else:
             return mock_client.blobs
@@ -215,31 +215,31 @@ def test_build_trial_upload_prefixes(clean_db, cidc_api):
 
         assert set(
             _build_trial_upload_prefixes(None, "rna_bam", session=clean_db)
-        ) == set(f"{t}/rna" for t in fake_trial_ids)
+        ) == set(f"{t}/rna/" for t in fake_trial_ids)
 
     assert _build_trial_upload_prefixes("foo", None) == {
-        "foo/atacseq",
-        "foo/ctdna",
-        "foo/cytof",
-        "foo/cytof_analysis",
-        "foo/elisa",
-        "foo/hande",
-        "foo/ihc",
-        "foo/mibi",
-        "foo/microbiome",
-        "foo/mif",
-        "foo/misc_data",
-        "foo/nanostring",
-        "foo/olink",
-        "foo/participants",
-        "foo/rna",
-        "foo/samples",
-        "foo/tcr",
-        "foo/tcr_analysis",
-        "foo/wes",
-        "foo/wes_tumor_only",
+        "foo/atacseq/",
+        "foo/ctdna/",
+        "foo/cytof/",
+        "foo/cytof_analysis/",
+        "foo/elisa/",
+        "foo/hande/",
+        "foo/ihc/",
+        "foo/mibi/",
+        "foo/microbiome/",
+        "foo/mif/",
+        "foo/misc_data/",
+        "foo/nanostring/",
+        "foo/olink/",
+        "foo/participants/",
+        "foo/rna/",
+        "foo/samples/",
+        "foo/tcr/",
+        "foo/tcr_analysis/",
+        "foo/wes/",
+        "foo/wes_tumor_only/",
     }
-    assert _build_trial_upload_prefixes("foo", "rna_bam") == {"foo/rna"}
+    assert _build_trial_upload_prefixes("foo", "rna_bam") == {"foo/rna/"}
 
 
 def test_grant_lister_access(monkeypatch):
@@ -508,7 +508,7 @@ def test_grant_download_access_by_names(monkeypatch):
     monkeypatch.setattr("cidc_api.shared.gcloud_client._get_bucket", _get_bucket)
 
     blob_names = get_blob_names("10021", "wes_analysis")
-    assert blob_names == [client.blobs[0].name]
+    assert blob_names == set([client.blobs[0].name])
 
     grant_download_access_to_blob_names([EMAIL], blob_name_list=blob_names)
     client.blobs[0].acl.user.assert_called_once_with(EMAIL)
@@ -549,7 +549,7 @@ def test_revoke_download_access_from_names(monkeypatch):
     monkeypatch.setattr(gcloud_client, "_get_bucket", _get_bucket)
 
     blob_name_list = get_blob_names("10021", "wes_analysis")
-    assert blob_name_list == [client.blobs[0].name]
+    assert blob_name_list == set([client.blobs[0].name])
 
     revoke_download_access_from_blob_names([EMAIL], blob_name_list=blob_name_list)
     client.blobs[0].acl.user.assert_called_once_with(EMAIL)

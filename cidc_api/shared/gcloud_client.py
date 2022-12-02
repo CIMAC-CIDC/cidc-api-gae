@@ -11,7 +11,7 @@ import hashlib
 from collections import namedtuple
 from concurrent.futures import Future
 from sqlalchemy.orm.session import Session
-from typing import Any, BinaryIO, Callable, Dict, List, Optional, Set, Union
+from typing import Any, BinaryIO, Callable, Dict, Iterable, List, Optional, Set, Union
 
 import requests
 from google.cloud import storage, pubsub, bigquery
@@ -354,9 +354,9 @@ def _execute_multiblob_acl_change(
 
 def get_blob_names(
     trial_id: Optional[str],
-    upload_type: Optional[str],
+    upload_type: Optional[Union[str, Iterable[str]]],
     session: Optional[Session] = None,
-) -> List[str]:
+) -> Set[str]:
     """session only needed if trial_id is None"""
     prefixes: Set[str] = _build_trial_upload_prefixes(
         trial_id, upload_type, session=session
@@ -369,7 +369,7 @@ def get_blob_names(
         blob_list.extend(
             storage_client.list_blobs(GOOGLE_ACL_DATA_BUCKET, prefix=prefix)
         )
-    return [blob.name for blob in blob_list]
+    return set([blob.name for blob in blob_list])
 
 
 def grant_download_access_to_blob_names(
@@ -395,7 +395,7 @@ def grant_download_access_to_blob_names(
 def grant_download_access(
     user_email_list: Union[List[str], str],
     trial_id: Optional[str],
-    upload_type: Optional[str],
+    upload_type: Optional[Union[str, List[str]]],
 ) -> None:
     """
     Gives users download access to all objects in a trial of a particular upload type.
@@ -485,7 +485,7 @@ def revoke_download_access(
 
 def _build_trial_upload_prefixes(
     trial_id: Optional[str],
-    upload_type: Optional[str],
+    upload_type: Optional[Union[str, Iterable[str]]],
     session: Optional[Session] = None,
 ) -> Set[str]:
     """
@@ -514,10 +514,17 @@ def _build_trial_upload_prefixes(
     else:
         trial_id = set([trial_id])
 
-    if upload_type in ASSAY_TO_FILEPATH:
+    if isinstance(upload_type, str) and upload_type in ASSAY_TO_FILEPATH:
         return {f"{trial}/{ASSAY_TO_FILEPATH[upload_type]}" for trial in trial_id}
-    elif upload_type:
+    elif isinstance(upload_type, str) and upload_type:
         return set()
+    elif upload_type:
+        return {
+            f"{trial}/{ASSAY_TO_FILEPATH[upload]}"
+            for trial in trial_id
+            for upload in upload_type
+            # will not have cross-assay ie null upload in a list
+        }
     else:  # null for cross-assay
         # don't affect clinical_data
         return {
