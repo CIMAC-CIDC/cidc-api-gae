@@ -32,10 +32,21 @@ def upgrade():
     op.drop_table('shipments')
     op.drop_table('participants')
     op.drop_table('cohorts')
+    op.drop_table('manifest_uploads')
     op.drop_table('clinical_trials')
+    op.drop_table('assay_uploads')
 
 
 def downgrade():    
+    op.create_table(
+        "assay_uploads",
+        sa.Column("_created", sa.DateTime(), nullable=True),
+        sa.Column("_updated", sa.DateTime(), nullable=True),
+        sa.Column("_etag", sa.String(length=40), nullable=True),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column("status", sa.String(), nullable=True),
+        sa.PrimaryKeyConstraint("id"),
+    )
     op.create_table('clinical_trials',
     sa.Column('protocol_identifier', sa.VARCHAR(), autoincrement=False, nullable=False),
     sa.Column('nct_id', sa.VARCHAR(), autoincrement=False, nullable=True),
@@ -54,6 +65,14 @@ def downgrade():
     sa.Column('data_sharing_plan', sa.VARCHAR(), autoincrement=False, nullable=True),
     sa.PrimaryKeyConstraint('protocol_identifier', name='clinical_trials_pkey'),
     postgresql_ignore_search_path=False
+    )
+    op.create_table(
+        "manifest_uploads",
+        sa.Column("_created", sa.DateTime(), nullable=True),
+        sa.Column("_updated", sa.DateTime(), nullable=True),
+        sa.Column("_etag", sa.String(length=40), nullable=True),
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.PrimaryKeyConstraint("id"),
     )
     op.create_table('cohorts',
     sa.Column('trial_id', sa.VARCHAR(), autoincrement=False, nullable=False),
