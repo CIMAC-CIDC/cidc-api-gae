@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## 07 Dec 2022
+
+- `added` removal of assay_uploads and manifest_uploads along with rest of relational db in migration
+
 ## Version `0.27.26` - 02 Dec 2022
 
 - `changed` schemas bump for updated ASSAY_TO_FILEPATH constant
