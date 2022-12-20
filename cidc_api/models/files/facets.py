@@ -48,7 +48,6 @@ assay_facets: Facets = {
                 "/atacseq/analysis/peaks/treat_pileup.bw",
             ]
         ),
-        "Report": FacetConfig(["/atacseq/analysis/report.zip"]),
     },
     "CyTOF": {
         "Source": FacetConfig(
