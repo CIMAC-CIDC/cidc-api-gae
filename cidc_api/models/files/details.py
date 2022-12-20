@@ -44,11 +44,6 @@ details_dict = {
         "bigwig file, for visualization in IGV",
         "The bigwig file that represents the RPKM (reads per kilobase per million) normalized pile up, for visualization in IGV.",
     ),
-    "/atacseq/analysis/report.zip": FileDetails(
-        "analysis",
-        "html summary report",
-        "An html report with five sections: Overview, Read Level Summary, Peak Level Summary, Genome Track View, and Downstream",
-    ),
     "/atacseq/analysis/aligned_sorted.bam": FileDetails(
         "source",
         "sorted bam file, aligned with bwa-mem ",
