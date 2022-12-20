@@ -13,6 +13,7 @@ This Changelog tracks changes to this project. The notes below include a summary
 
 - `changed` schemas bump to remove ATACseq analysis batch report
 - `removed` facets for the same
+- `fixed` multifile handling, where it was set backwards
 
 ## Version `0.27.27` - 09 Dec 2022
 

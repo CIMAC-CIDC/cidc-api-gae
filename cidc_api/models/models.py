@@ -2078,7 +2078,7 @@ class UploadJobs(CommonColumns):
         trial_id = metadata[prism.PROTOCOL_ID_FIELD_NAME]
 
         job = UploadJobs(
-            multifile=is_manifest_upload,
+            multifile=not is_manifest_upload,  # manifests are single file, assay/analysis are multifile
             trial_id=trial_id,
             upload_type=upload_type,
             gcs_file_map=gcs_file_map,
