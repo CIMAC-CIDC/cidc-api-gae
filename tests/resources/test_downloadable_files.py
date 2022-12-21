@@ -617,7 +617,6 @@ def test_facet_groups_for_links(cidc_api, clean_db, monkeypatch):
             "analyzed": [
                 "Assay Type|ATAC-Seq|Source",
                 "Assay Type|ATAC-Seq|Peaks",
-                "Assay Type|ATAC-Seq|Report",
             ],
             "received": ["Assay Type|ATAC-Seq|Source"],
         },
