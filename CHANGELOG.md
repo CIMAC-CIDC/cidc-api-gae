@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.29` - 27 Dec 2022
+
+- `changed` schemas bump to add urine to manifests' type of sample
+
 ## Version `0.27.28` - 20 Dec 2022
 
 - `changed` schemas bump to remove ATACseq analysis batch report
