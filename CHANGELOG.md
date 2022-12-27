@@ -12,6 +12,7 @@ This Changelog tracks changes to this project. The notes below include a summary
 ## Version `0.27.30` - 28 Dec 2022
 
 - `changed` permissions handling to handle each trial instead of each trial / upload_type in revoke
+- `fixed` blob prefix generation error on uploads without files
 
 ## Version `0.27.29` - 27 Dec 2022
 

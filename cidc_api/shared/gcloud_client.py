@@ -523,7 +523,9 @@ def _build_trial_upload_prefixes(
             f"{trial}/{ASSAY_TO_FILEPATH[upload]}"
             for trial in trial_id
             for upload in upload_type
+            if upload in ASSAY_TO_FILEPATH
             # will not have cross-assay ie null upload in a list
+            # but could have uploads without files eg manifests
         }
     else:  # null for cross-assay
         # don't affect clinical_data
