@@ -453,7 +453,7 @@ def revoke_download_access_from_blob_names(
 def revoke_download_access(
     user_email_list: Union[str, List[str]],
     trial_id: Optional[str],
-    upload_type: Optional[str],
+    upload_type: Optional[Union[str, List[str]]],
 ) -> None:
     """
     Revoke users' download access to all objects in a trial of a particular upload type.
