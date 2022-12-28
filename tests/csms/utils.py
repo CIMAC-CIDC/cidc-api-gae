@@ -8,9 +8,7 @@ from datetime import date, datetime
 from unittest.mock import MagicMock
 
 from cidc_api.csms import auth
-from cidc_api.models.csms_api import (
-    cimac_id_to_cimac_participant_id,
-)
+from cidc_api.models.csms_api import cimac_id_to_cimac_participant_id
 from cidc_api.models.csms_api import _convert_csms_samples
 
 from .data import manifests, samples
