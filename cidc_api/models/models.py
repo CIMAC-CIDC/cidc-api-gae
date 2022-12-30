@@ -643,8 +643,12 @@ class Permissions(CommonColumns):
         # Always commit, because we don't want to grant IAM download unless this insert succeeds.
         super().insert(session=session, commit=True)
 
-        # Don't make any GCS changes if this user doesn't have download access
-        if not grantee.has_download_permissions():
+        # Don't make any GCS changes if this user doesn't have download access, is disabled, or isn't approved
+        if (
+            not grantee.has_download_permissions()
+            or grantee.disabled
+            or grantee.approval_date is None
+        ):
             return
 
         try:

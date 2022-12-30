@@ -1151,7 +1151,7 @@ def test_assay_upload_status():
 @db_test
 def test_permissions_insert(clean_db, monkeypatch, caplog):
     gcloud_client = mock_gcloud_client(monkeypatch)
-    user = Users(email="test@user.com")
+    user = Users(email="test@user.com", approval_date=datetime.now())
     user.insert()
     trial = TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA)
     trial.insert()
@@ -1234,6 +1234,40 @@ def test_permissions_insert(clean_db, monkeypatch, caplog):
     _insert.reset_mock()
     gcloud_client.reset_mocks()
     user.role = CIDCRole.PACT_USER.value
+    user.update()
+    perm = Permissions(
+        granted_to_user=user.id,
+        trial_id=trial.trial_id,
+        upload_type="ihc",
+        granted_by_user=user.id,
+    )
+    perm.insert()
+    _insert.assert_called_once()
+    gcloud_client.grant_lister_access.assert_not_called()
+    gcloud_client.grant_download_access.assert_not_called()
+
+    # If granting a permission to a disabled user, no GCS IAM actions are taken
+    _insert.reset_mock()
+    gcloud_client.reset_mocks()
+    user.role = CIDCRole.CIMAC_BIOFX_USER.value
+    user.disabled = True
+    user.update()
+    perm = Permissions(
+        granted_to_user=user.id,
+        trial_id=trial.trial_id,
+        upload_type="ihc",
+        granted_by_user=user.id,
+    )
+    perm.insert()
+    _insert.assert_called_once()
+    gcloud_client.grant_lister_access.assert_not_called()
+    gcloud_client.grant_download_access.assert_not_called()
+
+    # If granting a permission to an unapproved user, no GCS IAM actions are taken
+    _insert.reset_mock()
+    gcloud_client.reset_mocks()
+    user.role = CIDCRole.CIMAC_BIOFX_USER.value
+    user.approval_date = None
     user.update()
     perm = Permissions(
         granted_to_user=user.id,
@@ -1511,8 +1545,12 @@ def test_permissions_grant_user_permissions(clean_db, monkeypatch):
 
     gcloud_client = mock_gcloud_client(monkeypatch)
     user, user2 = (
-        Users(email="test@user.com", role=CIDCRole.NETWORK_VIEWER.value),
-        Users(email="foo@bar.com"),
+        Users(
+            email="test@user.com",
+            role=CIDCRole.NETWORK_VIEWER.value,
+            approval_date=datetime.now(),
+        ),
+        Users(email="foo@bar.com", approval_date=datetime.now()),
     )
     user.insert(), user2.insert()
     trial = TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA)
