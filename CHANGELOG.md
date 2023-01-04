@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.31` - 3 Jan 2023
+
+- `changed` don't issue new permissions if user is disabled or not approved
+
 ## Version `0.27.30` - 28 Dec 2022
 
 - `changed` permissions handling to handle each trial instead of each trial / upload_type in revoke
