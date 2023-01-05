@@ -9,7 +9,11 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
-## Version `0.27.31` - 3 Jan 2023
+## Version `0.27.32` - 05 Jan 2023
+
+- `changed` schemas bump to fix samples/participants prefix for file permissioning
+
+## Version `0.27.31` - 03 Jan 2023
 
 - `changed` don't issue new permissions if user is disabled or not approved
 
