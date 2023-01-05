@@ -4,9 +4,7 @@ os.environ["TZ"] = "UTC"
 from copy import deepcopy
 import pytest
 
-from cidc_api.models import (
-    TrialMetadata,
-)
+from cidc_api.models import TrialMetadata
 from cidc_api.models.csms_api import *
 from cidc_api.config.settings import PRISM_ENCRYPT_KEY
 

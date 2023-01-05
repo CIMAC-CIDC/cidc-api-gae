@@ -32,7 +32,11 @@ def setup_permissions(cidc_api, monkeypatch) -> Tuple[int, int]:
         role=CIDCRole.CIMAC_USER.value,
         approval_date=datetime.now(),
     )
-    other_user = Users(id=2, email="other@email.org")
+    other_user = Users(
+        id=2,
+        email="other@email.org",
+        approval_date=datetime.now(),
+    )
 
     mock_current_user(current_user, monkeypatch)
 

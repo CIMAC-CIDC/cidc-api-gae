@@ -643,8 +643,12 @@ class Permissions(CommonColumns):
         # Always commit, because we don't want to grant IAM download unless this insert succeeds.
         super().insert(session=session, commit=True)
 
-        # Don't make any GCS changes if this user doesn't have download access
-        if not grantee.has_download_permissions():
+        # Don't make any GCS changes if this user doesn't have download access, is disabled, or isn't approved
+        if (
+            not grantee.has_download_permissions()
+            or grantee.disabled
+            or grantee.approval_date is None
+        ):
             return
 
         try:
@@ -886,9 +890,20 @@ class Permissions(CommonColumns):
         # since we're revoking all, should revoke the CIDC Lister role too
         if len(perms):
             revoke_lister_access(user.email)
+
+        # separate permissions by trial, as they are strictly non-overlapping
+        perms_by_trial: Dict[str, List[Permissions]] = defaultdict(list)
         for perm in perms:
-            # Revoke each permission.
-            revoke_download_access(user.email, perm.trial_id, perm.upload_type)
+            perms_by_trial[perm.trial_id].append(perm)
+        perms_by_trial = dict(perms_by_trial)
+
+        for trial_id, trial_perms in perms_by_trial.items():
+            # Regrant each permission: idempotent.
+            revoke_download_access(
+                user_email_list=user.email,
+                trial_id=trial_id,
+                upload_type=[p.upload_type for p in trial_perms],
+            )
 
         # Revoke all of the user's intake bucket upload permissions, if they have any
         revoke_intake_access(user.email)
