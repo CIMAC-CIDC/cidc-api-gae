@@ -1701,6 +1701,17 @@ def test_permissions_grant_download_permissions_for_upload_job(clean_db, monkeyp
     upload_trial_clinical.status = UploadJobStatus.UPLOAD_COMPLETED.value
     upload_trial_clinical.ingestion_success(trial)
 
+    upload_trial_manifest = UploadJobs.create(
+        upload_type="plasma",
+        uploader_email=user1.email,
+        gcs_file_map={},
+        metadata={prism.PROTOCOL_ID_FIELD_NAME: trial.trial_id},
+        gcs_xlsx_uri="",
+        commit=False,
+    )
+    upload_trial_manifest.status = UploadJobStatus.UPLOAD_COMPLETED.value
+    upload_trial_manifest.ingestion_success(trial)
+
     # Test uploads:
     #   trial ihc
     #   trial clinical_data
@@ -1718,6 +1729,8 @@ def test_permissions_grant_download_permissions_for_upload_job(clean_db, monkeyp
     #   trial2 rna_fastq - single assay, NO cross-assay, NO cross-trial
     #       user2 (trial2/rna)
     #   trial clinical_data - single clinical_data, NO cross-assay, NO cross-trial
+    #       user1 (trial/clinical_data)
+    #   trial manifest - single plamsa, NO cross-assay, NO cross-trial
     #       user1 (trial/clinical_data)
     upload_types = ["wes_bam", "ihc", "rna_fastq", "plasma", "clinical_data"]
     for upload_type in upload_types:
@@ -1817,6 +1830,24 @@ def test_permissions_grant_download_permissions_for_upload_job(clean_db, monkeyp
     gcloud_client.grant_lister_access.assert_has_calls([call(user1.email)])
     gcloud_client.grant_download_access.assert_called_once_with(
         [user1.email], upload_trial_clinical.trial_id, upload_trial_clinical.upload_type
+    )
+
+    gcloud_client.reset_mocks()
+    # trigger and assert
+    Permissions.grant_download_permissions_for_upload_job(
+        upload_trial_manifest, session=clean_db
+    )
+    gcloud_client.grant_lister_access.assert_has_calls([call(user1.email)])
+    gcloud_client.grant_download_access.assert_any_call(
+        [user1.email, user3.email],
+        upload_trial_manifest.trial_id,
+        upload_trial_manifest.upload_type,
+    )
+    gcloud_client.grant_download_access.assert_any_call(
+        [], upload_trial_clinical.trial_id, "participants info"
+    )
+    gcloud_client.grant_download_access.assert_any_call(
+        [], upload_trial_clinical.trial_id, "samples info"
     )
 
 
