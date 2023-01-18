@@ -952,6 +952,11 @@ class Permissions(CommonColumns):
 
         grant_download_access(user_email_list, upload.trial_id, upload.upload_type)
 
+        if upload.upload_type in prism.SUPPORTED_MANIFESTS:
+            # Passed with empty user email list because they will be queried for in CFn
+            grant_download_access([], upload.trial_id, "participants info")
+            grant_download_access([], upload.trial_id, "samples info")
+
     @staticmethod
     @with_default_session
     def grant_download_permissions(

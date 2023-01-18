@@ -402,6 +402,7 @@ def grant_download_access(
 
     If trial_id is None, then grant access to all trials.
     If upload_type is None, then grant access to all upload_types.
+    if user_email_list is []. then CFn loads users from db table.
 
     If the user already has download access for this trial and upload type, idempotent.
     Download access is controlled by IAM on production and ACL elsewhere.
@@ -457,6 +458,10 @@ def revoke_download_access(
 ) -> None:
     """
     Revoke users' download access to all objects in a trial of a particular upload type.
+
+    If trial_id is None, then revoke access to all trials.
+    If upload_type is None, then revoke access to all upload_types.
+    if user_email_list is []. then CFn loads users from db table.
 
     Return the GCS URIs from which access has been revoked.
     Download access is controlled by ACL.
