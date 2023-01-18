@@ -1731,7 +1731,7 @@ def test_permissions_grant_download_permissions_for_upload_job(clean_db, monkeyp
     #   trial clinical_data - single clinical_data, NO cross-assay, NO cross-trial
     #       user1 (trial/clinical_data)
     #   trial manifest - single plamsa, NO cross-assay, NO cross-trial
-    #       user1 (trial/clinical_data)
+    #       user1 (trial/participants info), user1 (trial/samples info)
     upload_types = ["wes_bam", "ihc", "rna_fastq", "plasma", "clinical_data"]
     for upload_type in upload_types:
         Permissions(
