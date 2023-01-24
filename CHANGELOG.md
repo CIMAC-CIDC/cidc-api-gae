@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.33` - 17 Jan 2023
+
+- `fixed` fixed permission granting for manifest uploads to include participant and sample files
+
 ## Version `0.27.32` - 05 Jan 2023
 
 - `changed` schemas bump to fix samples/participants prefix for file permissioning
