@@ -950,12 +950,10 @@ class Permissions(CommonColumns):
                 user_email_list.append(user.email)
                 grant_lister_access(user.email)
 
-
         if upload.upload_type in prism.SUPPORTED_MANIFESTS:
-            if upload.upload_type in prism.MANIFESTS_WITH_PARTICIPANT_INFO:
+            if upload.upload_type in prism.SUPPORTED_SHIPPING_MANIFESTS:
                 # Passed with empty user email list because they will be queried for in CFn
                 grant_download_access([], upload.trial_id, "participants info")
-            if upload.upload_type in prism.SUPPORTED_SHIPPING_MANIFESTS:
                 grant_download_access([], upload.trial_id, "samples info")
         else:
             grant_download_access(user_email_list, upload.trial_id, upload.upload_type)
