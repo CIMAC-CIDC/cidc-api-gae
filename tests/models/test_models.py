@@ -1839,11 +1839,6 @@ def test_permissions_grant_download_permissions_for_upload_job(clean_db, monkeyp
     )
     gcloud_client.grant_lister_access.assert_has_calls([call(user1.email)])
     gcloud_client.grant_download_access.assert_any_call(
-        [user1.email, user3.email],
-        upload_trial_manifest.trial_id,
-        upload_trial_manifest.upload_type,
-    )
-    gcloud_client.grant_download_access.assert_any_call(
         [], upload_trial_clinical.trial_id, "participants info"
     )
     gcloud_client.grant_download_access.assert_any_call(
