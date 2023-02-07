@@ -1853,7 +1853,7 @@ class TrialMetadata(CommonColumns):
         # prevent any unwanted de-duplication within subquery results.
         combined_query = f"""
             select
-                jsonb_object_agg('trial_id', sample_counts.trial_id)
+                jsonb_object_agg('trial_id', expected_assays.trial_id)
                 || jsonb_object_agg('excluded_samples', coalesce(excluded_sample_lists.value, '{{}}'::jsonb))
                 || jsonb_object_agg('expected_assays', coalesce(expected_assays, '[]'::jsonb))
                 || jsonb_object_agg('file_size_bytes', coalesce(file_sizes.value, 0))
