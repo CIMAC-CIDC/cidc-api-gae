@@ -662,8 +662,15 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
             },
         },
     }
+    tm3 = {
+        prism.PROTOCOL_ID_FIELD_NAME: "tm3",
+        "participants": [],
+        "allowed_cohort_names": ["Arm_Z"],
+        "allowed_collection_event_names": [],
+    }
     TrialMetadata(trial_id="tm1", metadata_json=tm1).insert(validate_metadata=False)
     TrialMetadata(trial_id="tm2", metadata_json=tm2).insert(validate_metadata=False)
+    TrialMetadata(trial_id="tm3", metadata_json=tm3).insert(validate_metadata=False)
 
     # Add some files
     for i, (tid, fs) in enumerate([("tm1", 3), ("tm1", 2), ("tm2", 4), ("tm2", 6)]):
@@ -739,6 +746,32 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                         0, 2
                     ),  # combined with wes_analysis_old
                 },
+            },
+            {
+                "trial_id": "tm3",
+                "file_size_bytes": 0,
+                "total_participants": 0,
+                "total_samples": 0,
+                "expected_assays": [],
+                "atacseq": 0.0,
+                "atacseq_analysis": 0.0,
+                "clinical_participants": 0,
+                "ctdna": 0.0,
+                "cytof": 0.0,
+                "cytof_analysis": 0.0,
+                "elisa": 0.0,
+                "h&e": 0.0,
+                "mif": 0.0,
+                "nanostring": 0.0,
+                "olink": 0.0,
+                "rna": 0.0,
+                "rna_level1_analysis": 0.0,
+                "tcr_analysis": 0.0,
+                "wes": 0.0,
+                "wes_analysis": 0.0,
+                "wes_tumor_only": 0.0,
+                "wes_tumor_only_analysis": 0.0,
+                "excluded_samples": {},
             },
         ],
         key=sorter,
@@ -1838,11 +1871,6 @@ def test_permissions_grant_download_permissions_for_upload_job(clean_db, monkeyp
         upload_trial_manifest, session=clean_db
     )
     gcloud_client.grant_lister_access.assert_has_calls([call(user1.email)])
-    gcloud_client.grant_download_access.assert_any_call(
-        [user1.email, user3.email],
-        upload_trial_manifest.trial_id,
-        upload_trial_manifest.upload_type,
-    )
     gcloud_client.grant_download_access.assert_any_call(
         [], upload_trial_clinical.trial_id, "participants info"
     )

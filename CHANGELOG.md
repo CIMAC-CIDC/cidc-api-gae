@@ -9,6 +9,18 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.35` - 07 Feb 2023
+
+- `fixed` trial metadata summaries return correct trial id even when no samples
+
+## Version `0.27.34` - 02 Feb 2023
+
+- `fixed` Limit permission granting based on upload types for manifest granting
+
+## 26 Jan 2023
+
+- `removed` stale GitHub action for automatic prod releases
+
 ## Version `0.27.33` - 17 Jan 2023
 
 - `fixed` fixed permission granting for manifest uploads to include participant and sample files
