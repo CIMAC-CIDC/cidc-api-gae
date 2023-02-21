@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.36` - 21 Feb 2023
+
+- `added` all ctdna files to source faceting in trial view
+
 ## Version `0.27.35` - 07 Feb 2023
 
 - `fixed` trial metadata summaries return correct trial id even when no samples
