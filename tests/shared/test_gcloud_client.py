@@ -239,6 +239,28 @@ def test_build_trial_upload_prefixes(clean_db, cidc_api):
         "foo/wes/",
         "foo/wes_tumor_only/",
     }
+    assert _build_trial_upload_prefixes("foo", tuple([None])) == {
+        "foo/atacseq/",
+        "foo/ctdna/",
+        "foo/cytof/",
+        "foo/cytof_analysis/",
+        "foo/elisa/",
+        "foo/hande/",
+        "foo/ihc/",
+        "foo/mibi/",
+        "foo/microbiome/",
+        "foo/mif/",
+        "foo/misc_data/",
+        "foo/nanostring/",
+        "foo/olink/",
+        "foo/participants.",
+        "foo/rna/",
+        "foo/samples.",
+        "foo/tcr/",
+        "foo/tcr_analysis/",
+        "foo/wes/",
+        "foo/wes_tumor_only/",
+    }
     assert _build_trial_upload_prefixes("foo", "rna_bam") == {"foo/rna/"}
 
 
