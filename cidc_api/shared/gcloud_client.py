@@ -365,8 +365,8 @@ def _execute_multiblob_acl_change(
 
 def get_blob_names(
     trial_id: Optional[str],
-    upload_type: Optional[Union[str, Iterable[str]]],
-    session: Session,
+    upload_type: Optional[Tuple[str]],
+    session: Optional[Session] = None,
 ) -> Set[str]:
     """session only needed if trial_id is None"""
     prefixes: Set[str] = _build_trial_upload_prefixes(
@@ -502,7 +502,7 @@ def revoke_download_access(
 def _build_trial_upload_prefixes(
     trial_id: Optional[str],
     upload_type: Optional[Tuple[str]],
-    session: Session,
+    session: Optional[Session] = None,
 ) -> Set[str]:
     """
     Build the set of prefixes associated with the trial_id and upload_type

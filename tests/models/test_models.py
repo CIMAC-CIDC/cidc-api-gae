@@ -1605,7 +1605,7 @@ def test_permissions_grant_user_permissions(clean_db, monkeypatch):
     Permissions(
         granted_to_user=user.id,
         trial_id=trial2.trial_id,
-        upload_type="ihc",
+        upload_type=None,
         granted_by_user=user.id,
     ).insert()
     gcloud_client.grant_lister_access.assert_not_called()
@@ -1648,7 +1648,7 @@ def test_permissions_grant_user_permissions(clean_db, monkeypatch):
             assert this_call == call(
                 user_email_list=user.email,
                 trial_id=trial2.trial_id,
-                upload_type=["ihc"],
+                upload_type=[None],
             )
         else:
             assert kwargs["user_email_list"] == user.email
