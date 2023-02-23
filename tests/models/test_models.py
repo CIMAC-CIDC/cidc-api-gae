@@ -1605,7 +1605,7 @@ def test_permissions_grant_user_permissions(clean_db, monkeypatch):
     Permissions(
         granted_to_user=user.id,
         trial_id=trial2.trial_id,
-        upload_type="ihc",
+        upload_type=None,
         granted_by_user=user.id,
     ).insert()
     gcloud_client.grant_lister_access.assert_not_called()
@@ -1648,7 +1648,7 @@ def test_permissions_grant_user_permissions(clean_db, monkeypatch):
             assert this_call == call(
                 user_email_list=user.email,
                 trial_id=trial2.trial_id,
-                upload_type=["ihc"],
+                upload_type=[None],
             )
         else:
             assert kwargs["user_email_list"] == user.email
@@ -1656,6 +1656,70 @@ def test_permissions_grant_user_permissions(clean_db, monkeypatch):
             assert sorted(kwargs["upload_type"]) == sorted(upload_types)
 
     refresh_intake_access.assert_called_once_with(user.email)
+
+
+@db_test
+def test_permissions_revoke_user_permissions(clean_db, monkeypatch):
+    """
+    Smoke test that Permissions.revoke_user_permissions calls revoke_download_access with the right arguments.
+    """
+    revoke_intake_access = MagicMock()
+    monkeypatch.setattr(
+        "cidc_api.models.models.revoke_intake_access", revoke_intake_access
+    )
+
+    gcloud_client = mock_gcloud_client(monkeypatch)
+    user = Users(
+        email="test@user.com",
+        role=CIDCRole.NETWORK_VIEWER.value,
+        approval_date=datetime.now(),
+    )
+    user.insert()
+    trial = TrialMetadata(trial_id=TRIAL_ID, metadata_json=METADATA)
+    trial.insert()
+    trial2 = TrialMetadata(trial_id=TRIAL_ID + "2", metadata_json=METADATA)
+    trial2.metadata_json[prism.PROTOCOL_ID_FIELD_NAME] += "2"
+    trial2.insert()
+
+    # each trial handled individually, so all together
+    upload_types = ["wes_bam", "ihc", "rna_fastq", "plasma"]
+    for upload_type in upload_types:
+        Permissions(
+            granted_to_user=user.id,
+            trial_id=trial.trial_id,
+            upload_type=upload_type,
+            granted_by_user=user.id,
+        ).insert()
+    # each trial handled individually, so separate from above
+    Permissions(
+        granted_to_user=user.id,
+        trial_id=trial2.trial_id,
+        upload_type=None,
+        granted_by_user=user.id,
+    ).insert()
+    # user is role NETWORK_VIEWER, so doesn't apply
+    gcloud_client.grant_lister_access.assert_not_called()
+    gcloud_client.grant_download_access.assert_not_called()
+
+    # IAM permissions should be revoked for any other role
+    user.role = CIDCRole.CIMAC_USER.value
+    Permissions.revoke_user_permissions(user=user)
+    gcloud_client.revoke_lister_access.assert_called_once_with(user.email)
+    gcloud_client.revoke_download_access.call_count == 2
+    for this_call in gcloud_client.revoke_download_access.call_args_list:
+        _, kwargs = this_call
+        if kwargs["trial_id"] == trial2.trial_id:
+            assert this_call == call(
+                user_email_list=user.email,
+                trial_id=trial2.trial_id,
+                upload_type=[None],
+            )
+        else:
+            assert kwargs["user_email_list"] == user.email
+            assert kwargs["trial_id"] == trial.trial_id
+            assert sorted(kwargs["upload_type"]) == sorted(upload_types)
+
+    revoke_intake_access.assert_called_once_with(user.email)
 
 
 @db_test

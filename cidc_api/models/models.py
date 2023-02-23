@@ -764,7 +764,7 @@ class Permissions(CommonColumns):
     @with_default_session
     def get_user_emails_for_trial_upload(
         trial_id: Optional[str], upload_type: Optional[Union[str, List[str]]], session
-    ) -> Dict[str, Dict[str, List[str]]]:
+    ) -> Dict[str, Dict[Optional[str], List[str]]]:
 
         if upload_type is None or isinstance(upload_type, str):
             permissions_list: List[Permissions] = Permissions.get_for_trial_type(
