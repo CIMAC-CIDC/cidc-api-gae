@@ -11,7 +11,18 @@ import hashlib
 from collections import namedtuple
 from concurrent.futures import Future
 from sqlalchemy.orm.session import Session
-from typing import Any, BinaryIO, Callable, Dict, Iterable, List, Optional, Set, Union
+from typing import (
+    Any,
+    BinaryIO,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 import requests
 from google.cloud import storage, pubsub, bigquery
@@ -355,7 +366,7 @@ def _execute_multiblob_acl_change(
 def get_blob_names(
     trial_id: Optional[str],
     upload_type: Optional[Union[str, Iterable[str]]],
-    session: Optional[Session] = None,
+    session: Session,
 ) -> Set[str]:
     """session only needed if trial_id is None"""
     prefixes: Set[str] = _build_trial_upload_prefixes(
@@ -490,56 +501,65 @@ def revoke_download_access(
 
 def _build_trial_upload_prefixes(
     trial_id: Optional[str],
-    upload_type: Optional[Union[str, Iterable[str]]],
-    session: Optional[Session] = None,
+    upload_type: Optional[Tuple[str]],
+    session: Session,
 ) -> Set[str]:
     """
     Build the set of prefixes associated with the trial_id and upload_type
     If no trial_id is given, all trials are used.
     If no upload_type is given, the prefixes are everything but clinical_data.
         If upload_type has no files, returns empty set.
+        if None in upload_type, it's treated the same as bare None
     If neither are given, an empty set is returned.
 
     session is only used with trial_id is None and upload_type is not None
     """
-    if trial_id is None and upload_type is None:
+    if trial_id is None and (upload_type is None or None in upload_type):
         return set()
 
+    trial_set: Set[str] = set()
+    upload_set: Set[str] = set()
     if not trial_id:
         from ..models.models import TrialMetadata
 
-        trial_id = set(
+        trial_set = set(
             [
-                t.trial_id
+                str(t.trial_id)
                 for t in session.query(TrialMetadata).add_columns(
                     TrialMetadata.trial_id
                 )
             ]
         )
     else:
-        trial_id = set([trial_id])
+        trial_set = set([trial_id])
 
-    if isinstance(upload_type, str) and upload_type in ASSAY_TO_FILEPATH:
-        return {f"{trial}/{ASSAY_TO_FILEPATH[upload_type]}" for trial in trial_id}
-    elif isinstance(upload_type, str) and upload_type:
-        return set()
-    elif upload_type:
-        return {
-            f"{trial}/{ASSAY_TO_FILEPATH[upload]}"
-            for trial in trial_id
-            for upload in upload_type
-            if upload in ASSAY_TO_FILEPATH
-            # will not have cross-assay ie null upload in a list
-            # but could have uploads without files eg manifests
-        }
-    else:  # null for cross-assay
-        # don't affect clinical_data
-        return {
-            f"{trial}/{upload_prefix}"
-            for trial in trial_id
-            for upload_name, upload_prefix in ASSAY_TO_FILEPATH.items()
+    if not upload_type or None in upload_type:
+        upload_set = {
+            upload_name
+            for upload_name in ASSAY_TO_FILEPATH.keys()
             if upload_name != "clinical_data"
         }
+    else:
+        upload_set = set(upload_type)
+
+    ret: Set[str] = set()
+    for trial in trial_set:
+        for upload in upload_set:
+            if upload_type:
+                if upload in ASSAY_TO_FILEPATH:
+                    ret.add(f"{trial}/{ASSAY_TO_FILEPATH[upload]}")
+            else:  # null means cross-assay
+                # don't affect clinical_data
+                ret = ret.union(
+                    {
+                        f"{trial}/{upload_prefix}"
+                        for trial in trial_set
+                        for upload_name, upload_prefix in ASSAY_TO_FILEPATH.items()
+                        if upload_name != "clinical_data"
+                    }
+                )
+
+    return ret
 
 
 def grant_storage_iam_access(

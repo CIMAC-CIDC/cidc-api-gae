@@ -1721,6 +1721,7 @@ def test_permissions_revoke_user_permissions(clean_db, monkeypatch):
 
     revoke_intake_access.assert_called_once_with(user.email)
 
+
 @db_test
 def test_permissions_grant_download_permissions_for_upload_job(clean_db, monkeypatch):
     """
