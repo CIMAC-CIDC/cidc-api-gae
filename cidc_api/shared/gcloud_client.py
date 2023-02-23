@@ -501,7 +501,7 @@ def revoke_download_access(
 
 def _build_trial_upload_prefixes(
     trial_id: Optional[str],
-    upload_type: Optional[Tuple[str]],
+    upload_type: Optional[Tuple[Optional[str]]],
     session: Optional[Session] = None,
 ) -> Set[str]:
     """

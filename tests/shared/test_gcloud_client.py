@@ -214,10 +214,10 @@ def test_build_trial_upload_prefixes(clean_db, cidc_api):
             ).insert(session=clean_db)
 
         assert set(
-            _build_trial_upload_prefixes(None, "rna_bam", session=clean_db)
+            _build_trial_upload_prefixes(None, tuple(["rna_bam"]), session=clean_db)
         ) == set(f"{t}/rna/" for t in fake_trial_ids)
 
-    assert _build_trial_upload_prefixes("foo", None) == {
+    assert _build_trial_upload_prefixes("foo", tuple([None])) == {
         "foo/atacseq/",
         "foo/ctdna/",
         "foo/cytof/",
@@ -261,7 +261,7 @@ def test_build_trial_upload_prefixes(clean_db, cidc_api):
         "foo/wes/",
         "foo/wes_tumor_only/",
     }
-    assert _build_trial_upload_prefixes("foo", "rna_bam") == {"foo/rna/"}
+    assert _build_trial_upload_prefixes("foo", tuple(["rna_bam"])) == {"foo/rna/"}
 
 
 def test_grant_lister_access(monkeypatch):
@@ -529,7 +529,7 @@ def test_grant_download_access_by_names(monkeypatch):
     bucket.get_blob.return_value = client.blobs[0]
     monkeypatch.setattr("cidc_api.shared.gcloud_client._get_bucket", _get_bucket)
 
-    blob_names = get_blob_names("10021", "wes_analysis")
+    blob_names = get_blob_names("10021", tuple(["wes_analysis"]))
     assert blob_names == set([client.blobs[0].name])
 
     grant_download_access_to_blob_names([EMAIL], blob_name_list=blob_names)
@@ -570,7 +570,7 @@ def test_revoke_download_access_from_names(monkeypatch):
     bucket.get_blob.return_value = client.blobs[0]
     monkeypatch.setattr(gcloud_client, "_get_bucket", _get_bucket)
 
-    blob_name_list = get_blob_names("10021", "wes_analysis")
+    blob_name_list = get_blob_names("10021", tuple(["wes_analysis"]))
     assert blob_name_list == set([client.blobs[0].name])
 
     revoke_download_access_from_blob_names([EMAIL], blob_name_list=blob_name_list)
