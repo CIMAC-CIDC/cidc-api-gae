@@ -9,6 +9,11 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.37` - 24 Feb 2023
+
+- `fixed` permission error where cross-assay single-trial permissions weren't revoked
+  - null upload_type was being skipped as it received [None] instead of bare None
+
 ## Version `0.27.36` - 21 Feb 2023
 
 - `added` all ctdna files to source faceting in trial view
