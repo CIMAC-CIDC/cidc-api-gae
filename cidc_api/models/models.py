@@ -1648,7 +1648,7 @@ class TrialMetadata(CommonColumns):
         # Get all tumor samples with WES data not in the equivalent of wes_subquery.
         wes_tumor_assay_subquery = """
             select
-                trial_id,
+                trial_metadata.trial_id,
                 'wes_tumor_only' as key,
                 record->>'cimac_id' as cimac_id
             from
@@ -1657,6 +1657,7 @@ class TrialMetadata(CommonColumns):
                 jsonb_array_elements(batch->'records') record
             join (
                 select
+                    trial_id,
                     sample->>'cimac_id' as cimac_id
                 from
                     trial_metadata,
@@ -1670,6 +1671,8 @@ class TrialMetadata(CommonColumns):
             ) sample_data
             on
                 sample_data.cimac_id = record->>'cimac_id'
+                and
+                sample_data.trial_id = trial_id
             where
                 record->>'cimac_id' not in (
                     select
