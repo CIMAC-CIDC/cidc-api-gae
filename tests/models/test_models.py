@@ -583,7 +583,18 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
         **METADATA,
         # deliberately override METADATA['protocol_identifier']
         "protocol_identifier": "tm2",
-        "participants": [{"samples": []}],
+        "participants": [
+            {
+                "samples": [
+                    {
+                        # purposefully conflicting ID with trial tm1
+                        # should be totally unrelated and not affect that counting
+                        "cimac_id": "C000000T5",
+                        "processed_sample_derivative": "Tumor DNA",
+                    }
+                ]
+            }
+        ],
         "assays": {
             "cytof": [
                 # 5 samples, 5 participants
