@@ -1671,9 +1671,9 @@ class TrialMetadata(CommonColumns):
             ) sample_data
             on
                 sample_data.cimac_id = record->>'cimac_id'
-                and
-                sample_data.trial_id = trial_id
             where
+                sample_data.trial_id = trial_metadata.trial_id
+                and
                 record->>'cimac_id' not in (
                     select
                         pair#>>'{tumor,cimac_id}'

@@ -9,7 +9,11 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
-## Version `0.27.38` - 13 Mar 2023
+## Version `0.27.39` - 16 Mar 2023
+
+- `fixed` bug, moved from join-on to where
+
+## Version `0.27.38` - 16 Mar 2023
 
 - `fixed` bug where WES T/O counting was affect by other trials
 
