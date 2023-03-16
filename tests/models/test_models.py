@@ -484,6 +484,10 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                         "cimac_id": "C000000T4",
                         "processed_sample_derivative": "Tumor DNA",
                     },
+                    {
+                        "cimac_id": "C000000T5",
+                        "processed_sample_derivative": "Tumor DNA",
+                    },
                     {"cimac_id": "C000000N3", "processed_sample_derivative": "not"},
                 ]
             },
@@ -496,8 +500,8 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 # wes_tumor_only = 1, wes = 3
                 {
                     "records": [
-                        {"cimac_id": f"C000000T{n}"} for n in range(1, 5)
-                    ]  # 4 samples, 1 new partic
+                        {"cimac_id": f"C000000T{n}"} for n in range(1, 6)
+                    ]  # 5 samples, 1 new partic
                     + [
                         {"cimac_id": f"C000000N{n}"} for n in range(1, 4)
                     ]  # 3 samples, 0 new partic
@@ -732,7 +736,7 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "trial_id": "tm1",
                 "file_size_bytes": 5,
                 "total_participants": 14,
-                "total_samples": 20,
+                "total_samples": 21,
                 "expected_assays": ["ihc", "olink"],
                 "atacseq": 13.0,
                 "atacseq_analysis": 12.0,
@@ -750,7 +754,7 @@ def test_trial_metadata_get_summaries(clean_db, monkeypatch):
                 "tcr_analysis": 0.0,
                 "wes": 3.0,
                 "wes_analysis": 2.0,  # combined with wes_analysis_old
-                "wes_tumor_only": 1.0,
+                "wes_tumor_only": 2.0,
                 "wes_tumor_only_analysis": 2.0,  # combined with wes_tumor_only_analysis_old
                 "excluded_samples": {
                     "wes_analysis": make_records(
