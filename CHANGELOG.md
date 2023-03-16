@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.38` - 13 Mar 2023
+
+- `fixed` bug where WES T/O counting was affect by other trials
+
 ## Version `0.27.37` - 24 Feb 2023
 
 - `fixed` permission error where cross-assay single-trial permissions weren't revoked
