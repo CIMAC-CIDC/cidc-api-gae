@@ -92,14 +92,17 @@ def setup_trial_and_user(cidc_api, monkeypatch) -> int:
         return user.id
 
 
-def setup_upload_jobs(cidc_api) -> Tuple[int, int]:
+def setup_upload_jobs(cidc_api) -> Tuple[int, int, int]:
     """
     Insert two uploads into the database created by different users
     and return their IDs.
+    Insert a third upload by a different user and change its status to merge-completed.
     """
     with cidc_api.app_context():
         other_user = Users(email="other@email.org")
         other_user.insert()
+        test2user = Users(email="test2@email.org")
+        test2user.insert()
 
         job1 = UploadJobs(
             uploader_email=user_email,
@@ -121,11 +124,24 @@ def setup_upload_jobs(cidc_api) -> Tuple[int, int]:
             gcs_file_map={"bip": "baz"},
             multifile=False,
         )
+        job_merge_completed = UploadJobs(
+            uploader_email=test2user.email,
+            trial_id=trial_id,
+            status=UploadJobStatus.STARTED.value,
+            metadata_patch={"test": {"upload_placeholder": "baz"}, "test2": "foo"},
+            upload_type="olink",
+            gcs_xlsx_uri="dummy_file.txt",
+            gcs_file_map=None,
+            multifile=False,
+        )
+        job_merge_completed.status = UploadJobStatus.UPLOAD_COMPLETED.value
+        job_merge_completed.status = UploadJobStatus.MERGE_COMPLETED.value
 
         job1.insert()
         job2.insert()
+        job_merge_completed.insert()
 
-        return job1.id, job2.id
+        return job1.id, job2.id, job_merge_completed.id
 
 
 def make_nci_biobank_user(user_id, cidc_api):
@@ -148,7 +164,7 @@ def make_cimac_biofx_user(user_id, cidc_api):
 def test_list_upload_jobs(cidc_api, clean_db, monkeypatch):
     """Check that listing upload jobs works as expected."""
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
-    user_job, other_job = setup_upload_jobs(cidc_api)
+    user_job, other_job, merge_completed_job = setup_upload_jobs(cidc_api)
 
     client = cidc_api.test_client()
 
@@ -167,14 +183,16 @@ def test_list_upload_jobs(cidc_api, clean_db, monkeypatch):
     make_admin(user_id, cidc_api)
     res = client.get("upload_jobs")
     assert res.status_code == 200
-    assert res.json["_meta"]["total"] == 2
-    assert set(i["id"] for i in res.json["_items"]) == set([user_job, other_job])
+    assert res.json["_meta"]["total"] == 3
+    assert set(i["id"] for i in res.json["_items"]) == set(
+        [user_job, other_job, merge_completed_job]
+    )
 
 
 def test_get_upload_job(cidc_api, clean_db, monkeypatch):
     """Check that getting a single upload job by ID works as expected."""
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
-    user_job, other_job = setup_upload_jobs(cidc_api)
+    user_job, other_job, _ = setup_upload_jobs(cidc_api)
 
     client = cidc_api.test_client()
 
@@ -269,7 +287,7 @@ def test_requires_upload_token_auth(cidc_api, clean_db, monkeypatch):
 def test_update_upload_job(cidc_api, clean_db, monkeypatch):
     """Check that getting a updating an upload job by ID works as expected."""
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
-    user_job, other_job = setup_upload_jobs(cidc_api)
+    user_job, other_job, _ = setup_upload_jobs(cidc_api)
     with cidc_api.app_context():
         user_job_record = UploadJobs.find_by_id(user_job)
         other_job_record = UploadJobs.find_by_id(other_job)
@@ -1062,7 +1080,7 @@ def test_poll_upload_merge_status(cidc_api, clean_db, monkeypatch):
 def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
     make_cimac_biofx_user(user_id, cidc_api)
-    job_id, _ = setup_upload_jobs(cidc_api)
+    job_id, _, job_merge_completed_id = setup_upload_jobs(cidc_api)
 
     client = cidc_api.test_client()
 
@@ -1085,6 +1103,20 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
         )
         assert res.status_code == 400
         assert "987 doesn't exist" in res.json["_error"]["message"]
+
+    with monkeypatch.context() as m:
+        res = client.post(
+            "/ingestion/extra-assay-metadata",
+            data={
+                "job_id": job_merge_completed_id,
+                "uuid-1": (io.BytesIO(b"fake file"), "fname1"),
+            },
+        )
+        assert res.status_code == 400
+        assert (
+            f"{job_merge_completed_id} doesn't exist or is already merged"
+            in res.json["_error"]["message"]
+        )
 
     with monkeypatch.context() as m:
         merge_extra_metadata = MagicMock()

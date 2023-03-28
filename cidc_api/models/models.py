@@ -1648,7 +1648,7 @@ class TrialMetadata(CommonColumns):
         # Get all tumor samples with WES data not in the equivalent of wes_subquery.
         wes_tumor_assay_subquery = """
             select
-                trial_id,
+                trial_metadata.trial_id,
                 'wes_tumor_only' as key,
                 record->>'cimac_id' as cimac_id
             from
@@ -1657,6 +1657,7 @@ class TrialMetadata(CommonColumns):
                 jsonb_array_elements(batch->'records') record
             join (
                 select
+                    trial_id,
                     sample->>'cimac_id' as cimac_id
                 from
                     trial_metadata,
@@ -1671,6 +1672,8 @@ class TrialMetadata(CommonColumns):
             on
                 sample_data.cimac_id = record->>'cimac_id'
             where
+                sample_data.trial_id = trial_metadata.trial_id
+                and
                 record->>'cimac_id' not in (
                     select
                         pair#>>'{tumor,cimac_id}'
@@ -2133,7 +2136,7 @@ class UploadJobs(CommonColumns):
 
         job = UploadJobs.find_by_id(job_id, session=session)
 
-        if job is None or job.status == UploadJobStatus.MERGE_COMPLETED:
+        if job is None or job.status == UploadJobStatus.MERGE_COMPLETED.value:
             raise ValueError(f"Upload job {job_id} doesn't exist or is already merged")
 
         logger.info(f"About to merge extra md to {job.id}/{job.status}")
