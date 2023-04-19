@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.41` - 19 Apr 2023
+
+  - `changed` schemas bump to remove microbiome reverse index requirement
+
 ## Version `0.27.40` - 16 Mar 2023
 
 - `fixed` bug, prevent mutating an UploadJob that has already been merged
