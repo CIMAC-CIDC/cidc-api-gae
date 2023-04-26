@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## 26 Apr 2023
+
+- `added` notes for WES analysis ExACdb assembly compatibility issues
+
 ## Version `0.27.41` - 19 Apr 2023
 
   - `changed` schemas bump to remove microbiome reverse index requirement
