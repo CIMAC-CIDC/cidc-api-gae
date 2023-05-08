@@ -9,6 +9,11 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.43` - 08 May 2023
+
+- `added` flag for alembic to compare types for database migrations
+- `added` migration to add N/A value for user organization
+
 ## Version `0.27.42` - 27 Apr 2023
 
 - `changed` schemas bump for adding serum and allowing dna qc text
