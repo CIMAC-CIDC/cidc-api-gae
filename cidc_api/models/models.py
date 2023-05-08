@@ -348,7 +348,7 @@ class Users(CommonColumns):
     last_n = Column(String)
     organization = Column(Enum(*ORGS, name="orgs"))
     approval_date = Column(DateTime)
-    role = Column(Enum(*ROLES, name="roles"))
+    role = Column(Enum(*ROLES, name="role"))
     disabled = Column(Boolean, default=False, server_default="false")
 
     @validates("approval_date")
@@ -2020,7 +2020,7 @@ class UploadJobs(CommonColumns):
     # Text containing feedback on why the upload status is what it is
     status_details = Column(String, nullable=True)
     # Whether the upload contains multiple files
-    multifile = Column(Boolean, nullable=False, default=True)
+    multifile = Column(Boolean, nullable=False)
     # For multifile UploadJobs, object names for the files to be uploaded mapped to upload_placeholder uuids.
     # For single file UploadJobs, this field is null.
     gcs_file_map = Column(JSONB, nullable=True)
@@ -2208,7 +2208,7 @@ class DownloadableFiles(CommonColumns):
     uploaded_timestamp = Column(DateTime, nullable=False)
     facet_group = Column(String, nullable=False)
     # NOTE: this column actually has type CITEXT.
-    additional_metadata = Column(JSONB, nullable=False, default=text("'{}'::jsonb"))
+    additional_metadata = Column(JSONB, nullable=False)
     # TODO rename upload_type, because we store manifests in there too.
     # NOTE: this column actually has type CITEXT.
     upload_type = Column(String, nullable=False)
