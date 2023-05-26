@@ -4,7 +4,6 @@ os.environ["TZ"] = "UTC"
 from datetime import datetime
 from typing import Tuple
 
-from cidc_api.config.settings import GOOGLE_MAX_DOWNLOAD_PERMISSIONS
 from cidc_api.models import (
     Users,
     Permissions,

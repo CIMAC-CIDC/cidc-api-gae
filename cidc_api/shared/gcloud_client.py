@@ -46,7 +46,6 @@ from ..config.settings import (
     GOOGLE_PATIENT_SAMPLE_TOPIC,
     GOOGLE_ARTIFACT_UPLOAD_TOPIC,
     GOOGLE_GRANT_DOWNLOAD_PERMISSIONS_TOPIC,
-    GOOGLE_MAX_DOWNLOAD_PERMISSIONS,
     TESTING,
     ENV,
     DEV_CFUNCTIONS_SERVER,
@@ -654,32 +653,6 @@ def grant_bigquery_iam_access(policy: Policy, user_emails: List[str]) -> None:
 MAX_REVOKE_ALL_ITERATIONS = 250
 
 
-def revoke_nonexpiring_iam_access(
-    bucket: storage.Bucket, role: str, user_email: str
-) -> None:
-    """Revoke a bucket IAM policy change made by calling `grant_storage_iam_access` with expiring=False."""
-    # see https://cloud.google.com/storage/docs/access-control/using-iam-permissions#code-samples_3
-    policy = bucket.get_iam_policy(requested_policy_version=3)
-    policy.version = 3
-
-    # find and remove all matching policy bindings for this user if any exist
-    for i in range(GOOGLE_MAX_DOWNLOAD_PERMISSIONS):
-        removed_binding = _find_and_pop_storage_iam_binding(policy, role, user_email)
-
-        if removed_binding is None:
-            if i == 0:
-                warnings.warn(
-                    f"Tried to revoke a non-existent download IAM permission for {user_email}"
-                )
-            break
-
-    try:
-        bucket.set_iam_policy(policy)
-    except Exception as e:
-        logger.error(str(e))
-        raise e
-
-
 def revoke_storage_iam_access(
     bucket: storage.Bucket, role: str, user_email: str
 ) -> None:
@@ -703,25 +676,6 @@ def revoke_storage_iam_access(
     except Exception as e:
         logger.error(str(e))
         raise e
-
-
-def revoke_all_download_access(user_email: str) -> None:
-    """
-    Completely revoke a user's download access to all objects in the data bucket.
-    Download access is controlled by ACL.
-    """
-    # ---- Handle through main grant permissions topic ----
-    # would timeout in cloud function
-    kwargs = {
-        "trial_id": None,
-        "upload_type": None,
-        "user_email_list": [user_email],
-        "revoke": True,
-    }
-    report = _encode_and_publish(str(kwargs), GOOGLE_GRANT_DOWNLOAD_PERMISSIONS_TOPIC)
-    # Wait for response from pub/sub
-    if report:
-        report.result()
 
 
 def revoke_bigquery_iam_access(policy: Policy, user_email: str) -> None:
