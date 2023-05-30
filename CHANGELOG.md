@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.44` - 26 May 2023
+
+- `removed` unused cloud storage permissioning code (see related https://github.com/CIMAC-CIDC/cidc-ui/pull/489)
+
 ## Version `0.27.43` - 08 May 2023
 
 - `added` flag for alembic to compare types for database migrations
