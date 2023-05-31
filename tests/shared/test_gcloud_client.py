@@ -25,7 +25,6 @@ from cidc_api.shared.gcloud_client import (
     grant_upload_access,
     grant_bigquery_iam_access,
     refresh_intake_access,
-    revoke_all_download_access,
     revoke_bigquery_iam_access,
     revoke_download_access_from_blob_names,
     revoke_download_access,
@@ -594,23 +593,6 @@ def test_revoke_download_access(monkeypatch):
         {
             "trial_id": "10021",
             "upload_type": "wes_analysis",
-            "user_email_list": [EMAIL],
-            "revoke": True,
-        }
-    )
-    assert args[1] == GOOGLE_GRANT_DOWNLOAD_PERMISSIONS_TOPIC
-
-
-def test_revoke_all_download_access(monkeypatch):
-    """Check that revoke_all_download_access publishes to ACL grant/revoke download permissions topic"""
-    client = _mock_gcloud_storage_client(monkeypatch)
-    revoke_all_download_access(EMAIL)
-
-    args, _ = client.encode_and_publish.call_args
-    assert args[0] == str(
-        {
-            "trial_id": None,
-            "upload_type": None,
             "user_email_list": [EMAIL],
             "revoke": True,
         }
