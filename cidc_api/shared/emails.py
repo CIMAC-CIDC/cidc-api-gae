@@ -50,7 +50,7 @@ def confirm_account_approval(user) -> dict:
         To begin browsing and downloading data, visit https://portal.cimac-network.org.
     </p>
     <p>
-        <strong>Note:</strong> If you haven't already, please email cidc@jimmy.harvard.edu to request permission to view data for the trials and assays relevant to your work.</p>
+        <strong>Note:</strong> If you haven't already, please email NCICIDCAdmin@mail.nih.gov to request permission to view data for the trials and assays relevant to your work.</p>
     <p>Thanks,<br/>The CIDC Project Team</p>
     """
 
