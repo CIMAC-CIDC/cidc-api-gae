@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## 26 Jun 2023
+
+- `changed` admin email
+
 ## Version `0.27.44` - 26 May 2023
 
 - `removed` unused cloud storage permissioning code (see related https://github.com/CIMAC-CIDC/cidc-ui/pull/489)
