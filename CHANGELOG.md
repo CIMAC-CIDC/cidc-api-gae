@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.27.45` - 10 July 2023
+
+- `changed` CIDC_MAILING_LIST to Essex-managed group
+
 ## 26 Jun 2023
 
 - `changed` admin email
@@ -32,7 +36,7 @@ This Changelog tracks changes to this project. The notes below include a summary
 
 ## Version `0.27.41` - 19 Apr 2023
 
-  - `changed` schemas bump to remove microbiome reverse index requirement
+- `changed` schemas bump to remove microbiome reverse index requirement
 
 ## Version `0.27.40` - 16 Mar 2023
 
@@ -167,7 +171,7 @@ This Changelog tracks changes to this project. The notes below include a summary
   - only count samples and participants that have associated assay data
   - does NOT affect assay-level counts for the Data Overview dashboard
   - DOES affect counts for Browse Data > Trial Table and Home Page
-  
+
 ## Version `0.27.18` - 03 Nov 2022
 
 - `changed` schemas bump for adding TCR meta csv
@@ -212,7 +216,7 @@ This Changelog tracks changes to this project. The notes below include a summary
 
 - `fixed` bug in building user permissions for files on the portal
   - allowed users with cross-assay permissions to see clinical data files
-  
+
 ## Version `0.27.8` - 14 Oct 2022
 
 - `added` credentialing to dataset update
@@ -283,19 +287,19 @@ This Changelog tracks changes to this project. The notes below include a summary
 
 - `changed` cross-assay permissions to not include clinical data
 
-## Version `0.26.25` -  9 Aug 2022
+## Version `0.26.25` - 9 Aug 2022
 
 - `changed` schemas bump for hande manifest req relaxation
 
-## Version `0.26.24` -  2 Aug 2022
+## Version `0.26.24` - 2 Aug 2022
 
 - `changed` schemas bump for hande req relaxation
 
-## Version `0.26.23` -  27 Jul 2022
+## Version `0.26.23` - 27 Jul 2022
 
 - `changed` schemas bump for clinical data participant count fix
 
-## Version `0.26.22` -  26 Jul 2022
+## Version `0.26.22` - 26 Jul 2022
 
 - `changed` schemas bump for new participant alert on manifest upload
 
@@ -303,20 +307,20 @@ This Changelog tracks changes to this project. The notes below include a summary
 
 - `changed` all WES analysis file purpose to "analysis"
 
-## Version `0.26.21` -  13 Jul 2022
+## Version `0.26.21` - 13 Jul 2022
 
 - `changed` schemas bump to fix requirements
 
-## Version `0.26.20` -  13 Jul 2022
+## Version `0.26.20` - 13 Jul 2022
 
 - `changed` schemas bump for WES template autogeneration tweaks
 - `changed` schemas bump for WES analysis cnvkit to copynumber
 
-## Version `0.26.19` -  12 Jul 2022
+## Version `0.26.19` - 12 Jul 2022
 
 - `added` schemas bump, attach bytes to email for WES template autogeneration
 
-## Version `0.26.18` -  8 Jul 2022
+## Version `0.26.18` - 8 Jul 2022
 
 - `added` schemas bump, facets, counting for WES v3
 - `added` migration to move old WES analysis
@@ -469,7 +473,7 @@ This Changelog tracks changes to this project. The notes below include a summary
 
 ## Version `0.25.62` - 13 Jan 2022
 
-- `changed` \*_all_download_permissions to \*_download_permissions, including endpoint address
+- `changed` \*\_all_download_permissions to \*\_download_permissions, including endpoint address
 - `added` upload_type kwarg to grant_download_permissions
 - `added` trial_id and upload_type kwargs to revoke_download_permissions
 
@@ -580,7 +584,7 @@ This Changelog tracks changes to this project. The notes below include a summary
   - `fixed` trying to add CSMS properties to CIDC entries
 - `added` de-identified whole manifest from CSMS directly to test data
   - `fixed` reference to CIMAC ID in sample creation within models.templates.csms_api.insert_manifest_from_json()
-  - `fixed` dict.items() is unhashable, so use dict.keys() to generate a set to check for _calc_difference()
+  - `fixed` dict.items() is unhashable, so use dict.keys() to generate a set to check for \_calc_difference()
 
 ## Version `0.25.37` - 08 Nov 2021
 
@@ -681,7 +685,7 @@ This Changelog tracks changes to this project. The notes below include a summary
 
 - `added` grant_lister_access and revoke_lister_access for custom role CIDC Lister that is required for all downloads
 
-## Version `0.25.14` - 24  Sept 2021
+## Version `0.25.14` - 24 Sept 2021
 
 - `added` API endpoint to add a new manifest given JSON from CSMS
 
@@ -709,7 +713,7 @@ This Changelog tracks changes to this project. The notes below include a summary
 
 ### Summary
 
-Initial set up of tables and definition of needed classes for base metadata and assay uploads. Generated new-style templates and added full testing data for pbmc, tissue_slide, h_and_e, wes_<fastq/bam>; demo for clinical_data. Implemented JSON -> Relational sync function and wired for testing. Added relational hooks into existing manifest and assay/analysis uploads. Added way to trigger initial synchronization. Allows relational ClinicalTrials to be edited along with TrialMetadatas from the admin panel.
+Initial set up of tables and definition of needed classes for base metadata and assay uploads. Generated new-style templates and added full testing data for pbmc, tissue*slide, h_and_e, wes*<fastq/bam>; demo for clinical_data. Implemented JSON -> Relational sync function and wired for testing. Added relational hooks into existing manifest and assay/analysis uploads. Added way to trigger initial synchronization. Allows relational ClinicalTrials to be edited along with TrialMetadatas from the admin panel.
 
 ### Details
 
