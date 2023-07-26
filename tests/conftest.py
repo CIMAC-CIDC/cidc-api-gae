@@ -20,7 +20,9 @@ from cidc_api.models import (
 )
 
 # Install the Chrome web driver and add it to the PATH env variable
-chromedriver_dir = os.path.dirname(ChromeDriverManager().install())
+chromedriver_dir = os.path.dirname(
+    ChromeDriverManager(version="114.0.5735.90").install()
+)
 os.environ["PATH"] = f"{os.environ['PATH']}:{chromedriver_dir}"
 
 
