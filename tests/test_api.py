@@ -167,9 +167,9 @@ resource_requests = {
 }
 
 
-def mock_admin_user(cidc_api, monkeypatch) -> int:
-    user_json = {**users["json"], "email": "other@email.com"}
-    del user_json["id"]
+def mock_admin_user(cidc_api, monkeypatch, id=None) -> int:
+    user_json = {**users["json"], "email": "other@email.com", "id": id}
+    print("ADMIN USER", user_json)
     user = Users(**user_json)
     mock_current_user(user, monkeypatch)
 
@@ -257,7 +257,7 @@ def test_resource_and_item_get(resource, config, cidc_api, clean_db, monkeypatch
     mock_gcloud_client(monkeypatch)
     setup_mocks(config, monkeypatch)
     setup_db_records(cidc_api)
-    mock_admin_user(cidc_api, monkeypatch)
+    mock_admin_user(cidc_api, monkeypatch, id=2)
     client = cidc_api.test_client()
 
     # resource-level GET
