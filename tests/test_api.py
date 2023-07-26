@@ -168,7 +168,9 @@ resource_requests = {
 
 
 def mock_admin_user(cidc_api, monkeypatch) -> int:
-    user = Users(**{**users["json"], "email": "other@email.com", "id": None})
+    user_json = {**users["json"], "email": "other@email.com"}
+    del user_json["id"]
+    user = Users(**user_json)
     mock_current_user(user, monkeypatch)
 
     with cidc_api.app_context():
