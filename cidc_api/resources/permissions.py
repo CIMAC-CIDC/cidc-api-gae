@@ -78,21 +78,22 @@ def get_permission(permission: Permissions) -> Permissions:
 @permissions_bp.route("/", methods=["POST"])
 @requires_auth("permissions_item", allowed_roles=[CIDCRole.ADMIN.value])
 @unmarshal_request(permission_schema, "permission")
-@marshal_response(permission_schema, 201)
+# @marshal_response(permission_schema, 201)
 def create_permission(permission: Permissions) -> Permissions:
     """Create a new permission record."""
-    if permission.granted_by_user is None:
-        granter = get_current_user()
-        permission.granted_by_user = granter.id
-    try:
-        permission.insert()
-    except IntegrityError as e:
-        raise BadRequest(str(e.orig))
-    except IAMException as e:
-        # We return info on this internal error, since this is an admin-only endpoint
-        raise InternalServerError(str(e))
+    return "Data Freeze", 503
+    # if permission.granted_by_user is None:
+    #     granter = get_current_user()
+    #     permission.granted_by_user = granter.id
+    # try:
+    #     permission.insert()
+    # except IntegrityError as e:
+    #     raise BadRequest(str(e.orig))
+    # except IAMException as e:
+    #     # We return info on this internal error, since this is an admin-only endpoint
+    #     raise InternalServerError(str(e))
 
-    return permission
+    # return permission
 
 
 @permissions_bp.route("/<int:permission>", methods=["DELETE"])
@@ -100,13 +101,14 @@ def create_permission(permission: Permissions) -> Permissions:
 @with_lookup(Permissions, "permission", check_etag=True)
 def delete_permission(permission: Permissions):
     """Delete a permission record."""
-    try:
-        deleter = get_current_user()
-        permission.delete(deleted_by=deleter)
-    except NoResultFound as e:
-        raise NotFound(str(e.orig))
-    except IAMException as e:
-        # We return info on this internal error, since this is an admin-only endpoint
-        raise InternalServerError(str(e))
+    return "Data Freeze", 503
+    # try:
+    #     deleter = get_current_user()
+    #     permission.delete(deleted_by=deleter)
+    # except NoResultFound as e:
+    #     raise NotFound(str(e.orig))
+    # except IAMException as e:
+    #     # We return info on this internal error, since this is an admin-only endpoint
+    #     raise InternalServerError(str(e))
 
-    return delete_response()
+    # return delete_response()
