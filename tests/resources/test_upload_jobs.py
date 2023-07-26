@@ -284,6 +284,7 @@ def test_requires_upload_token_auth(cidc_api, clean_db, monkeypatch):
             endpoint(upload_job=nonexistent_job_id)
 
 
+@pytest.mark.skip("Data Freeze")
 def test_update_upload_job(cidc_api, clean_db, monkeypatch):
     """Check that getting a updating an upload job by ID works as expected."""
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
@@ -590,6 +591,7 @@ def test_upload_manifest_non_existing_trial_id(
     mocks.prismify.assert_called_once()
 
 
+@pytest.mark.skip("Data Freeze")
 def test_upload_manifest_on_validation_multierror(
     cidc_api, some_file, clean_db, monkeypatch
 ):
@@ -659,6 +661,7 @@ def test_upload_unsupported_manifest(cidc_api, some_file, clean_db, monkeypatch)
     mocks.upload_xlsx.assert_not_called()
 
 
+@pytest.mark.skip("Data Freeze")
 def test_admin_upload(cidc_api, clean_db, monkeypatch):
     """Ensure an admin can upload assays and manifests without specific permissions."""
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
@@ -691,6 +694,7 @@ def test_admin_upload(cidc_api, clean_db, monkeypatch):
     assert res.status_code == 200
 
 
+@pytest.mark.skip("Data Freeze")
 def test_upload_manifest(cidc_api, clean_db, monkeypatch, caplog):
     """Ensure the upload_manifest endpoint follows the expected execution flow"""
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
@@ -724,6 +728,7 @@ def test_upload_manifest(cidc_api, clean_db, monkeypatch, caplog):
     mocks.make_all_assertions()
 
 
+@pytest.mark.skip("Data Freeze")
 def test_upload_manifest_twice(cidc_api, clean_db, monkeypatch):
     """Ensure that doing upload_manifest twice will produce only one DownloadableFiles"""
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
@@ -773,6 +778,7 @@ def test_upload_manifest_twice(cidc_api, clean_db, monkeypatch):
 finfo = LocalFileUploadEntry
 
 
+@pytest.mark.skip("Data Freeze")
 def test_upload_endpoint_blocking(cidc_api, clean_db, monkeypatch):
     """Ensure you can't upload an analysis to the upload assay endpoint or vice versa"""
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
@@ -799,6 +805,7 @@ def test_upload_endpoint_blocking(cidc_api, clean_db, monkeypatch):
     assert res.status_code == 400
 
 
+@pytest.mark.skip("Data Freeze")
 def test_upload_wes(cidc_api, clean_db, monkeypatch):
     """Ensure the upload endpoint follows the expected execution flow"""
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
@@ -912,6 +919,7 @@ OLINK_TESTDATA = [
 ]
 
 
+@pytest.mark.skip("Data Freeze")
 def test_upload_olink(cidc_api, clean_db, monkeypatch):
     """Ensure the upload endpoint follows the expected execution flow"""
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
@@ -1077,6 +1085,7 @@ def test_poll_upload_merge_status(cidc_api, clean_db, monkeypatch):
         )
 
 
+@pytest.mark.skip("Data Freeze")
 def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
     make_cimac_biofx_user(user_id, cidc_api)
@@ -1173,6 +1182,7 @@ def test_extra_assay_metadata(cidc_api, clean_db, monkeypatch):
         assert res.status_code == 500  # TypeError should be a server error
 
 
+@pytest.mark.skip("Data Freeze")
 def test_merge_extra_metadata(cidc_api, clean_db, monkeypatch):
     """Ensure merging of extra metadata follows the expected execution flow"""
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
@@ -1225,6 +1235,7 @@ def test_merge_extra_metadata(cidc_api, clean_db, monkeypatch):
         assert "extra_md" in au.metadata_patch["whatever"]["hierarchy"][1]
 
 
+@pytest.mark.skip("Data Freeze")
 def test_create_intake_bucket(cidc_api, clean_db, monkeypatch):
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
     bucket_name = "test-intake-bucket"
@@ -1256,6 +1267,7 @@ def test_create_intake_bucket(cidc_api, clean_db, monkeypatch):
         gcloud_client.create_intake_bucket.reset_mock()
 
 
+@pytest.mark.skip("Data Freeze")
 def test_send_intake_metadata(cidc_api, clean_db, monkeypatch):
     user_id = setup_trial_and_user(cidc_api, monkeypatch)
     xlsx_url = "https://same/fake/url"

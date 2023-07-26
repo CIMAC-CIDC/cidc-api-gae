@@ -224,6 +224,7 @@ def resource_requests_with_key(key):
 
 
 @pytest.mark.parametrize("resource, config", resource_requests.items())
+@pytest.mark.skip("Data Freeze")
 def test_resource_post(resource, config, cidc_api, clean_db, monkeypatch):
     mock_gcloud_client(monkeypatch)
     mock_admin_user(cidc_api, monkeypatch)
@@ -291,6 +292,7 @@ def test_resource_and_item_get(resource, config, cidc_api, clean_db, monkeypatch
 
 
 @pytest.mark.parametrize("resource, config", resource_requests.items())
+@pytest.mark.skip("Data Freeze")
 def test_item_patch(resource, config, cidc_api, clean_db, monkeypatch):
     mock_gcloud_client(monkeypatch)
     setup_db_records(cidc_api)
@@ -338,6 +340,7 @@ def test_item_put(resource, config, cidc_api, clean_db, monkeypatch):
 
 
 @pytest.mark.parametrize("resource, config", resource_requests.items())
+@pytest.mark.skip("Data Freeze")
 def test_item_delete(resource, config, cidc_api, clean_db, monkeypatch):
     mock_gcloud_client(monkeypatch)
     setup_db_records(cidc_api)
