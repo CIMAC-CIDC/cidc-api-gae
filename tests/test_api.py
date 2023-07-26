@@ -229,7 +229,7 @@ def resource_requests_with_key(key):
 @pytest.mark.skip("Data Freeze")
 def test_resource_post(resource, config, cidc_api, clean_db, monkeypatch):
     mock_gcloud_client(monkeypatch)
-    mock_admin_user(cidc_api, monkeypatch)
+    mock_admin_user(cidc_api, monkeypatch, id=3)
     setup_mocks(config, monkeypatch)
     client = cidc_api.test_client()
 
@@ -257,7 +257,7 @@ def test_resource_and_item_get(resource, config, cidc_api, clean_db, monkeypatch
     mock_gcloud_client(monkeypatch)
     setup_mocks(config, monkeypatch)
     setup_db_records(cidc_api)
-    mock_admin_user(cidc_api, monkeypatch, id=2)
+    mock_admin_user(cidc_api, monkeypatch, id=4)
     client = cidc_api.test_client()
 
     # resource-level GET
@@ -298,7 +298,7 @@ def test_resource_and_item_get(resource, config, cidc_api, clean_db, monkeypatch
 def test_item_patch(resource, config, cidc_api, clean_db, monkeypatch):
     mock_gcloud_client(monkeypatch)
     setup_db_records(cidc_api)
-    mock_admin_user(cidc_api, monkeypatch)
+    mock_admin_user(cidc_api, monkeypatch, id=5)
     setup_mocks(config, monkeypatch)
 
     client = cidc_api.test_client()
@@ -327,7 +327,7 @@ def test_item_patch(resource, config, cidc_api, clean_db, monkeypatch):
 def test_item_put(resource, config, cidc_api, clean_db, monkeypatch):
     mock_gcloud_client(monkeypatch)
     setup_db_records(cidc_api)
-    mock_admin_user(cidc_api, monkeypatch)
+    mock_admin_user(cidc_api, monkeypatch, id=2)
     setup_mocks(config, monkeypatch)
     client = cidc_api.test_client()
 
@@ -346,7 +346,7 @@ def test_item_put(resource, config, cidc_api, clean_db, monkeypatch):
 def test_item_delete(resource, config, cidc_api, clean_db, monkeypatch):
     mock_gcloud_client(monkeypatch)
     setup_db_records(cidc_api)
-    mock_admin_user(cidc_api, monkeypatch)
+    mock_admin_user(cidc_api, monkeypatch, id=6)
     setup_mocks(config, monkeypatch)
     client = cidc_api.test_client()
 
@@ -363,7 +363,7 @@ def test_item_delete(resource, config, cidc_api, clean_db, monkeypatch):
 def test_resource_filters(resource, config, cidc_api, clean_db, monkeypatch):
     mock_gcloud_client(monkeypatch)
     setup_db_records(cidc_api)
-    mock_admin_user(cidc_api, monkeypatch)
+    mock_admin_user(cidc_api, monkeypatch, id=7)
     setup_mocks(config, monkeypatch)
     client = cidc_api.test_client()
 
@@ -384,7 +384,7 @@ def test_resource_filters(resource, config, cidc_api, clean_db, monkeypatch):
 def test_resource_pagination(resource, config, cidc_api, clean_db, monkeypatch):
     mock_gcloud_client(monkeypatch)
     setup_db_records(cidc_api)
-    mock_admin_user(cidc_api, monkeypatch)
+    mock_admin_user(cidc_api, monkeypatch, id=8)
     setup_mocks(config, monkeypatch)
 
     # Insert additional records for pagination testing
