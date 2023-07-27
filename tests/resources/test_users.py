@@ -1,5 +1,7 @@
 import os
 
+import pytest
+
 os.environ["TZ"] = "UTC"
 from datetime import datetime
 from typing import Tuple
@@ -53,6 +55,7 @@ def test_get_self(cidc_api, clean_db, monkeypatch):
     assert res.json == UserSchema().dump(user)
 
 
+@pytest.mark.skip("Data Freeze")
 def test_create_self(cidc_api, clean_db, monkeypatch):
     """Check that a user can create themself."""
     new_user_json = {"email": "test@email.com"}
@@ -79,6 +82,7 @@ def test_create_self(cidc_api, clean_db, monkeypatch):
     assert res.status_code == 400
 
 
+@pytest.mark.skip("Data Freeze")
 def test_create_user(cidc_api, clean_db, monkeypatch):
     """Check that only admins can create arbitrary users."""
     user_id, other_user_id = setup_users(cidc_api, monkeypatch)
@@ -148,6 +152,7 @@ def test_get_user(cidc_api, clean_db, monkeypatch):
     assert res.status_code == 404
 
 
+@pytest.mark.skip("Data Freeze")
 def test_update_user(cidc_api, clean_db, monkeypatch):
     """Check that updating users works as expected."""
     user_id, other_user_id = setup_users(cidc_api, monkeypatch, registered=True)

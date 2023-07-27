@@ -1,5 +1,7 @@
 import os
 
+import pytest
+
 os.environ["TZ"] = "UTC"
 from datetime import datetime
 from typing import Tuple
@@ -130,6 +132,7 @@ def test_get_permission(cidc_api, clean_db, monkeypatch):
     assert res.json == PermissionSchema().dump(other_user_perm)
 
 
+@pytest.mark.skip("Data Freeze")
 def test_create_permission(cidc_api, clean_db, monkeypatch):
     """Check that creating a new permission works as expected."""
     gcloud_client = mock_gcloud_client(monkeypatch)
@@ -209,6 +212,7 @@ def test_create_permission(cidc_api, clean_db, monkeypatch):
         clean_db.commit()
 
 
+@pytest.mark.skip("Data Freeze")
 def test_delete_permission(cidc_api, clean_db, monkeypatch):
     """Check that deleting a permission works as expected."""
     gcloud_client = mock_gcloud_client(monkeypatch)

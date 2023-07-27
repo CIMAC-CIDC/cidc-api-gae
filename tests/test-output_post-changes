@@ -1,0 +1,30 @@
+FAILED tests/test_api.py::test_resource_post[users-config0] - assert 503 == 201
+FAILED tests/test_api.py::test_resource_post[trial_metadata-config1] - assert 503 == 201
+FAILED tests/test_api.py::test_resource_post[downloadable_files-config2] - AssertionError: error during POST test setup
+FAILED tests/test_api.py::test_resource_post[permissions-config3] - AssertionError: error during POST test setup
+FAILED tests/test_api.py::test_resource_post[upload_jobs-config4] - AssertionError: error during POST test setup
+FAILED tests/test_api.py::test_item_patch[users-config0] - assert 503 == 200
+FAILED tests/test_api.py::test_item_patch[trial_metadata-config1] - assert 503 == 200
+FAILED tests/test_api.py::test_item_patch[upload_jobs-config4] - assert 503 == 200
+FAILED tests/test_api.py::test_item_delete[permissions-config3] - assert 503 == 204
+FAILED tests/resources/test_permissions.py::test_create_permission - TypeError: 'NoneType' object is not subscriptable
+FAILED tests/resources/test_permissions.py::test_delete_permission - TypeError: 'NoneType' object is not subscriptable
+FAILED tests/resources/test_trial_metadata.py::test_create_trial - assert 503 == 201
+FAILED tests/resources/test_trial_metadata.py::test_update_trial - AssertionError: participants
+FAILED tests/resources/test_trial_metadata.py::test_add_new_manifest_from_json - TypeError: 'NoneType' object is not subscriptable
+FAILED tests/resources/test_upload_jobs.py::test_update_upload_job - assert 503 == 200
+FAILED tests/resources/test_upload_jobs.py::test_upload_manifest_on_validation_multierror - assert 503 == 400
+FAILED tests/resources/test_upload_jobs.py::test_admin_upload - assert 503 == 200
+FAILED tests/resources/test_upload_jobs.py::test_upload_manifest - assert 503 == 200
+FAILED tests/resources/test_upload_jobs.py::test_upload_manifest_twice - assert 503 == 200
+FAILED tests/resources/test_upload_jobs.py::test_upload_endpoint_blocking - assert 503 == 200
+FAILED tests/resources/test_upload_jobs.py::test_upload_wes - assert 503 == 200
+FAILED tests/resources/test_upload_jobs.py::test_upload_olink - assert 503 == 200
+FAILED tests/resources/test_upload_jobs.py::test_extra_assay_metadata - assert 503 == 400
+FAILED tests/resources/test_upload_jobs.py::test_merge_extra_metadata - assert 503 == 200
+FAILED tests/resources/test_upload_jobs.py::test_create_intake_bucket - assert 503 == 200
+FAILED tests/resources/test_upload_jobs.py::test_send_intake_metadata - assert 503 == 200
+FAILED tests/resources/test_users.py::test_create_self - assert 503 == 400
+FAILED tests/resources/test_users.py::test_create_user - assert 503 == 201
+FAILED tests/resources/test_users.py::test_update_user - assert 503 == 200
+========================================== 29 failed, 164 passed, 2 skipped, 137 warnings in 90.14s (0:01:30) ==========================================

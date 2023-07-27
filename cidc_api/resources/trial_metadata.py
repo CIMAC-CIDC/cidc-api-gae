@@ -57,16 +57,17 @@ def list_trial_metadata(args, pagination_args):
 @trial_metadata_bp.route("/", methods=["POST"])
 @requires_auth("trial_metadata_item", trial_modifier_roles)
 @unmarshal_request(trial_metadata_schema, "trial")
-@marshal_response(trial_metadata_schema, 201)
+# @marshal_response(trial_metadata_schema, 201)
 def create_trial_metadata(trial):
     """Create a new trial metadata record."""
-    try:
-        # metadata was already validated by unmarshal_request
-        trial.insert(validate_metadata=False)
-    except IntegrityError as e:
-        raise BadRequest(str(e.orig))
+    return "Data Freeze", 503
+    # try:
+    #     # metadata was already validated by unmarshal_request
+    #     trial.insert(validate_metadata=False)
+    # except IntegrityError as e:
+    #     raise BadRequest(str(e.orig))
 
-    return trial
+    # return trial
 
 
 @trial_metadata_bp.route("/summaries", methods=["GET"])
@@ -92,35 +93,37 @@ def get_trial_metadata_by_trial_id(trial):
     TrialMetadata, "trial", check_etag=True, find_func=TrialMetadata.find_by_trial_id
 )
 @unmarshal_request(partial_trial_metadata_schema, "trial_updates", load_sqla=False)
-@marshal_response(trial_metadata_schema, 200)
+# @marshal_response(trial_metadata_schema, 200)
 def update_trial_metadata_by_trial_id(trial, trial_updates):
     """Update an existing trial metadata record by trial_id."""
     # Block updates to protected metadata JSON fields
-    metadata_updates = trial_updates.get("metadata_json")
-    if trial.metadata_json or metadata_updates:
-        for field in TrialMetadata.PROTECTED_FIELDS:
-            if trial.metadata_json.get(field) != metadata_updates.get(field):
-                raise BadRequest(
-                    f"updating metadata_json['{field}'] via the API is prohibited"
-                )
+    return "Data Freeze", 503
+    # metadata_updates = trial_updates.get("metadata_json")
+    # if trial.metadata_json or metadata_updates:
+    #     for field in TrialMetadata.PROTECTED_FIELDS:
+    #         if trial.metadata_json.get(field) != metadata_updates.get(field):
+    #             raise BadRequest(
+    #                 f"updating metadata_json['{field}'] via the API is prohibited"
+    #             )
 
-    trial.update(changes=trial_updates)
+    # trial.update(changes=trial_updates)
 
-    return trial
+    # return trial
 
 
 @trial_metadata_bp.route("/new_manifest", methods=["POST"])
 @requires_auth("new_manifest", [CIDCRole.ADMIN.value])
 def add_new_manifest_from_json():
-    try:
-        # schemas JSON blob hook
-        insert_manifest_into_blob(request.json, uploader_email=get_current_user().email)
+    return "Data Freeze", 503
+    # try:
+    #     # schemas JSON blob hook
+    #     insert_manifest_into_blob(request.json, uploader_email=get_current_user().email)
 
-    except Exception as e:
-        res = jsonify(error=str(e))
-        res.status_code = 500
-    else:
-        res = jsonify(status="success")
-        res.status_code = 200
-    finally:
-        return res
+    # except Exception as e:
+    #     res = jsonify(error=str(e))
+    #     res.status_code = 500
+    # else:
+    #     res = jsonify(status="success")
+    #     res.status_code = 200
+    # finally:
+    #     return res

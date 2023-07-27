@@ -155,34 +155,35 @@ def requires_upload_token_auth(endpoint):
     "upload_job_updates",
     load_sqla=False,
 )
-@marshal_response(upload_job_schema, 200)
+# @marshal_response(upload_job_schema, 200)
 def update_upload_job(upload_job: UploadJobs, upload_job_updates: dict):
     """Update an upload_job."""
-    try:
-        if "gcs_file_map" in upload_job_updates and upload_job.gcs_file_map is not None:
-            upload_job_updates["metadata_patch"] = upload_job.metadata_patch.copy()
-            for uri, uuid in upload_job.gcs_file_map.items():
-                if uri not in upload_job_updates["gcs_file_map"]:
-                    upload_job_updates[
-                        "metadata_patch"
-                    ] = _remove_optional_uuid_recursive(
-                        upload_job_updates["metadata_patch"], uuid
-                    )
+    return "Data Freeze", 503
+    # try:
+    #     if "gcs_file_map" in upload_job_updates and upload_job.gcs_file_map is not None:
+    #         upload_job_updates["metadata_patch"] = upload_job.metadata_patch.copy()
+    #         for uri, uuid in upload_job.gcs_file_map.items():
+    #             if uri not in upload_job_updates["gcs_file_map"]:
+    #                 upload_job_updates[
+    #                     "metadata_patch"
+    #                 ] = _remove_optional_uuid_recursive(
+    #                     upload_job_updates["metadata_patch"], uuid
+    #                 )
 
-        upload_job.update(changes=upload_job_updates)
-    except ValueError as e:
-        raise BadRequest(str(e))
+    #     upload_job.update(changes=upload_job_updates)
+    # except ValueError as e:
+    #     raise BadRequest(str(e))
 
-    # If this is a successful upload job, publish this info to Pub/Sub
-    if upload_job.status == UploadJobStatus.UPLOAD_COMPLETED.value:
-        gcloud_client.publish_upload_success(upload_job.id)
+    # # If this is a successful upload job, publish this info to Pub/Sub
+    # if upload_job.status == UploadJobStatus.UPLOAD_COMPLETED.value:
+    #     gcloud_client.publish_upload_success(upload_job.id)
 
-    # Revoke the uploading user's bucket access, since their querying
-    # this endpoint indicates a completed / failed upload attempt.
-    gcloud_client.revoke_upload_access(upload_job.uploader_email)
+    # # Revoke the uploading user's bucket access, since their querying
+    # # this endpoint indicates a completed / failed upload attempt.
+    # gcloud_client.revoke_upload_access(upload_job.uploader_email)
 
-    # this is not user-input due to @with_lookup, so safe to return
-    return upload_job
+    # # this is not user-input due to @with_lookup, so safe to return
+    # return upload_job
 
 
 def _remove_optional_uuid_recursive(target: dict, uuid: str):
@@ -471,31 +472,32 @@ def upload_manifest(
     Response:
         201 if the upload succeeds. Otherwise, some error status code and message.
     """
-    try:
-        trial = TrialMetadata.patch_manifest(trial.trial_id, md_patch, commit=False)
-    except ValidationError as e:
-        raise BadRequest(json_validation.format_validation_error(e))
-    except ValidationMultiError as e:
-        raise BadRequest({"errors": e.args[0]})
+    return "Data Freeze", 503
+    # try:
+    #     trial = TrialMetadata.patch_manifest(trial.trial_id, md_patch, commit=False)
+    # except ValidationError as e:
+    #     raise BadRequest(json_validation.format_validation_error(e))
+    # except ValidationMultiError as e:
+    #     raise BadRequest({"errors": e.args[0]})
 
-    # TODO maybe rely on default session
-    session = Session.object_session(trial)
+    # # TODO maybe rely on default session
+    # session = Session.object_session(trial)
 
-    manifest_upload = UploadJobs.create(
-        upload_type=template_type,
-        uploader_email=user.email,
-        metadata=md_patch,
-        gcs_xlsx_uri="",  # not saving xlsx so we won't have phi-ish stuff in it
-        gcs_file_map=None,
-        session=session,
-        send_email=True,
-        status=UploadJobStatus.MERGE_COMPLETED.value,
-    )
+    # manifest_upload = UploadJobs.create(
+    #     upload_type=template_type,
+    #     uploader_email=user.email,
+    #     metadata=md_patch,
+    #     gcs_xlsx_uri="",  # not saving xlsx so we won't have phi-ish stuff in it
+    #     gcs_file_map=None,
+    #     session=session,
+    #     send_email=True,
+    #     status=UploadJobStatus.MERGE_COMPLETED.value,
+    # )
 
-    # Publish that a manifest upload has been received
-    gcloud_client.publish_patient_sample_update(manifest_upload.id)
+    # # Publish that a manifest upload has been received
+    # gcloud_client.publish_patient_sample_update(manifest_upload.id)
 
-    return jsonify({"metadata_json_patch": md_patch})
+    # return jsonify({"metadata_json_patch": md_patch})
 
 
 @ingestion_bp.route("/upload_assay", methods=["POST"])
@@ -505,7 +507,8 @@ def upload_manifest(
 @upload_handler(prism.SUPPORTED_ASSAYS)
 def upload_assay(*args, **kwargs):
     """Handle assay metadata / file uploads."""
-    return upload_data_files(*args, **kwargs)
+    # return upload_data_files(*args, **kwargs)
+    return "Data Freeze", 503
 
 
 @ingestion_bp.route("/upload_analysis", methods=["POST"])
@@ -515,7 +518,8 @@ def upload_assay(*args, **kwargs):
 @upload_handler(prism.SUPPORTED_ANALYSES)
 def upload_analysis(*args, **kwargs):
     """Handle analysis metadata / file uploads."""
-    return upload_data_files(*args, **kwargs)
+    # return upload_data_files(*args, **kwargs)
+    return "Data Freeze", 503
 
 
 def upload_data_files(
@@ -643,38 +647,38 @@ def extra_assay_metadata():
         [artifact_uuid_2]: [open extra metadata file 2]
     }
     """
+    return "Data Freeze", 503
+    # if not request.form:
+    #     raise BadRequest(
+    #         "Expected form content in request body, or failed to parse form content"
+    #     )
 
-    if not request.form:
-        raise BadRequest(
-            "Expected form content in request body, or failed to parse form content"
-        )
+    # if "job_id" not in request.form:
+    #     raise BadRequest("Expected job_id in form")
 
-    if "job_id" not in request.form:
-        raise BadRequest("Expected job_id in form")
+    # if not request.files:
+    #     raise BadRequest(
+    #         "Expected files in request (mapping from artifact uuids to open files)"
+    #     )
 
-    if not request.files:
-        raise BadRequest(
-            "Expected files in request (mapping from artifact uuids to open files)"
-        )
+    # job_id = request.form["job_id"]
 
-    job_id = request.form["job_id"]
+    # files = request.files.to_dict()
 
-    files = request.files.to_dict()
+    # try:
+    #     UploadJobs.merge_extra_metadata(job_id, files)
+    # except ValueError as e:
+    #     # thrown by parser itself if file cannot be parsed, e.g. wrong file uploaded
+    #     # wrapped by merger to include uuid / assay_hint information, just use that message
+    #     # thrown by UploadJobs.merge_extra_metadata if job_id doesn't exist or is already merged
+    #     # thrown by getting artifact if uuid doesn't exist in the trial
+    #     raise BadRequest(f"{e!s}")
 
-    try:
-        UploadJobs.merge_extra_metadata(job_id, files)
-    except ValueError as e:
-        # thrown by parser itself if file cannot be parsed, e.g. wrong file uploaded
-        # wrapped by merger to include uuid / assay_hint information, just use that message
-        # thrown by UploadJobs.merge_extra_metadata if job_id doesn't exist or is already merged
-        # thrown by getting artifact if uuid doesn't exist in the trial
-        raise BadRequest(f"{e!s}")
+    # # Uncaught i.e. internal errors
+    # # TypeError thrown by parser itself if file is not the right type
 
-    # Uncaught i.e. internal errors
-    # TypeError thrown by parser itself if file is not the right type
-
-    # TODO: return something here?
-    return jsonify({})
+    # # TODO: return something here?
+    # return jsonify({})
 
 
 INTAKE_ROLES = [
@@ -697,11 +701,17 @@ def create_intake_bucket(args):
     """
     user = get_current_user()
     intake_bucket = gcloud_client.create_intake_bucket(user.email)
-    bucket_subdir = f'{intake_bucket.name}/{args["trial_id"]}/{args["upload_type"]}'
-    gs_url = f"gs://{bucket_subdir}"
-    console_url = f"https://console.cloud.google.com/storage/browser/{bucket_subdir}"
+    # For Data Freeze, only return bucket if it exists
+    if intake_bucket:
+        bucket_subdir = f'{intake_bucket.name}/{args["trial_id"]}/{args["upload_type"]}'
+        gs_url = f"gs://{bucket_subdir}"
+        console_url = (
+            f"https://console.cloud.google.com/storage/browser/{bucket_subdir}"
+        )
 
-    return jsonify({"gs_url": gs_url, "console_url": console_url})
+        return jsonify({"gs_url": gs_url, "console_url": console_url})
+    else:
+        return "Data Freeze", 503
 
 
 @ingestion_bp.route("/intake_metadata", methods=["POST"])
@@ -730,11 +740,12 @@ def send_intake_metadata(form_args, file_args):
     """
     Send an email to the CIDC Admin mailing list with the provided metadata attached.
     """
-    user = get_current_user()
-    xlsx_gcp_url = gcloud_client.upload_xlsx_to_intake_bucket(
-        user.email, form_args["trial_id"], form_args["assay_type"], file_args["xlsx"]
-    )
-    emails.intake_metadata(
-        user, **form_args, xlsx_gcp_url=xlsx_gcp_url, send_email=True
-    )
-    return jsonify("ok")
+    return "Data Freeze", 503
+    # user = get_current_user()
+    # xlsx_gcp_url = gcloud_client.upload_xlsx_to_intake_bucket(
+    #     user.email, form_args["trial_id"], form_args["assay_type"], file_args["xlsx"]
+    # )
+    # emails.intake_metadata(
+    #     user, **form_args, xlsx_gcp_url=xlsx_gcp_url, send_email=True
+    # )
+    # return jsonify("ok")

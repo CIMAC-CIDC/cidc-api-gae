@@ -46,43 +46,45 @@ def get_self():
 @users_bp.route("/self", methods=["POST"])
 @requires_auth("self")
 @unmarshal_request(new_user_schema, "user")
-@marshal_response(user_schema, 201)
+# @marshal_response(user_schema, 201)
 def create_self(user):
     """
     Allow the current user to create a profile for themself. On success,
     send an email to the CIDC mailing list with a registration notification.
     """
-    current_user = get_current_user()
+    return "Data Freeze", 503
+    # current_user = get_current_user()
 
-    if current_user.email != user.email:
-        raise BadRequest(
-            f"{current_user.email} can't create a user with email {user.email}"
-        )
+    # if current_user.email != user.email:
+    #     raise BadRequest(
+    #         f"{current_user.email} can't create a user with email {user.email}"
+    #     )
 
-    try:
-        user.insert()
-    except IntegrityError as e:
-        raise BadRequest(str(e.orig))
+    # try:
+    #     user.insert()
+    # except IntegrityError as e:
+    #     raise BadRequest(str(e.orig))
 
-    new_user_registration(user.email, send_email=True)
+    # new_user_registration(user.email, send_email=True)
 
-    return user
+    # return user
 
 
 @users_bp.route("/", methods=["POST"])
 @requires_auth("users", [CIDCRole.ADMIN.value])
 @unmarshal_request(user_schema, "user")
-@marshal_response(user_schema, 201)
+# @marshal_response(user_schema, 201)
 def create_user(user):
     """
     Allow admins to create user records.
     """
-    try:
-        user.insert()
-    except IntegrityError as e:
-        raise BadRequest(str(e.orig))
+    return "Data Freeze", 503
+    # try:
+    #     user.insert()
+    # except IntegrityError as e:
+    #     raise BadRequest(str(e.orig))
 
-    return user
+    # return user
 
 
 @users_bp.route("/", methods=["GET"])
@@ -112,33 +114,34 @@ def get_user(user: Users):
 @requires_auth("users_item", [CIDCRole.ADMIN.value])
 @with_lookup(Users, "user", check_etag=True)
 @unmarshal_request(partial_user_schema, "user_updates", load_sqla=False)
-@marshal_response(user_schema)
+# @marshal_response(user_schema)
 def update_user(user: Users, user_updates: Users):
     """Update a single user's information."""
+    return "Data Freeze", 503
     # If a user is being awarded their first role, add an approval date
-    if not user.role and "role" in user_updates:
-        user_updates["approval_date"] = datetime.now()
-        grant_bigquery_access([user.email])
+    # if not user.role and "role" in user_updates:
+    #     user_updates["approval_date"] = datetime.now()
+    #     grant_bigquery_access([user.email])
 
-    # If this user is being re-enabled after being disabled, update their last
-    # access date to now so that they aren't disabled again tomorrow and
-    # refresh their IAM permissions.
-    if user.disabled and user_updates.get("disabled") == False:
-        user_updates["_accessed"] = datetime.now()
+    # # If this user is being re-enabled after being disabled, update their last
+    # # access date to now so that they aren't disabled again tomorrow and
+    # # refresh their IAM permissions.
+    # if user.disabled and user_updates.get("disabled") == False:
+    #     user_updates["_accessed"] = datetime.now()
 
-        # don't grant permissions unless they've be approved
-        if user.approval_date:
-            Permissions.grant_user_permissions(user)
-            grant_bigquery_access([user.email])
+    #     # don't grant permissions unless they've be approved
+    #     if user.approval_date:
+    #         Permissions.grant_user_permissions(user)
+    #         grant_bigquery_access([user.email])
 
-    # If this user is being disabled, remove all of their download permissions.
-    if not user.disabled and user_updates.get("disabled") == True:
-        Permissions.revoke_user_permissions(user)
-        revoke_bigquery_access(user.email)
+    # # If this user is being disabled, remove all of their download permissions.
+    # if not user.disabled and user_updates.get("disabled") == True:
+    #     Permissions.revoke_user_permissions(user)
+    #     revoke_bigquery_access(user.email)
 
-    # this is not user-input due to @with_lookup, so safe to return
-    user.update(changes=user_updates)
-    return user
+    # # this is not user-input due to @with_lookup, so safe to return
+    # user.update(changes=user_updates)
+    # return user
 
 
 @users_bp.route("/data_access_report", methods=["GET"])

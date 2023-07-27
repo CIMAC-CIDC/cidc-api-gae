@@ -1,5 +1,7 @@
 import os
 
+import pytest
+
 os.environ["TZ"] = "UTC"
 from datetime import datetime
 from typing import Tuple
@@ -289,6 +291,7 @@ bad_trial_error_message = {
 }
 
 
+@pytest.mark.skip("Data Freeze")
 def test_create_trial(cidc_api, clean_db, monkeypatch):
     """Check that creating a new trial works as expected"""
     user_id = setup_user(cidc_api, monkeypatch)
@@ -333,6 +336,7 @@ def test_create_trial(cidc_api, clean_db, monkeypatch):
             trial.delete()
 
 
+@pytest.mark.skip("Data Freeze")
 def test_update_trial(cidc_api, clean_db, monkeypatch):
     """Check that updating a trial works as expected"""
     user_id = setup_user(cidc_api, monkeypatch)
@@ -466,6 +470,7 @@ def test_get_trial_metadata_summaries(cidc_api, clean_db, monkeypatch):
         assert res.json == result
 
 
+@pytest.mark.skip("Data Freeze")
 def test_add_new_manifest_from_json(cidc_api, clean_db, monkeypatch):
     """Check that /trial_metadata/new_manifest endpoint behaves as expected"""
     user_id = setup_user(cidc_api, monkeypatch)
