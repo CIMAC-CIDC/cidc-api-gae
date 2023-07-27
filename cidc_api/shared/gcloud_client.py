@@ -282,15 +282,21 @@ def create_intake_bucket(user_email: str) -> storage.Bucket:
     bucket_name = get_intake_bucket_name(user_email)
     bucket = storage_client.bucket(bucket_name)
 
-    if not bucket.exists():
-        # Create a new bucket with bucket-level permissions enabled.
-        bucket.iam_configuration.uniform_bucket_level_access_enabled = True
-        bucket = storage_client.create_bucket(bucket)
+    # For Data Freeze only return bucket if it already existsG
+    if bucket.exists():
+        return bucket
+    else:
+        return None
 
-    # Grant the user appropriate permissions
-    grant_storage_iam_access(bucket, GOOGLE_INTAKE_ROLE, user_email)
+    # if not bucket.exists():
+    #     # Create a new bucket with bucket-level permissions enabled.
+    #     bucket.iam_configuration.uniform_bucket_level_access_enabled = True
+    #     bucket = storage_client.create_bucket(bucket)
 
-    return bucket
+    # # Grant the user appropriate permissions
+    # grant_storage_iam_access(bucket, GOOGLE_INTAKE_ROLE, user_email)
+
+    # return bucket
 
 
 def refresh_intake_access(user_email: str) -> None:

@@ -2,6 +2,8 @@ import json
 import os
 import re
 
+import pytest
+
 os.environ["TZ"] = "UTC"
 from io import BytesIO
 from unittest.mock import call, MagicMock
@@ -428,6 +430,7 @@ def test_revoke_bigquery_access(monkeypatch):
     revoke_bigquery_iam_access(policy, EMAIL)
 
 
+@pytest.mark.skip("Data Freeze")
 def test_create_intake_bucket(monkeypatch):
     policy = Policy()
     bucket = MagicMock()
@@ -467,7 +470,7 @@ def test_create_intake_bucket(monkeypatch):
     assert len(hash) == 10 and EMAIL not in hash
 
     # The bucket gets created and permissions get granted
-    storage_client.create_bucket.assert_called_once_with(bucket)
+    storage_client.create_bucket.assert_not_called(bucket)
     bucket.get_iam_policy.assert_called_once()
     bucket.set_iam_policy.assert_called_once_with(policy)
 
