@@ -1,0 +1,55 @@
+Endpoint                                                                                        Methods  Rule
+----------------------------------------------------------------------------------------------  -------  ----------------------------------------------------------------------------------------------
+✅ permissions.delete_permission                                                                DELETE   /permissions/<int:permission>
+/dashboards/upload_jobs/_dash-dependencies                                                      GET      /dashboards/upload_jobs/_dash-dependencies
+/dashboards/upload_jobs/_dash-layout                                                            GET      /dashboards/upload_jobs/_dash-layout
+/dashboards/upload_jobs/_reload-hash                                                            GET      /dashboards/upload_jobs/_reload-hash
+/dashboards/upload_jobs/_favicon.ico                                                            GET      /dashboards/upload_jobs/_favicon.ico
+downloadable_files.get_facet_groups_for_links                                                   GET      /downloadable_files/facet_groups_for_links
+downloadable_files.get_filter_facets                                                            GET      /downloadable_files/filter_facets
+downloadable_files.get_download_url                                                             GET      /downloadable_files/download_url
+trials.get_trial_metadata_summaries                                                             GET      /trial_metadata/summaries
+/dashboards/upload_jobs/                                                                        GET      /dashboards/upload_jobs/
+users.get_data_access_report                                                                    GET      /users/data_access_report
+admin.test_csms                                                                                 GET      /admin/test_csms
+users.get_self                                                                                  GET      /users/self
+info.extra_data_types                                                                           GET      /info/extra_data_types
+info.data_overview                                                                              GET      /info/data_overview
+info.manifests                                                                                  GET      /info/manifests
+info.analyses                                                                                   GET      /info/analyses
+info.assays                                                                                     GET      /info/assays
+downloadable_files.list_downloadable_files                                                      GET      /downloadable_files/
+trials.list_trial_metadata                                                                      GET      /trial_metadata/
+permissions.list_permissions                                                                    GET      /permissions/
+upload_jobs.list_upload_jobs                                                                    GET      /upload_jobs/
+users.list_users                                                                                GET      /users/
+index                                                                                           GET      /
+/dashboards/upload_jobs/_dash-component-suites/<string:package_name>/<path:fingerprinted_path>  GET      /dashboards/upload_jobs/_dash-component-suites/<string:package_name>/<path:fingerprinted_path>
+_dashboards_upload_jobs_dash_assets.static                                                      GET      /dashboards/upload_jobs/assets/<path:filename>
+downloadable_files.get_related_files                                                            GET      /downloadable_files/<int:downloadable_file>/related_files
+/dashboards/upload_jobs/<path:path>                                                             GET      /dashboards/upload_jobs/<path:path>
+ingestion.poll_upload_merge_status                                                              GET      /ingestion/poll_upload_merge_status/<int:upload_job>
+info.templates                                                                                  GET      /info/templates/<template_family>/<template_type>
+downloadable_files.get_downloadable_file                                                        GET      /downloadable_files/<int:downloadable_file>
+trials.get_trial_metadata_by_trial_id                                                           GET      /trial_metadata/<string:trial>
+permissions.get_permission                                                                      GET      /permissions/<int:permission>
+upload_jobs.get_upload_job                                                                      GET      /upload_jobs/<int:upload_job>
+users.get_user                                                                                  GET      /users/<int:user>
+✅ trials.update_trial_metadata_by_trial_id                                                     PATCH    /trial_metadata/<string:trial>
+✅ upload_jobs.update_upload_job                                                                PATCH    /upload_jobs/<int:upload_job>
+✅ users.update_user                                                                            PATCH    /users/<int:user>
+/dashboards/upload_jobs/_dash-update-component                                                  POST     /dashboards/upload_jobs/_dash-update-component
+downloadable_files.create_compressed_batch                                                      POST     /downloadable_files/compressed_batch
+downloadable_files.generate_filelist                                                            POST     /downloadable_files/filelist
+✅ trials.add_new_manifest_from_json                                                            POST     /trial_metadata/new_manifest
+✅ ingestion.extra_assay_metadata                                                               POST     /ingestion/extra-assay-metadata
+✅ ingestion.upload_manifest                                                                    POST     /ingestion/upload_manifest
+✅ ingestion.upload_analysis                                                                    POST     /ingestion/upload_analysis
+✅ ingestion.send_intake_metadata                                                               POST     /ingestion/intake_metadata
+✅ ingestion.create_intake_bucket                                                               POST     /ingestion/intake_bucket
+✅ ingestion.upload_assay                                                                       POST     /ingestion/upload_assay
+ingestion.validate_endpoint                                                                     POST     /ingestion/validate
+✅ users.create_self                                                                            POST     /users/self
+✅ trials.create_trial_metadata                                                                 POST     /trial_metadata/
+✅ permissions.create_permission                                                                POST     /permissions/
+✅ users.create_user                                                                            POST     /users/
