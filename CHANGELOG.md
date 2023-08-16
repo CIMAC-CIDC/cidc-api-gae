@@ -9,10 +9,6 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
-## Version `0.27.46` - 14 July 2023
-
-- `added` transcriptome capture v6 to rna enrichment_method (see https://github.com/CIMAC-CIDC/cidc-schemas/pull/581)
-
 ## Version `0.27.45` - 10 July 2023
 
 - `changed` CIDC_MAILING_LIST to Essex-managed group
